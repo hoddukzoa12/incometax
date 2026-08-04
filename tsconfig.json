@@ -30,6 +30,7 @@
     "worker",
     "tests",
     "vite.config.ts",
+    "vitest.worker.config.ts",
     "eslint.config.js"
   ]
 }

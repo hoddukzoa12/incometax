@@ -1,4 +1,5 @@
 import { MOIS_REGION_CODE_URL } from '../config/external-apis'
+import { DEFAULT_FETCHER } from '../http/fetch'
 
 export const LDONG_SNAPSHOT_KEY = 'ldong:snapshot:v1'
 
@@ -7,12 +8,12 @@ const REGION_CODES_PER_PAGE = 1_000
 const PAGE_REQUEST_INTERVAL_MS = 150
 const REGION_CODE_TIMEOUT_MS = 10_000
 const REGION_CODE_RETRY_DELAYS_MS = [500, 1_500] as const
-const MINIMUM_REGION_CODE_COUNT = 15_000
+export const MINIMUM_REGION_CODE_COUNT = 15_000
 const ACTIVE_REGION_FLAG = 'Y'
 const JSON_RESPONSE_TYPE = 'json'
 const SUCCESS_RESULT_CODE = 'INFO-0'
 
-const REQUIRED_REGION_CODES = {
+export const REQUIRED_REGION_CODES = {
   '서울특별시 종로구 청운동': '1111010100',
 } as const
 
@@ -212,7 +213,7 @@ export async function refreshLdong(
   }
 
   const dependencies: Required<LdongRefreshDependencies> = {
-    fetcher: dependencyOverrides.fetcher ?? fetch,
+    fetcher: dependencyOverrides.fetcher ?? DEFAULT_FETCHER,
     now: dependencyOverrides.now ?? Date.now,
     sleep: dependencyOverrides.sleep ?? defaultSleep,
   }

@@ -2,6 +2,7 @@ import {
   REALTY_PRICE_APARTMENT_REFERER,
   REALTY_PRICE_ORIGIN,
 } from '../config/external-apis'
+import { DEFAULT_FETCHER } from '../http/fetch'
 
 const REALTY_REQUEST_INTERVAL_MS = 260
 const REALTY_REQUEST_TIMEOUT_MS = 10_000
@@ -148,7 +149,7 @@ export class RealtyPriceClient {
   private lastRequestStartedAt = Number.NEGATIVE_INFINITY
 
   constructor(dependencies: RealtyClientDependencies = {}) {
-    this.fetcher = dependencies.fetcher ?? fetch
+    this.fetcher = dependencies.fetcher ?? DEFAULT_FETCHER
     this.now = dependencies.now ?? Date.now
     this.sleep = dependencies.sleep ?? defaultSleep
   }

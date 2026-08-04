@@ -8,7 +8,9 @@
     "geocode:complexes": "node --env-file-if-exists=.dev.vars scripts/geocode.ts",
     "ingest:complexes": "node --env-file-if-exists=.dev.vars scripts/ingest-complexes.ts",
     "verify:complex-api": "node --env-file-if-exists=.dev.vars scripts/verify-complex-api.ts",
-    "test": "vitest run",
+    "test": "npm run test:node && npm run test:workers",
+    "test:node": "vitest run --exclude 'tests/**/*.workerd.test.ts'",
+    "test:workers": "vitest run --config vitest.worker.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "deploy": "vite build && wrangler deploy"
@@ -18,6 +20,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.20.1",
     "@cloudflare/workers-types": "^5.20260804.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
