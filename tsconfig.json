@@ -11,19 +11,25 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vite/client", "vitest/globals", "@cloudflare/workers-types"]
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@cloudflare/workers-types",
+      "node"
+    ]
   },
   "include": [
     "src",
     "shared",
+    "scripts",
     "worker",
     "tests",
     "vite.config.ts",
     "eslint.config.js"
   ]
 }
-

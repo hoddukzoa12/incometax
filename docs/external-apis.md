@@ -16,7 +16,7 @@ P1(데이터 파이프라인)·P3(공시가격)이 의존하는 외부 원천의
 |---|---|---|---|---|
 | 행안부 행정표준코드 | **공식** | data.go.kr 키 | 낮음 | P1·P3 (주소→PNU) |
 | 국토부 실거래가 | **공식** | data.go.kr 키 | 낮음 | P1 (지도 라벨) |
-| 국토부 공동주택 단지 | **공식** | data.go.kr 키 | 낮음 (**미검증**) | P1 (단지 마스터) |
+| 국토부·부동산원 공동주택 단지 | **공식** | data.go.kr 키 | 낮음 (**검증 완료**) | P1 (단지 마스터) |
 | 카카오 로컬 | **공식** | 카카오 REST 키 | 낮음 | P1 (지오코딩 배치) |
 | 부동산공시가격알리미 | **비공식** | 없음 | **높음** | P3 (공시가격) |
 | 국세청 홈택스 | **비공식** | HMAC 서명 | **매우 높음** | 보류 (§7) |
@@ -32,7 +32,7 @@ P1(데이터 파이프라인)·P3(공시가격)이 의존하는 외부 원천의
 
 ```
 GET https://apis.data.go.kr/1741000/StanReginCd/getStanReginCdList
-인증: ODCLOUD_API_KEY (data.go.kr 일반 인증키)
+인증: DATA_GO_KR_SERVICE_KEY (data.go.kr 일반 인증키)
 ```
 
 ### PNU 구성 (19자리)
@@ -64,6 +64,11 @@ PNU = 법정동코드(10) + 필지구분(1) + 본번(4) + 부번(4)
 | 필수 표본 | 미리 정한 기준 코드가 기대값과 일치해야 함 |
 
 갱신 실패 시 **기존 캐시를 유지**한다. 갱신 실패가 서비스 중단이 되면 안 된다.
+
+**실응답 검증 완료 (2026-08-04).** 활성 법정동코드 전국 전량은 20,560건이었고,
+필수 표본 `서울특별시 종로구 청운동 → 1111010100`이 일치했다. 검증 뒤 KV 스냅샷을
+한 번만 교체했으며, 이어 최소 건수 미달 응답을 강제로 주입했을 때 갱신은 실패하고
+직전 스냅샷의 바이트가 그대로 유지되는 것도 확인했다.
 
 | 트리거 | 조건 |
 |---|---|
@@ -112,28 +117,35 @@ user-agent:       (브라우저 형태)
 
 > `400`이 재시도 대상인 점에 주의. 이 서버는 과부하 시 400을 돌려준다.
 
-### 조회 흐름 — 4단계를 순차로 타야 한다
+### 조회 흐름 — 4개 논리 단계를 순차로 타야 한다
 
 ```
 1. /notice/town/searchNoticeDate.search      { year }          → 고시일자 목록
-2. /notice/search/searchApt.search           + 단지 파라미터    → 단지·동 목록
+2a. /notice/search/searchApt.search          + 단지 파라미터    → 단지 목록
+2b. /notice/search/searchApt.search          + apt_code,
+                                               gbnApt='DONG'    → 동 목록
 3. /notice/search/searchApt.search           + dong_code       → 호 목록
 4. /notice/search/townPriceListPastYearMap.search
        + gbnApt='HO', apt_code, dong_code, ho_code             → 가격
 ```
 
+2단계가 단지 선택과 동 선택의 두 HTTP 요청으로 나뉘므로, 실제 호출 수는 총 5회다.
+
 **동/호를 특정하지 않으면 가격이 나오지 않는다.** 단지 대표 공시가격이라는 개념이 없다
-(층·향·면적마다 다름). 동/호 목록은 2·3단계가 주므로 드롭다운으로 제공하면 된다.
+(층·향·면적마다 다름). 동/호 목록은 2b·3단계가 주므로 드롭다운으로 제공하면 된다.
 
 ### 연도별 가격 — `past_yn`
 
-공통 파라미터에 **`past_yn: '1'`** 이 있고 4단계 엔드포인트 이름이
-`townPriceList**PastYear**Map`이다. **과거 연도 가격을 함께 반환하는 것으로 보인다.**
+**확인 완료 (2026-08-04).** 공통 파라미터에 `past_yn: '1'`을 넣어 4단계 엔드포인트를
+호출하면 과거 연도 가격이 한 번에 반환된다. 검증 대상은 `서울특별시 강남구 대치동 316`
+은마아파트 1동 101호(`apt_code=1381`, `dong_code=1`, `ho_code=10`)였다. 실제 응답은
+21건으로, 2026.1.1 공시가격 2,237,000,000원부터 2006.1.1 공시가격 542,000,000원까지
+연도별 행을 포함했다. 응답에는 `model.list`와 `modelMap.list`가 모두 있었고 내용은 같았다.
 
-> ⚠️ **P3 착수 시 실제 응답을 먼저 찍어 확인할 것.** 사실이면 전년 대비 비교가 한 번의
-> 호출로 끝나고, 아니면 고시연도를 파라미터화해 연도별로 호출해야 한다.
-> `latestNoticeDate()`가 최신 연도 하나만 모듈 레벨 프로미스로 메모이즈하는 구조라
-> 어느 쪽이든 손봐야 한다.
+따라서 **가격 조회에 요청 연도 인자를 추가하지 않는다.** 최신 고시일자를 한 번 구해
+동·호를 선택한 뒤 `townPriceListPastYearMap.search`가 돌려주는 전체 연혁을 사용한다.
+`latestNoticeDate()`는 최신 고시일자 하나를 메모이즈해도 되며, 실패한 Promise만 캐시에서
+제거해 다음 요청이 재시도할 수 있게 한다.
 
 ### 응답 형태
 
@@ -239,20 +251,73 @@ source | 법정동 | 지번(정규화) | 건물명 | 주택유형 | 층 | 면적
 
 ---
 
-## 5. 공동주택 단지 목록 (국토교통부) — 공식, **미검증**
+## 5. 공동주택 단지 목록 (국토교통부·한국부동산원) — 공식
 
-P1의 단지 마스터 원천. **아직 실제로 호출해보지 않았다.**
+**실응답 검증 완료 (2026-08-04).** 세 API의 응답을 직접 호출했고, 페이지를 끝까지
+순회해 전국 건수와 좌표 포함 여부를 확인했다.
 
-| 데이터셋 | 제공 항목 |
+### K-apt 단지 목록 — P1 마스터 원천
+
+```
+GET https://apis.data.go.kr/1613000/AptListService3/getTotalAptList3
+파라미터: serviceKey, pageNo, numOfRows
+```
+
+응답은 `response.header`와 `response.body` 봉투이며, 페이지 정보는
+`body.pageNo`·`body.numOfRows`·`body.totalCount`, 목록은 `body.items[]`에 있다.
+`numOfRows=1,000`으로 23페이지를 순회한 결과 **총 22,259건**이었다.
+
+| 실제 항목 필드 | 의미 |
 |---|---|
-| [단지 목록제공 서비스](https://www.data.go.kr/data/15057332/openapi.do) | 단지코드, 시도/시군구/읍면동, 도로명주소 |
-| [단지 기본 정보 (파일)](https://www.data.go.kr/data/15073271/fileData.do) | 단지코드, 단지명, 법정동·도로명주소, 사용승인일, 동수, 세대수 |
-| [부동산원 단지 식별정보](https://www.data.go.kr/data/15106817/openapi.do) | 단지 기본정보 + **동 정보** |
+| `kaptCode`, `kaptName` | 단지코드, 단지명 |
+| `bjdCode` | 법정동코드 10자리 |
+| `as1`, `as2`, `as3`, `as4` | 시도, 시군구, 읍면동, 리 (`as4`는 `null` 가능) |
 
-> ⚠️ **좌표(위경도)는 대부분 포함되지 않는다.** §6의 지오코딩 배치가 필요한 이유다.
->
-> **P1 첫 작업은 이 API들의 실제 응답을 찍어 이 문서를 채우는 것이다.**
-> 필드명·페이지네이션·건수를 확인하기 전에는 스키마를 확정하지 않는다.
+목록 API에는 도로명주소가 없다. 각 `kaptCode`를 다음 기본 정보 API로 조회해야 한다.
+
+### K-apt 단지 기본 정보 V4 — 코드별 보강
+
+```
+GET https://apis.data.go.kr/1613000/AptBasisInfoServiceV4/getAphusBassInfoV4
+파라미터: serviceKey, kaptCode
+```
+
+페이지네이션 없는 단건 응답이며 `response.body.item`에 다음 필드가 있었다.
+
+```
+bjdCode, codeAptNm, codeHallNm, codeHeatNm, codeMgrNm, codeSaleNm,
+doroJuso, hoCnt, kaptAcompany, kaptAddr, kaptBaseFloor, kaptBcompany,
+kaptCode, kaptDongCnt, kaptFax, kaptMarea, kaptMparea60, kaptMparea85,
+kaptMparea135, kaptMparea136, kaptName, kaptTarea, kaptTel, kaptTopFloor,
+kaptUrl, kaptUsedate, kaptdEcntp, kaptdaCnt, ktownFlrNo, privArea, zipcode
+```
+
+P1 스키마에는 여기서 `kaptCode`, `kaptName`, `kaptAddr`, `doroJuso`, `bjdCode`,
+`kaptUsedate`, `kaptDongCnt`, `kaptdaCnt`만 사용한다. 수치 필드는 응답에 따라 숫자 또는
+숫자 문자열이므로 정수로 정규화한다.
+
+### 한국부동산원 단지 식별정보 — 범위 비교용
+
+```
+GET https://api.odcloud.kr/api/AptIdInfoSvc/v1/getAptInfo
+파라미터: serviceKey, page, perPage, returnType=JSON
+```
+
+응답 최상위에 `page`, `perPage`, `totalCount`, `currentCount`, `matchCount`, `data[]`가
+있다. `perPage=1,000`으로 전량 순회한 결과 **총 307,407건**이었다. 실제 항목 필드는
+`COMPLEX_PK`, `PNU`, `ADRES`, `COMPLEX_NM1`, `COMPLEX_NM2`, `COMPLEX_NM3`,
+`COMPLEX_GB_CD`, `DONG_CNT`, `UNIT_CNT`, `USEAPR_DT`다.
+
+이 원천은 3세대 규모 공동주택까지 포함해 K-apt보다 범위가 훨씬 넓고 도로명주소가 없다.
+현재 P1의 지도 단지 마스터는 도로명주소와 K-apt 단지코드가 있는 **K-apt 22,259건**을
+기준으로 삼고, 부동산원 원천은 범위 확장 시 다시 검토한다. 2024-09-13 기준 파일 데이터
+`15073271`(18,403행)는 최신 배치 원천으로 쓰지 않는다.
+
+### 좌표와 지오코딩 물량
+
+K-apt 목록 22,259건 전체, K-apt 기본 정보 실응답, 부동산원 307,407건 전체에서
+`lat`·`lng`·`x`·`y` 등 좌표 필드는 **한 건도 없었다.** 따라서 현재 P1 마스터
+**22,259건 전부**를 §6의 카카오 로컬 API로 일괄 지오코딩해야 한다.
 
 ---
 
@@ -345,10 +410,14 @@ POST https://teht.hometax.go.kr/wqAction.do
 
 P1·P3 착수 시 **먼저 실제 응답을 찍어 확인하고 이 문서를 갱신**한다.
 
+확인 완료: `past_yn=1` / `townPriceListPastYearMap.search`의 과거 연도 반환 여부는
+2026-08-04에 확인했다. 단일 호출이 여러 연도를 반환하므로 P3의 가격 조회는 연도별로
+파라미터화하지 않는다(실응답은 §2).
+
+확인 완료: 공동주택 API의 실응답·페이지네이션·전국 건수·좌표 부재는 2026-08-04에
+확인했다. P1 마스터는 K-apt 22,259건이며 전량 지오코딩 대상이다(실응답은 §5).
+
 | # | 항목 | 영향 |
 |---|---|---|
-| 1 | `past_yn=1` / `townPriceListPastYearMap`이 과거 연도 가격을 주는가 | P3 설계 (연도 파라미터화 필요 여부) |
-| 2 | 공동주택 단지 목록 API의 실제 필드·페이지네이션·총건수 | P1 D1 스키마 확정 |
-| 3 | 단지 마스터에 좌표가 일부라도 포함되는가 | P1 지오코딩 물량 |
 | 4 | 실거래가 ↔ 단지 매칭률 | P1 성패. 낮으면 지도에 구멍 |
 | 5 | realtyprice.kr CAPTCHA 발동 조건 | P3 리스크 |

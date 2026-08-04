@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently --kill-others-on-fail \"vite\" \"wrangler dev\"",
+    "geocode:complexes": "node --env-file-if-exists=.dev.vars scripts/geocode.ts",
+    "ingest:complexes": "node --env-file-if-exists=.dev.vars scripts/ingest-complexes.ts",
+    "verify:complex-api": "node --env-file-if-exists=.dev.vars scripts/verify-complex-api.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -17,6 +20,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260804.1",
     "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",

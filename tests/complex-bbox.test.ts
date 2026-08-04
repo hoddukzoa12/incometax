@@ -1,0 +1,89 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  handleComplexBbox,
+  parseBounds,
+  queryComplexes,
+} from '../worker/complex/bbox'
+
+const resultRows = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    complex_id: `A${String(index).padStart(8, '0')}`,
+    name: `단지 ${index}`,
+    legal_address: `주소 ${index}`,
+    road_address: null,
+    legal_dong_code: '1111010100',
+    approval_date: null,
+    building_count: 1,
+    household_count: count - index,
+    lat: 37.5,
+    lng: 127,
+  }))
+
+const fakeDatabase = (rows: ReturnType<typeof resultRows>): D1Database =>
+  ({
+    prepare: () => ({
+      bind: () => ({
+        all: async () => ({ results: rows }),
+      }),
+    }),
+  }) as unknown as D1Database
+
+describe('parseBounds', () => {
+  it('parses a valid WGS84 bounding box', () => {
+    expect(
+      parseBounds(
+        new URLSearchParams({
+          south: '37.45',
+          west: '126.8',
+          north: '37.7',
+          east: '127.2',
+        }),
+      ),
+    ).toEqual({ south: 37.45, west: 126.8, north: 37.7, east: 127.2 })
+  })
+
+  it.each([
+    [{ west: '126.8', north: '37.7', east: '127.2' }, 'Missing south'],
+    [
+      { south: '37.7', west: '126.8', north: '37.45', east: '127.2' },
+      'south must be less than north',
+    ],
+    [
+      { south: '37.45', west: '127.2', north: '37.7', east: '126.8' },
+      'west must be less than east',
+    ],
+    [
+      { south: '37.45', west: '126.8', north: '91', east: '127.2' },
+      'Invalid north',
+    ],
+  ])('rejects invalid bounds %#', (values, message) => {
+    expect(() => parseBounds(new URLSearchParams(values))).toThrow(message)
+  })
+})
+
+describe('queryComplexes', () => {
+  it('caps marker results and reports truncation', async () => {
+    const result = await queryComplexes(fakeDatabase(resultRows(501)), {
+      south: 37,
+      west: 126,
+      north: 38,
+      east: 128,
+    })
+
+    expect(result.items).toHaveLength(500)
+    expect(result.truncated).toBe(true)
+  })
+
+  it('returns a 400 response for invalid bounds', async () => {
+    const response = await handleComplexBbox(
+      new URL('https://example.test/api/complexes?south=38&west=126&north=37&east=128'),
+      fakeDatabase([]),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'south must be less than north',
+    })
+  })
+})
