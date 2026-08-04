@@ -1,0 +1,39 @@
+import type { TaxRules } from '../../shared/tax-rules'
+import {
+  COMPREHENSIVE_BASIC_DEDUCTIONS_2026,
+  COMPREHENSIVE_FAIR_MARKET_VALUE_RATIOS_2026,
+  COMPREHENSIVE_TAX_BRACKETS_2026_THREE_OR_MORE_HOMES,
+  COMPREHENSIVE_TAX_BRACKETS_2026_UP_TO_TWO_HOMES,
+  COMPREHENSIVE_TAX_COMMON_RULES,
+  COMPREHENSIVE_TAXABLE_THRESHOLDS_2026,
+} from './comprehensive-tax'
+import { PROPERTY_TAX_RULES } from './property-tax'
+import {
+  TRANSFER_BASIC_DEDUCTIONS_2026,
+  TRANSFER_LONG_TERM_DEDUCTIONS_THROUGH_2027,
+} from './transfer-deductions'
+import { TRANSFER_TAX_COMMON_RULES } from './transfer-tax-common'
+
+export const TAX_RULES_2026 = {
+  year: 2026,
+  propertyTax: PROPERTY_TAX_RULES,
+  comprehensiveTax: {
+    ...COMPREHENSIVE_TAX_COMMON_RULES,
+    taxableThresholds: COMPREHENSIVE_TAXABLE_THRESHOLDS_2026,
+    basicDeductions: COMPREHENSIVE_BASIC_DEDUCTIONS_2026,
+    fairMarketValueRatios: COMPREHENSIVE_FAIR_MARKET_VALUE_RATIOS_2026,
+    brackets: {
+      kind: 'byHomeCount',
+      upToTwoHomes: COMPREHENSIVE_TAX_BRACKETS_2026_UP_TO_TWO_HOMES,
+      threeOrMoreHomes:
+        COMPREHENSIVE_TAX_BRACKETS_2026_THREE_OR_MORE_HOMES,
+    },
+  },
+  transferTax: {
+    ...TRANSFER_TAX_COMMON_RULES,
+    longTermDeductions: TRANSFER_LONG_TERM_DEDUCTIONS_THROUGH_2027,
+    deductionCaps: null,
+    basicDeductions: TRANSFER_BASIC_DEDUCTIONS_2026,
+  },
+} as const satisfies TaxRules
+

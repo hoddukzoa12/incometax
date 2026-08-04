@@ -1,0 +1,150 @@
+export type HouseholdKind = 'oneHouse' | 'multiHouse'
+export type Residency = 'residing' | 'nonResiding'
+export type AreaKind = 'adjusted' | 'general'
+export type TaxYear = 2026 | 2027 | 2028 | 2029
+
+export interface Bracket {
+  readonly upTo: number
+  readonly rate: number
+  readonly progressiveDeduction: number
+}
+
+export interface RateBand {
+  readonly upTo: number
+  readonly rate: number
+}
+
+export type PropertyTaxSurtaxBase = 'baseTax' | 'taxableBase'
+
+export interface PropertyTaxSurtaxRule {
+  readonly base: PropertyTaxSurtaxBase
+  readonly rate: number
+}
+
+export interface PropertyTaxRules {
+  readonly oneHouseHomeCount: number
+  readonly fairMarketValueRatios: {
+    readonly oneHouse: readonly RateBand[]
+    readonly other: number
+  }
+  readonly preferentialRateMaximumOfficialPrice: number
+  readonly brackets: {
+    readonly general: readonly Bracket[]
+    readonly oneHouse: readonly Bracket[]
+  }
+  readonly surtaxes: {
+    readonly localEducation: PropertyTaxSurtaxRule
+    readonly cityArea: PropertyTaxSurtaxRule
+  }
+}
+
+export interface ComprehensiveBasicDeductionRules {
+  readonly oneHouse: Readonly<Record<Residency, number>>
+  readonly multiHouse:
+    | {
+        readonly kind: 'fixed'
+        readonly amount: number
+      }
+    | {
+        readonly kind: 'residentShare'
+        readonly base: number
+        readonly residentHomeShareMaximum: number
+      }
+}
+
+export interface ComprehensiveFairMarketValueRatioRules {
+  readonly oneHouse: number
+  readonly multiHouse: {
+    readonly standard: number
+    readonly threeOrMoreOrAdjusted: number
+  }
+}
+
+export type ComprehensiveBracketRules =
+  | {
+      readonly kind: 'byHomeCount'
+      readonly upToTwoHomes: readonly Bracket[]
+      readonly threeOrMoreHomes: readonly Bracket[]
+    }
+  | {
+      readonly kind: 'unified'
+      readonly brackets: readonly Bracket[]
+    }
+
+export interface ComprehensiveTaxRules {
+  readonly taxableThresholds: Readonly<Record<HouseholdKind, number>>
+  readonly basicDeductions: ComprehensiveBasicDeductionRules
+  readonly fairMarketValueRatios: ComprehensiveFairMarketValueRatioRules
+  readonly brackets: ComprehensiveBracketRules
+  readonly elevatedHomeCountMinimum: number
+  readonly propertyTaxCreditRate: number
+  readonly ruralSpecialTaxRate: number
+}
+
+export interface HoldingPeriodTaxRate {
+  readonly lessThanYears: number
+  readonly rate: number
+}
+
+export interface AnnualDeductionComponent {
+  readonly annualRate: number
+  readonly maximumRate: number
+  readonly minimumQualifyingYears?: number
+}
+
+export interface LongTermDeductionRule {
+  readonly minimumHoldingYears: number
+  readonly minimumResidenceYears: number | null
+  readonly residence: AnnualDeductionComponent | null
+  readonly holding: AnnualDeductionComponent | null
+  readonly aggregation: 'sum' | 'maximum'
+  readonly maximumRate: number
+}
+
+export interface TransferLongTermDeductionRules {
+  readonly oneHouse: LongTermDeductionRule
+  readonly multiHouse: LongTermDeductionRule
+}
+
+export interface TransferDeductionCapRules {
+  readonly perPersonAnnual: number
+  readonly perProperty: number
+  readonly apportionment: 'ownershipOrDisposalShare'
+}
+
+export interface SpecialTransferBasicDeductionRule {
+  readonly annualAmount: number
+  readonly householdKind: 'oneHouse'
+  readonly minimumResidenceYears: number
+  readonly maximumSalePrice: number
+  readonly residentOnly: true
+  readonly relatedPartyExcluded: true
+  readonly perOwner: true
+  readonly apportionment: 'ownershipOrDisposalShare'
+}
+
+export interface TransferBasicDeductionRules {
+  readonly standardAnnualAmount: number
+  readonly special: SpecialTransferBasicDeductionRule | null
+}
+
+export interface TransferTaxRules {
+  readonly brackets: readonly Bracket[]
+  readonly shortTermRates: readonly HoldingPeriodTaxRate[]
+  readonly ordinaryRateMinimumHoldingYears: number
+  readonly oneHouseExemption: {
+    readonly maximumSalePrice: number
+    readonly minimumHoldingYears: number
+  }
+  readonly longTermDeductions: TransferLongTermDeductionRules
+  readonly deductionCaps: TransferDeductionCapRules | null
+  readonly basicDeductions: TransferBasicDeductionRules
+  readonly localIncomeTaxRate: number
+}
+
+export interface TaxRules {
+  readonly year: TaxYear
+  readonly propertyTax: PropertyTaxRules
+  readonly comprehensiveTax: ComprehensiveTaxRules
+  readonly transferTax: TransferTaxRules
+}

@@ -1,0 +1,845 @@
+import { describe, expect, it } from 'vitest'
+
+import type { PortfolioItem } from '../shared/holding-tax'
+import type { TaxYear } from '../shared/tax-rules'
+import { calculateHoldingTax } from '../src/holding/calc'
+
+const HOLDING_YEARS = [2026, 2027, 2028] as const satisfies readonly TaxYear[]
+const ONE_WON = 1
+
+const createItem = (
+  overrides: Partial<PortfolioItem> = {},
+): PortfolioItem => ({
+  assetKind: 'apartment',
+  officialPrice: 2_000_000_000,
+  ownershipShare: 1,
+  isSoleHouseholdOwner: true,
+  residency: 'residing',
+  areaKind: 'general',
+  ...overrides,
+})
+
+const calculate = (
+  year: TaxYear,
+  items: readonly PortfolioItem[],
+  householdHomeCount = items.length,
+) => calculateHoldingTax({ year, householdHomeCount, items })
+
+describe('calculateHoldingTax single-house golden cases', () => {
+  it('matches H1 for a resident one-house owner', () => {
+    const expected = {
+      2026: {
+        deduction: 1_200_000_000,
+        ratio: 0.6,
+        taxableBase: 480_000_000,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 2_760_000,
+        credit: 864_000,
+        rural: 379_200,
+        comprehensive: 2_275_200,
+        total: 7_099_200,
+      },
+      2027: {
+        deduction: 1_400_000_000,
+        ratio: 0.7,
+        taxableBase: 420_000_000,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 2_340_000,
+        credit: 756_000,
+        rural: 316_800,
+        comprehensive: 1_900_800,
+        total: 6_724_800,
+      },
+      2028: {
+        deduction: 1_400_000_000,
+        ratio: 0.7,
+        taxableBase: 420_000_000,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 2_340_000,
+        credit: 756_000,
+        rural: 316_800,
+        comprehensive: 1_900_800,
+        total: 6_724_800,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [createItem()])
+      const propertyTax = result.propertyTaxes[0]
+      const comprehensiveTax = result.comprehensiveTax
+
+      expect(propertyTax).toMatchObject({
+        fairMarketValueRatio: 0.45,
+        fullTaxableBase: 900_000_000,
+        taxableBase: 900_000_000,
+        preferentialRateApplied: false,
+        appliedRate: { rate: 0.004, progressiveDeduction: 630_000 },
+        baseTax: 2_970_000,
+        localEducationTax: 594_000,
+        cityAreaTax: 1_260_000,
+        totalTax: 4_824_000,
+      })
+      expect(result.propertyTaxTotal).toBe(4_824_000)
+      expect(comprehensiveTax.basicDeduction).toBe(expected[year].deduction)
+      expect(comprehensiveTax.fairMarketValueRatio).toBeCloseTo(
+        expected[year].ratio,
+      )
+      expect(comprehensiveTax.taxableBase).toBe(expected[year].taxableBase)
+      expect(comprehensiveTax.appliedRate.rate).toBeCloseTo(expected[year].rate)
+      expect(comprehensiveTax.appliedRate.progressiveDeduction).toBe(
+        expected[year].progressiveDeduction,
+      )
+      expect(comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(comprehensiveTax.propertyTaxCredit).toBe(expected[year].credit)
+      expect(comprehensiveTax.ruralSpecialTax).toBe(expected[year].rural)
+      expect(comprehensiveTax.totalTax).toBe(expected[year].comprehensive)
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+
+  it('matches H2 and keeps the taxable threshold separate from the non-resident deduction', () => {
+    const expected = {
+      2026: {
+        threshold: 1_200_000_000,
+        deduction: 1_200_000_000,
+        taxableBase: 480_000_000,
+        baseTax: 2_760_000,
+        credit: 864_000,
+        comprehensive: 2_275_200,
+        total: 7_099_200,
+      },
+      2027: {
+        threshold: 1_400_000_000,
+        deduction: 900_000_000,
+        taxableBase: 770_000_000,
+        baseTax: 5_810_000,
+        credit: 1_386_000,
+        comprehensive: 5_308_800,
+        total: 10_132_800,
+      },
+      2028: {
+        threshold: 1_400_000_000,
+        deduction: 900_000_000,
+        taxableBase: 770_000_000,
+        baseTax: 5_810_000,
+        credit: 1_386_000,
+        comprehensive: 5_308_800,
+        total: 10_132_800,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({ residency: 'nonResiding' }),
+      ])
+      const comprehensiveTax = result.comprehensiveTax
+
+      expect(result.propertyTaxTotal).toBe(4_824_000)
+      expect(comprehensiveTax.taxableThreshold).toBe(expected[year].threshold)
+      expect(comprehensiveTax.basicDeduction).toBe(expected[year].deduction)
+      expect(comprehensiveTax.taxableBase).toBe(expected[year].taxableBase)
+      expect(comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(comprehensiveTax.propertyTaxCredit).toBe(expected[year].credit)
+      expect(comprehensiveTax.totalTax).toBe(expected[year].comprehensive)
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+
+  it('matches H3 at the 1.2 billion won current-law threshold', () => {
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({ officialPrice: 1_200_000_000 }),
+      ])
+
+      expect(result.propertyTaxes[0]).toMatchObject({
+        fullTaxableBase: 540_000_000,
+        baseTax: 1_530_000,
+        localEducationTax: 306_000,
+        cityAreaTax: 756_000,
+        totalTax: 2_592_000,
+      })
+      expect(result.comprehensiveTax.status).toBe('notTaxable')
+      expect(result.comprehensiveTax.taxableBase).toBe(0)
+      expect(result.comprehensiveTax.appliedRate.rate).toBe(0)
+      expect(result.totalTax).toBe(2_592_000)
+    }
+  })
+
+  it('matches H4 immediately below the new threshold', () => {
+    const expectedComprehensive = {
+      2026: 437_760,
+      2027: 0,
+      2028: 0,
+    } as const
+    const expectedTotal = {
+      2026: 3_559_860,
+      2027: 3_122_100,
+      2028: 3_122_100,
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({
+          officialPrice: 1_390_000_000,
+          residency: 'nonResiding',
+        }),
+      ])
+
+      expect(result.propertyTaxes[0]).toMatchObject({
+        fullTaxableBase: 625_500_000,
+        baseTax: 1_872_000,
+        localEducationTax: 374_400,
+        cityAreaTax: 875_700,
+        totalTax: 3_122_100,
+      })
+      expect(result.comprehensiveTax.totalTax).toBe(
+        expectedComprehensive[year],
+      )
+      if (year === 2026) {
+        expect(result.comprehensiveTax).toMatchObject({
+          taxableBase: 114_000_000,
+          appliedRate: { rate: 0.005, progressiveDeduction: 0 },
+          baseTax: 570_000,
+          propertyTaxCredit: 205_200,
+          netTax: 364_800,
+          ruralSpecialTax: 72_960,
+        })
+      }
+      expect(result.totalTax).toBe(expectedTotal[year])
+    }
+  })
+
+  it('matches H5 immediately above the new threshold discontinuity', () => {
+    const expected = {
+      2026: {
+        deduction: 1_200_000_000,
+        taxableBase: 126_000_000,
+        baseTax: 630_000,
+        credit: 226_800,
+        rate: 0.005,
+        progressiveDeduction: 0,
+        rural: 80_640,
+        comprehensive: 483_840,
+        total: 3_661_740,
+      },
+      2027: {
+        deduction: 900_000_000,
+        taxableBase: 357_000_000,
+        baseTax: 1_899_000,
+        credit: 642_600,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        rural: 251_280,
+        comprehensive: 1_507_680,
+        total: 4_685_580,
+      },
+      2028: {
+        deduction: 900_000_000,
+        taxableBase: 357_000_000,
+        baseTax: 1_899_000,
+        credit: 642_600,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        rural: 251_280,
+        comprehensive: 1_507_680,
+        total: 4_685_580,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({
+          officialPrice: 1_410_000_000,
+          residency: 'nonResiding',
+        }),
+      ])
+      const comprehensiveTax = result.comprehensiveTax
+
+      expect(result.propertyTaxes[0]).toMatchObject({
+        fullTaxableBase: 634_500_000,
+        baseTax: 1_908_000,
+        localEducationTax: 381_600,
+        cityAreaTax: 888_300,
+        totalTax: 3_177_900,
+      })
+      expect(comprehensiveTax.basicDeduction).toBe(expected[year].deduction)
+      expect(comprehensiveTax.taxableBase).toBe(expected[year].taxableBase)
+      expect(comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(comprehensiveTax.propertyTaxCredit).toBe(expected[year].credit)
+      expect(comprehensiveTax.appliedRate).toEqual({
+        rate: expected[year].rate,
+        progressiveDeduction: expected[year].progressiveDeduction,
+      })
+      expect(comprehensiveTax.ruralSpecialTax).toBe(expected[year].rural)
+      expect(comprehensiveTax.totalTax).toBe(expected[year].comprehensive)
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+
+  it('matches H6 and applies the reduced property-tax rate at 900 million won', () => {
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({ officialPrice: 900_000_000 }),
+      ])
+
+      expect(result.propertyTaxes[0]).toMatchObject({
+        fairMarketValueRatio: 0.45,
+        fullTaxableBase: 405_000_000,
+        preferentialRateApplied: true,
+        appliedRate: { rate: 0.0035, progressiveDeduction: 630_000 },
+        baseTax: 787_500,
+        localEducationTax: 157_500,
+        cityAreaTax: 567_000,
+        totalTax: 1_512_000,
+      })
+      expect(result.comprehensiveTax.status).toBe('notTaxable')
+      expect(result.totalTax).toBe(1_512_000)
+    }
+  })
+
+  it('matches H7 at a 3 billion won official price', () => {
+    const expected = {
+      2026: {
+        taxableBase: 1_080_000_000,
+        rate: 0.01,
+        progressiveDeduction: 2_400_000,
+        baseTax: 8_400_000,
+        credit: 1_944_000,
+        rural: 1_291_200,
+        comprehensive: 7_747_200,
+        total: 15_361_200,
+      },
+      2027: {
+        taxableBase: 1_120_000_000,
+        rate: 0.013,
+        progressiveDeduction: 4_200_000,
+        baseTax: 10_360_000,
+        credit: 2_016_000,
+        rural: 1_668_800,
+        comprehensive: 10_012_800,
+        total: 17_626_800,
+      },
+      2028: {
+        taxableBase: 1_120_000_000,
+        rate: 0.013,
+        progressiveDeduction: 4_200_000,
+        baseTax: 10_360_000,
+        credit: 2_016_000,
+        rural: 1_668_800,
+        comprehensive: 10_012_800,
+        total: 17_626_800,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({ officialPrice: 3_000_000_000 }),
+      ])
+
+      expect(result.propertyTaxes[0]).toMatchObject({
+        fullTaxableBase: 1_350_000_000,
+        baseTax: 4_770_000,
+        localEducationTax: 954_000,
+        cityAreaTax: 1_890_000,
+        totalTax: 7_614_000,
+      })
+      expect(result.comprehensiveTax.taxableBase).toBe(
+        expected[year].taxableBase,
+      )
+      expect(result.comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(result.comprehensiveTax.appliedRate).toEqual({
+        rate: expected[year].rate,
+        progressiveDeduction: expected[year].progressiveDeduction,
+      })
+      expect(result.comprehensiveTax.propertyTaxCredit).toBe(
+        expected[year].credit,
+      )
+      expect(result.comprehensiveTax.ruralSpecialTax).toBe(
+        expected[year].rural,
+      )
+      expect(result.comprehensiveTax.totalTax).toBe(
+        expected[year].comprehensive,
+      )
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+})
+
+describe('calculateHoldingTax multi-house golden cases', () => {
+  const twoHouseItems = (areaKind: PortfolioItem['areaKind']) => [
+    createItem({
+      officialPrice: 900_000_000,
+      residency: 'residing',
+      areaKind,
+    }),
+    createItem({
+      officialPrice: 600_000_000,
+      residency: 'nonResiding',
+      areaKind: 'general',
+    }),
+  ]
+
+  it('matches H8 for two homes outside adjusted areas', () => {
+    const expected = {
+      2026: {
+        deduction: 900_000_000,
+        ratio: 0.6,
+        taxableBase: 360_000_000,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 1_920_000,
+        credit: 864_000,
+        rural: 211_200,
+        comprehensive: 1_267_200,
+        total: 5_335_200,
+      },
+      2027: {
+        deduction: 700_000_000,
+        ratio: 0.7,
+        taxableBase: 560_000_000,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 3_320_000,
+        credit: 1_344_000,
+        rural: 395_200,
+        comprehensive: 2_371_200,
+        total: 6_439_200,
+      },
+      2028: {
+        deduction: 700_000_000,
+        ratio: 0.7,
+        taxableBase: 560_000_000,
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 3_320_000,
+        credit: 1_344_000,
+        rural: 395_200,
+        comprehensive: 2_371_200,
+        total: 6_439_200,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, twoHouseItems('general'))
+
+      expect(result.propertyTaxes.map(({ totalTax }) => totalTax)).toEqual([
+        2_592_000,
+        1_476_000,
+      ])
+      expect(result.propertyTaxTotal).toBe(4_068_000)
+      expect(result.comprehensiveTax.ownedOfficialPriceTotal).toBe(
+        1_500_000_000,
+      )
+      expect(result.comprehensiveTax.residentOwnedOfficialPrice).toBe(
+        900_000_000,
+      )
+      expect(result.comprehensiveTax.basicDeduction).toBe(
+        expected[year].deduction,
+      )
+      expect(result.comprehensiveTax.fairMarketValueRatio).toBeCloseTo(
+        expected[year].ratio,
+      )
+      expect(result.comprehensiveTax.taxableBase).toBe(
+        expected[year].taxableBase,
+      )
+      expect(result.comprehensiveTax.appliedRate).toEqual({
+        rate: expected[year].rate,
+        progressiveDeduction: expected[year].progressiveDeduction,
+      })
+      expect(result.comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(result.comprehensiveTax.propertyTaxCredit).toBe(
+        expected[year].credit,
+      )
+      expect(result.comprehensiveTax.ruralSpecialTax).toBe(
+        expected[year].rural,
+      )
+      expect(result.comprehensiveTax.totalTax).toBe(
+        expected[year].comprehensive,
+      )
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+
+  it('matches H9 and elevates only the 2028 adjusted-area ratio', () => {
+    const expectedRatio = { 2026: 0.6, 2027: 0.7, 2028: 0.8 } as const
+    const expectedTaxableBase = {
+      2026: 360_000_000,
+      2027: 560_000_000,
+      2028: 640_000_000,
+    } as const
+    const expectedComprehensive = {
+      2026: 1_267_200,
+      2027: 2_371_200,
+      2028: 3_100_800,
+    } as const
+    const expectedIntermediate = {
+      2026: {
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 1_920_000,
+        credit: 864_000,
+        rural: 211_200,
+      },
+      2027: {
+        rate: 0.007,
+        progressiveDeduction: 600_000,
+        baseTax: 3_320_000,
+        credit: 1_344_000,
+        rural: 395_200,
+      },
+      2028: {
+        rate: 0.013,
+        progressiveDeduction: 4_200_000,
+        baseTax: 4_120_000,
+        credit: 1_536_000,
+        rural: 516_800,
+      },
+    } as const
+    const expectedTotal = {
+      2026: 5_335_200,
+      2027: 6_439_200,
+      2028: 7_168_800,
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, twoHouseItems('adjusted'))
+
+      expect(result.comprehensiveTax.fairMarketValueRatio).toBeCloseTo(
+        expectedRatio[year],
+      )
+      expect(result.comprehensiveTax.taxableBase).toBe(
+        expectedTaxableBase[year],
+      )
+      expect(result.comprehensiveTax.appliedRate).toEqual({
+        rate: expectedIntermediate[year].rate,
+        progressiveDeduction:
+          expectedIntermediate[year].progressiveDeduction,
+      })
+      expect(result.comprehensiveTax.baseTax).toBe(
+        expectedIntermediate[year].baseTax,
+      )
+      expect(result.comprehensiveTax.propertyTaxCredit).toBe(
+        expectedIntermediate[year].credit,
+      )
+      expect(result.comprehensiveTax.ruralSpecialTax).toBe(
+        expectedIntermediate[year].rural,
+      )
+      expect(result.comprehensiveTax.totalTax).toBe(
+        expectedComprehensive[year],
+      )
+      expect(result.totalTax).toBe(expectedTotal[year])
+    }
+  })
+
+  it('matches H10 and counts three properties regardless of their shares', () => {
+    const items = [
+      createItem({
+        officialPrice: 800_000_000,
+        residency: 'residing',
+      }),
+      createItem({
+        officialPrice: 700_000_000,
+        residency: 'nonResiding',
+      }),
+      createItem({
+        officialPrice: 500_000_000,
+        residency: 'nonResiding',
+      }),
+    ]
+    const expected = {
+      2026: {
+        deduction: 900_000_000,
+        ratio: 0.6,
+        taxableBase: 660_000_000,
+        rate: 0.01,
+        progressiveDeduction: 2_400_000,
+        baseTax: 4_200_000,
+        credit: 1_584_000,
+        rural: 523_200,
+        comprehensive: 3_139_200,
+        total: 8_311_200,
+      },
+      2027: {
+        deduction: 600_000_000,
+        ratio: 0.7,
+        taxableBase: 980_000_000,
+        rate: 0.013,
+        progressiveDeduction: 4_200_000,
+        baseTax: 8_540_000,
+        credit: 2_352_000,
+        rural: 1_237_600,
+        comprehensive: 7_425_600,
+        total: 12_597_600,
+      },
+      2028: {
+        deduction: 600_000_000,
+        ratio: 0.8,
+        taxableBase: 1_120_000_000,
+        rate: 0.013,
+        progressiveDeduction: 4_200_000,
+        baseTax: 10_360_000,
+        credit: 2_688_000,
+        rural: 1_534_400,
+        comprehensive: 9_206_400,
+        total: 14_378_400,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, items)
+
+      expect(result.propertyTaxes.map(({ totalTax }) => totalTax)).toEqual([
+        2_220_000,
+        1_848_000,
+        1_104_000,
+      ])
+      expect(result.propertyTaxTotal).toBe(5_172_000)
+      expect(result.comprehensiveTax.homeCount).toBe(3)
+      expect(result.comprehensiveTax.basicDeduction).toBe(
+        expected[year].deduction,
+      )
+      expect(result.comprehensiveTax.fairMarketValueRatio).toBeCloseTo(
+        expected[year].ratio,
+      )
+      expect(result.comprehensiveTax.taxableBase).toBe(
+        expected[year].taxableBase,
+      )
+      expect(result.comprehensiveTax.appliedRate).toEqual({
+        rate: expected[year].rate,
+        progressiveDeduction: expected[year].progressiveDeduction,
+      })
+      expect(result.comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(result.comprehensiveTax.propertyTaxCredit).toBe(
+        expected[year].credit,
+      )
+      expect(result.comprehensiveTax.ruralSpecialTax).toBe(
+        expected[year].rural,
+      )
+      expect(result.comprehensiveTax.totalTax).toBe(
+        expected[year].comprehensive,
+      )
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+})
+
+describe('calculateHoldingTax boundaries, ownership, and validation', () => {
+  it('preserves the intentional 2027 discontinuity one won above 1.4 billion won', () => {
+    const atThreshold = calculate(2027, [
+      createItem({
+        officialPrice: 1_400_000_000,
+        residency: 'nonResiding',
+      }),
+    ])
+    const aboveThreshold = calculate(2027, [
+      createItem({
+        officialPrice: 1_400_000_000 + ONE_WON,
+        residency: 'nonResiding',
+      }),
+    ])
+
+    expect(atThreshold.comprehensiveTax.status).toBe('notTaxable')
+    expect(atThreshold.comprehensiveTax.totalTax).toBe(0)
+    expect(aboveThreshold.comprehensiveTax.status).toBe('taxable')
+    expect(aboveThreshold.comprehensiveTax.basicDeduction).toBe(900_000_000)
+    expect(aboveThreshold.comprehensiveTax.taxableBase).toBe(350_000_001)
+    expect(aboveThreshold.comprehensiveTax.totalTax).toBe(1_464_000)
+  })
+
+  it('removes the reduced property-tax rate one won above 900 million won', () => {
+    const atThreshold = calculate(2026, [
+      createItem({ officialPrice: 900_000_000 }),
+    ])
+    const aboveThreshold = calculate(2026, [
+      createItem({ officialPrice: 900_000_000 + ONE_WON }),
+    ])
+
+    expect(atThreshold.propertyTaxes[0].preferentialRateApplied).toBe(true)
+    expect(atThreshold.propertyTaxTotal).toBe(1_512_000)
+    expect(aboveThreshold.propertyTaxes[0].preferentialRateApplied).toBe(false)
+    expect(aboveThreshold.propertyTaxes[0].appliedRate.rate).toBeCloseTo(0.004)
+    expect(aboveThreshold.propertyTaxTotal).toBe(1_755_000)
+  })
+
+  it('uses the inclusive 2.5 billion won comprehensive-tax bracket boundary', () => {
+    const baseItems = [
+      createItem({
+        officialPrice: 1_200_000_000,
+        residency: 'nonResiding',
+      }),
+      createItem({
+        officialPrice: 1_200_000_000,
+        residency: 'nonResiding',
+      }),
+      createItem({
+        officialPrice: 1_125_000_000,
+        residency: 'nonResiding',
+      }),
+    ]
+    const atThreshold = calculate(2028, baseItems)
+    const aboveThreshold = calculate(2028, [
+      baseItems[0],
+      baseItems[1],
+      { ...baseItems[2], officialPrice: baseItems[2].officialPrice + ONE_WON },
+    ])
+
+    expect(atThreshold.comprehensiveTax.taxableBase).toBe(2_500_000_000)
+    expect(atThreshold.comprehensiveTax.appliedRate).toEqual({
+      rate: 0.02,
+      progressiveDeduction: 12_600_000,
+    })
+    expect(aboveThreshold.comprehensiveTax.taxableBase).toBe(2_500_000_001)
+    expect(aboveThreshold.comprehensiveTax.appliedRate).toEqual({
+      rate: 0.03,
+      progressiveDeduction: 37_600_000,
+    })
+  })
+
+  it('calculates full property tax before apportioning each component by ownership share', () => {
+    const result = calculate(2026, [
+      createItem({
+        ownershipShare: 0.5,
+        isSoleHouseholdOwner: true,
+      }),
+    ])
+    const propertyTax = result.propertyTaxes[0]
+
+    expect(propertyTax).toMatchObject({
+      fullOfficialPrice: 2_000_000_000,
+      ownedOfficialPrice: 1_000_000_000,
+      fullTaxableBase: 900_000_000,
+      taxableBase: 450_000_000,
+      fullBaseTax: 2_970_000,
+      baseTax: 1_485_000,
+      localEducationTax: 297_000,
+      cityAreaTax: 630_000,
+      totalTax: 2_412_000,
+    })
+    expect(result.comprehensiveTax.ownedOfficialPriceTotal).toBe(1_000_000_000)
+    expect(result.comprehensiveTax.status).toBe('notTaxable')
+    expect(result.comprehensiveTaxHouseholdKind).toBe('oneHouse')
+  })
+
+  it('matches H11 by deriving different one-house judgments for a jointly owned household home', () => {
+    const expected = {
+      2026: {
+        ratio: 0.6,
+        taxableBase: 60_000_000,
+        baseTax: 300_000,
+        credit: 108_000,
+        rural: 38_400,
+        comprehensive: 230_400,
+        total: 2_642_400,
+      },
+      2027: {
+        ratio: 0.7,
+        taxableBase: 70_000_000,
+        baseTax: 350_000,
+        credit: 126_000,
+        rural: 44_800,
+        comprehensive: 268_800,
+        total: 2_680_800,
+      },
+      2028: {
+        ratio: 0.7,
+        taxableBase: 70_000_000,
+        baseTax: 350_000,
+        credit: 126_000,
+        rural: 44_800,
+        comprehensive: 268_800,
+        total: 2_680_800,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(year, [
+        createItem({
+          ownershipShare: 0.5,
+          isSoleHouseholdOwner: false,
+        }),
+      ])
+      const comprehensiveTax = result.comprehensiveTax
+
+      expect(result.propertyTaxHouseholdKind).toBe('oneHouse')
+      expect(result.comprehensiveTaxHouseholdKind).toBe('multiHouse')
+      expect(result.propertyTaxes[0]).toMatchObject({
+        fairMarketValueRatio: 0.45,
+        fullTaxableBase: 900_000_000,
+        taxableBase: 450_000_000,
+        baseTax: 1_485_000,
+        localEducationTax: 297_000,
+        cityAreaTax: 630_000,
+        totalTax: 2_412_000,
+      })
+      expect(comprehensiveTax.ownedOfficialPriceTotal).toBe(1_000_000_000)
+      expect(comprehensiveTax.taxableThreshold).toBe(900_000_000)
+      expect(comprehensiveTax.basicDeduction).toBe(900_000_000)
+      expect(comprehensiveTax.fairMarketValueRatio).toBeCloseTo(
+        expected[year].ratio,
+      )
+      expect(comprehensiveTax.taxableBase).toBe(expected[year].taxableBase)
+      expect(comprehensiveTax.appliedRate).toEqual({
+        rate: 0.005,
+        progressiveDeduction: 0,
+      })
+      expect(comprehensiveTax.baseTax).toBe(expected[year].baseTax)
+      expect(comprehensiveTax.propertyTaxFairMarketValueRatio).toBeCloseTo(
+        0.45,
+      )
+      expect(comprehensiveTax.propertyTaxCredit).toBe(expected[year].credit)
+      expect(comprehensiveTax.ruralSpecialTax).toBe(expected[year].rural)
+      expect(comprehensiveTax.totalTax).toBe(expected[year].comprehensive)
+      expect(result.totalTax).toBe(expected[year].total)
+    }
+  })
+
+  it('counts co-owned properties as whole homes for the 2028 three-home ratio', () => {
+    const items = [1_000_000_000, 1_000_000_000, 1_000_000_000].map(
+      (officialPrice) =>
+        createItem({
+          officialPrice,
+          ownershipShare: 0.5,
+          residency: 'nonResiding',
+        }),
+    )
+    const result = calculate(2028, items)
+
+    expect(result.comprehensiveTax.homeCount).toBe(3)
+    expect(result.comprehensiveTax.ownedOfficialPriceTotal).toBe(1_500_000_000)
+    expect(result.comprehensiveTax.fairMarketValueRatio).toBeCloseTo(0.8)
+  })
+
+  it('rejects unsupported assets and invalid portfolio facts', () => {
+    expect(() =>
+      calculateHoldingTax({ year: 2026, householdHomeCount: 0, items: [] }),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2026, [createItem({ officialPrice: 1.5 })]),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2026, [createItem({ ownershipShare: 0 })]),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2026, [
+        createItem({ assetKind: 'commercial' as PortfolioItem['assetKind'] }),
+      ]),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculateHoldingTax({
+        year: 2026,
+        householdHomeCount: 2,
+        items: [createItem()],
+      }),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2026, [
+        createItem({
+          isSoleHouseholdOwner: 'yes' as unknown as boolean,
+        }),
+      ]),
+    ).toThrow(RangeError)
+  })
+})
