@@ -2,32 +2,45 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
+import type {
+  CompleteComplexListRecord,
+  ComplexStagingRecord,
+} from '../shared/complex.ts'
 import {
-  collectPages,
-  readKaptBasis,
-  readKaptPage,
-  recordFields,
-  requireString,
-} from './lib/complex-source.ts'
+  collectResumableKaptList,
+  hasCompleteSearchLocation,
+} from './lib/complex-list.ts'
+import { readKaptPage } from './lib/complex-source.ts'
+import { runConcurrentTasks } from './lib/concurrent-tasks.ts'
 import {
-  type ComplexDraft,
-  normalizeKaptBasisResponse,
-} from './lib/complex-normalizer.ts'
-import {
+  activateStaging,
+  clearStagedComplexes,
   type D1Location,
+  readCompletedComplexLookupIds,
   readRefreshState,
+  readRetryableComplexLookupIds,
   readStagedComplexIds,
   readStagingValidation,
+  resetComplexListCheckpoint,
+  saveComplexListPage,
+  stageActiveComplexesForRetry,
   startRefresh,
-  upsertComplexDrafts,
+  upsertComplexRecords,
 } from './lib/d1-complex.ts'
+import { IngestionMetrics } from './lib/ingestion-metrics.ts'
+import { searchKakaoComplex } from './lib/kakao-complex-search.ts'
 import { writeJsonReport } from './lib/json-report.ts'
 
-const SERVICE_KEY_ENV_NAME = 'DATA_GO_KR_SERVICE_KEY'
-const DETAIL_REQUEST_INTERVAL_MS = 100
+const DATA_GO_KR_SERVICE_KEY_ENV_NAME = 'DATA_GO_KR_SERVICE_KEY'
+const KAKAO_REST_API_KEY_ENV_NAME = 'KAKAO_REST_API_KEY'
+const DEFAULT_KAKAO_LOOKUP_CONCURRENCY = 4
 const PROGRESS_INTERVAL = 100
-const D1_WRITE_BATCH_SIZE = 50
+const D1_WRITE_INVOCATION_BATCH_SIZE = 5_000
 const MAX_CONSECUTIVE_FAILURES = 3
+const MAX_SOURCE_EXCLUSION_RATIO = 0.01
+const MAX_KAKAO_NOT_FOUND_RATIO = 0.25
+const MAX_KAKAO_REJECTED_RATIO = 0.02
+const COVERAGE_GUARD_MIN_ATTEMPTS = 100
 
 interface VerificationContract {
   readonly observedAt: string
@@ -40,8 +53,16 @@ interface IngestionFailure {
   readonly reason: string
 }
 
-const delay = async (milliseconds: number): Promise<void> => {
-  await new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
+const parsePositiveInteger = (
+  value: string | undefined,
+  optionName: string,
+): number | undefined => {
+  if (value === undefined) return undefined
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${optionName} must be a positive integer`)
+  }
+  return parsed
 }
 
 const readVerificationContract = async (
@@ -72,7 +93,6 @@ const readVerificationContract = async (
   ) {
     throw new TypeError('Verification summary has an invalid kaptList contract')
   }
-
   return {
     observedAt: parsed.observedAt,
     totalCount: kaptList.pagination.totalCount as number,
@@ -80,9 +100,16 @@ const readVerificationContract = async (
   }
 }
 
-const sameFields = (actual: readonly string[], expected: readonly string[]): boolean =>
-  actual.length === expected.length &&
-  [...actual].sort().every((field, index) => field === [...expected].sort()[index])
+const requiredRegionsPresent = (validation: {
+  readonly seoul_count: number
+  readonly busan_count: number
+  readonly gyeonggi_count: number
+  readonly jeju_count: number
+}): boolean =>
+  validation.seoul_count > 0 &&
+  validation.busan_count > 0 &&
+  validation.gyeonggi_count > 0 &&
+  validation.jeju_count > 0
 
 const main = async (): Promise<void> => {
   const { values } = parseArgs({
@@ -90,153 +117,343 @@ const main = async (): Promise<void> => {
       verification: { type: 'string' },
       output: { type: 'string' },
       remote: { type: 'boolean', default: false },
+      'max-lookups': { type: 'string' },
+      'lookup-concurrency': { type: 'string' },
+      'retry-failed': { type: 'boolean', default: false },
     },
     strict: true,
   })
   if (!values.verification || !values.output) {
     throw new Error(
-      'Usage: npm run ingest:complexes -- --verification <summary.json> --output <json>',
+      'Usage: npm run ingest:complexes -- --verification <summary.json> --output <json> [--max-lookups <count>] [--lookup-concurrency <count>] [--retry-failed]',
     )
   }
 
-  const serviceKey = process.env[SERVICE_KEY_ENV_NAME]
-  if (!serviceKey) throw new Error(`Missing ${SERVICE_KEY_ENV_NAME}`)
+  const dataGoKrServiceKey = process.env[DATA_GO_KR_SERVICE_KEY_ENV_NAME]
+  if (!dataGoKrServiceKey) {
+    throw new Error(`Missing ${DATA_GO_KR_SERVICE_KEY_ENV_NAME}`)
+  }
+  const kakaoRestApiKey = process.env[KAKAO_REST_API_KEY_ENV_NAME]
+  if (!kakaoRestApiKey) throw new Error(`Missing ${KAKAO_REST_API_KEY_ENV_NAME}`)
+
   const location: D1Location = values.remote ? 'remote' : 'local'
+  const retryFailed = values['retry-failed']
+  const maxLookups = parsePositiveInteger(values['max-lookups'], '--max-lookups')
+  const lookupConcurrency =
+    parsePositiveInteger(
+      values['lookup-concurrency'],
+      '--lookup-concurrency',
+    ) ?? DEFAULT_KAKAO_LOOKUP_CONCURRENCY
+  const metrics = new IngestionMetrics()
+  const httpObserver = {
+    recordAttempt: metrics.recordHttpAttempt,
+    recordRetry: metrics.recordHttpRetry,
+  }
 
   const verification = await readVerificationContract(values.verification)
-  const firstPage = await readKaptPage(serviceKey, 1)
-  if (firstPage.totalCount !== verification.totalCount) {
-    throw new Error(
-      `Source count changed after verification: ${verification.totalCount} -> ${firstPage.totalCount}`,
-    )
-  }
-  const listRecords = await collectPages(
-    firstPage.items,
-    firstPage.totalCount,
-    async (page) => (await readKaptPage(serviceKey, page)).items,
-  )
-  if (!sameFields(recordFields(listRecords), verification.itemFields)) {
-    throw new Error('K-apt list fields changed after verification')
-  }
-  const sourceIds = new Set(
-    listRecords.map((record, index) =>
-      requireString(record.kaptCode, `items[${index}].kaptCode`),
-    ),
-  )
-  if (sourceIds.size !== listRecords.length) {
-    throw new Error(
-      `K-apt list contains duplicate complex codes: ${listRecords.length - sourceIds.size}`,
-    )
-  }
-  const refreshState = await readRefreshState(location)
-  let stagedIds = await readStagedComplexIds(location)
-  const hasStaleStaging = [...stagedIds].some((id) => !sourceIds.has(id))
+  let refreshState = await readRefreshState(location, metrics.recordD1Execution)
   if (
-    refreshState?.verification_observed_at !== verification.observedAt ||
-    refreshState.expected_count !== verification.totalCount ||
-    hasStaleStaging
+    !refreshState ||
+    refreshState.verification_observed_at !== verification.observedAt ||
+    refreshState.expected_count !== verification.totalCount
   ) {
     await startRefresh(
       verification.observedAt,
       verification.totalCount,
       new Date().toISOString(),
       location,
+      metrics.recordD1Execution,
     )
-    stagedIds = new Set()
+    refreshState = await readRefreshState(location, metrics.recordD1Execution)
   }
+  if (!refreshState) throw new Error('Complex refresh state was not initialized')
 
-  const pendingWrites: ComplexDraft[] = []
-  const failures: IngestionFailure[] = []
-  let fetched = 0
-  let consecutiveFailures = 0
-
-  for (const [index, listRecord] of listRecords.entries()) {
-    let complexId = `record-${index}`
-    try {
-      complexId = requireString(listRecord.kaptCode, `items[${index}].kaptCode`)
-      if (stagedIds.has(complexId)) continue
-      const detail = normalizeKaptBasisResponse(
-        await readKaptBasis(serviceKey, complexId),
-      )
-      if (detail.complexId !== complexId) {
-        throw new Error(`K-apt basis response code mismatch: ${detail.complexId}`)
-      }
-      const listedLegalDongCode = requireString(
-        listRecord.bjdCode,
-        `items[${index}].bjdCode`,
-      )
-      if (detail.legalDongCode !== listedLegalDongCode) {
-        throw new Error(
-          `K-apt basis legal dong mismatch: ${listedLegalDongCode} -> ${detail.legalDongCode}`,
-        )
-      }
-      pendingWrites.push(detail)
-      fetched += 1
-      consecutiveFailures = 0
-      if (pendingWrites.length >= D1_WRITE_BATCH_SIZE) {
-        await upsertComplexDrafts(
-          pendingWrites,
-          new Date().toISOString(),
-          location,
-        )
-        pendingWrites.length = 0
-      }
-    } catch (error) {
-      const failure = {
-        complexId,
-        reason: error instanceof Error ? error.message : String(error),
-      }
-      failures.push(failure)
-      consecutiveFailures += 1
-      console.error(`Complex ingestion failed: ${failure.complexId}: ${failure.reason}`)
-      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        console.error(
-          `Stopping after ${consecutiveFailures} consecutive failures; staged data remains resumable`,
-        )
-        break
-      }
-    }
-
-    if ((index + 1) % PROGRESS_INTERVAL === 0) {
-      console.log(
-        `Fetched ${index + 1}/${listRecords.length}; failures=${failures.length}`,
-      )
-    }
-    if (index < listRecords.length - 1) {
-      await delay(DETAIL_REQUEST_INTERVAL_MS)
-    }
-  }
-
-  await upsertComplexDrafts(
-    pendingWrites,
-    new Date().toISOString(),
-    location,
-  )
-
-  const outputPath = resolve(values.output)
-  const validation = await readStagingValidation(location)
-  await writeJsonReport(outputPath, { fetched, failures, validation })
-  console.log(
-    JSON.stringify(
-      {
-        sourceCount: listRecords.length,
-        fetched,
-        staged: validation.total_count,
-        failures: failures.length,
+  const collectList = async (
+    checkpoint: typeof refreshState,
+  ): ReturnType<typeof collectResumableKaptList> =>
+    collectResumableKaptList({
+      checkpoint: {
+        nextPage: checkpoint.next_list_page,
+        records: checkpoint.list_records,
+        fields: checkpoint.list_fields,
       },
-      null,
-      2,
-    ),
-  )
+      expectedCount: verification.totalCount,
+      expectedFields: verification.itemFields,
+      readPage: async (page) =>
+        readKaptPage(dataGoKrServiceKey, page, httpObserver),
+      savePage: async ({ page, records, fields }) =>
+        saveComplexListPage(
+          page,
+          records,
+          fields,
+          location,
+          metrics.recordD1Execution,
+        ),
+    })
 
+  let completedList = await collectList(refreshState)
+  if (!completedList.records.every(hasCompleteSearchLocation)) {
+    await resetComplexListCheckpoint(location, metrics.recordD1Execution)
+    const resetState = await readRefreshState(
+      location,
+      metrics.recordD1Execution,
+    )
+    if (!resetState) throw new Error('Complex list checkpoint reset failed')
+    completedList = await collectList(resetState)
+  }
+  if (!completedList.records.every(hasCompleteSearchLocation)) {
+    throw new Error('K-apt list is missing Kakao search location fields')
+  }
+  const listRecords: readonly CompleteComplexListRecord[] = completedList.records
+  const sourceIds = new Set(listRecords.map((record) => record.complexId))
+
+  if (retryFailed) {
+    await stageActiveComplexesForRetry(
+      location,
+      metrics.recordD1Execution,
+    )
+  }
+  const stagedIds = await readStagedComplexIds(
+    location,
+    metrics.recordD1Execution,
+  )
+  if ([...stagedIds].some((id) => !sourceIds.has(id))) {
+    if (retryFailed) {
+      throw new Error('Active complex data contains IDs absent from the K-apt list')
+    }
+    await clearStagedComplexes(location, metrics.recordD1Execution)
+  }
+  const initialValidation = await readStagingValidation(
+    location,
+    metrics.recordD1Execution,
+  )
   if (
-    failures.length > 0 ||
-    validation.total_count !== verification.totalCount
+    retryFailed &&
+    initialValidation.total_count !== verification.totalCount
   ) {
     throw new Error(
-      'Complex ingestion is incomplete; D1 replacement must not run with this output',
+      `Retry baseline count mismatch: ${initialValidation.total_count}/${verification.totalCount}`,
     )
   }
+
+  const maxSourceExclusions = Math.floor(
+    verification.totalCount * MAX_SOURCE_EXCLUSION_RATIO,
+  )
+  if (refreshState.exclusions.length > maxSourceExclusions) {
+    throw new Error(
+      `K-apt basis exclusions ${refreshState.exclusions.length} exceed the ${maxSourceExclusions} record safety limit`,
+    )
+  }
+
+  const failures: IngestionFailure[] = []
+  let lookups = 0
+  let matched = 0
+  let notFound = 0
+  let rejected = 0
+  let consecutiveFailures = 0
+  let coverageGuardExceeded = false
+
+  const selectedLookupIds = retryFailed
+    ? await readRetryableComplexLookupIds(
+        location,
+        metrics.recordD1Execution,
+      )
+    : await readCompletedComplexLookupIds(
+        location,
+        metrics.recordD1Execution,
+      )
+  const pendingListRecords = listRecords.filter((record) =>
+    retryFailed
+      ? selectedLookupIds.has(record.complexId)
+      : !selectedLookupIds.has(record.complexId),
+  )
+  const scheduledListRecords =
+    maxLookups === undefined
+      ? pendingListRecords
+      : pendingListRecords.slice(0, maxLookups)
+  const reachedLookupLimit =
+    scheduledListRecords.length < pendingListRecords.length
+  let stopLookups = false
+
+  for (
+    let offset = 0;
+    offset < scheduledListRecords.length && !stopLookups;
+    offset += D1_WRITE_INVOCATION_BATCH_SIZE
+  ) {
+    const batch = scheduledListRecords.slice(
+      offset,
+      offset + D1_WRITE_INVOCATION_BATCH_SIZE,
+    )
+    const results = await runConcurrentTasks({
+      inputs: batch,
+      concurrency: lookupConcurrency,
+      task: async (listRecord) =>
+        searchKakaoComplex(listRecord, kakaoRestApiKey, httpObserver),
+      shouldStop: (result) => {
+        lookups += 1
+        if (result.status === 'fulfilled') {
+          const record = result.value
+          if (record.lookupStatus === 'matched') matched += 1
+          else if (record.lookupStatus === 'notFound') notFound += 1
+          else rejected += 1
+          consecutiveFailures = 0
+        } else {
+          const failure = {
+            complexId: result.input.complexId,
+            reason:
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason),
+          }
+          failures.push(failure)
+          consecutiveFailures += 1
+          console.error(
+            `Complex lookup failed: ${failure.complexId}: ${failure.reason}`,
+          )
+        }
+
+        const completedThisRun = matched + notFound + rejected
+        if (
+          !retryFailed &&
+          !coverageGuardExceeded &&
+          completedThisRun >= COVERAGE_GUARD_MIN_ATTEMPTS &&
+          notFound / completedThisRun > MAX_KAKAO_NOT_FOUND_RATIO
+        ) {
+          coverageGuardExceeded = true
+          console.error(
+            `Stopping because Kakao not-found ratio ${notFound}/${completedThisRun} exceeds ${MAX_KAKAO_NOT_FOUND_RATIO}`,
+          )
+        }
+        if (lookups % PROGRESS_INTERVAL === 0) {
+          console.log(
+            `Looked up ${lookups}; matched=${matched}, rejected=${rejected}, notFound=${notFound}, failures=${failures.length}`,
+          )
+        }
+        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          stopLookups = true
+          console.error(
+            `Stopping after ${consecutiveFailures} consecutive failures; staged data remains resumable`,
+          )
+          return true
+        }
+        if (coverageGuardExceeded) stopLookups = true
+        return coverageGuardExceeded
+      },
+    })
+    const pendingWrites: ComplexStagingRecord[] = results.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : [],
+    )
+    await upsertComplexRecords(
+      pendingWrites,
+      new Date().toISOString(),
+      location,
+      metrics.recordD1Execution,
+    )
+    stopLookups ||= results.length < batch.length
+  }
+
+  const validation = await readStagingValidation(
+    location,
+    metrics.recordD1Execution,
+  )
+  const lookupStatusCount =
+    validation.pending_count +
+    validation.matched_count +
+    validation.not_found_count +
+    validation.rejected_count
+  const cumulativeNotFoundRatio =
+    validation.total_count === 0
+      ? 0
+      : validation.not_found_count / validation.total_count
+  const cumulativeRejectedRatio =
+    validation.total_count === 0
+      ? 0
+      : validation.rejected_count / validation.total_count
+  const cumulativeNotFoundGuardExceeded =
+    cumulativeNotFoundRatio > MAX_KAKAO_NOT_FOUND_RATIO
+  const completedThisRun = matched + notFound + rejected
+  const retriedRejectedRatio =
+    completedThisRun === 0 ? 0 : rejected / completedThisRun
+  const rejectedGuardRatio = cumulativeRejectedRatio
+  const rejectedGuardExceeded =
+    rejectedGuardRatio > MAX_KAKAO_REJECTED_RATIO
+  const complete =
+    failures.length === 0 &&
+    validation.total_count === verification.totalCount &&
+    validation.pending_count === 0 &&
+    lookupStatusCount === validation.total_count &&
+    validation.geocoded_count === validation.matched_count &&
+    !cumulativeNotFoundGuardExceeded &&
+    !coverageGuardExceeded &&
+    !rejectedGuardExceeded
+
+  let failureReason: string | null = null
+  if (coverageGuardExceeded || cumulativeNotFoundGuardExceeded) {
+    failureReason = 'Kakao not-found coverage guard was exceeded'
+  } else if (rejectedGuardExceeded) {
+    failureReason = 'Kakao rejected coverage guard was exceeded'
+  } else if (maxLookups === undefined && !complete) {
+    failureReason = 'Complex ingestion is incomplete; activation was skipped'
+  } else if (
+    maxLookups === undefined &&
+    !requiredRegionsPresent(validation)
+  ) {
+    failureReason = 'Required regional samples are missing; activation was skipped'
+  }
+
+  let activated = false
+  if (maxLookups === undefined && failureReason === null) {
+    await activateStaging(location, metrics.recordD1Execution)
+    activated = true
+  }
+  const performanceSummary = metrics.summary()
+  const report = {
+    sourceCount: verification.totalCount,
+    basisExclusions: refreshState.exclusions,
+    failures,
+    validation,
+    lookup: {
+      attempted: lookups,
+      matched,
+      rejected,
+      notFound,
+      maxLookups: maxLookups ?? null,
+      concurrency: lookupConcurrency,
+      retryFailed,
+      reachedLookupLimit,
+      coverageGuardExceeded,
+      cumulativeNotFoundRatio,
+      cumulativeNotFoundGuardExceeded,
+      cumulativeRejectedRatio,
+      retriedRejectedRatio,
+      rejectedGuardRatio,
+      rejectedGuardExceeded,
+      complete,
+      activated,
+      cumulative: {
+        matched: validation.matched_count,
+        rejected: validation.rejected_count,
+        notFound: validation.not_found_count,
+        pending: validation.pending_count,
+      },
+      delta: {
+        matched: validation.matched_count - initialValidation.matched_count,
+        rejected: validation.rejected_count - initialValidation.rejected_count,
+        notFound:
+          validation.not_found_count - initialValidation.not_found_count,
+        pending: validation.pending_count - initialValidation.pending_count,
+      },
+    },
+    performance: performanceSummary,
+  }
+  await writeJsonReport(resolve(values.output), report)
+  console.log(JSON.stringify(report, null, 2))
+
+  if (failureReason !== null) throw new Error(failureReason)
 }
 
-await main()
+await main().catch((error: unknown) => {
+  const reason = error instanceof Error ? error.message : String(error)
+  console.error(`Complex ingestion stopped cleanly: ${reason}`)
+  process.exitCode = 1
+})

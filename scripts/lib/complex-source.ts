@@ -1,7 +1,12 @@
 import { EXTERNAL_API_URLS } from '../../worker/config/external-apis.ts'
-import { fetchJson } from './http.ts'
+import {
+  fetchJson,
+  fetchParsedJson,
+  type HttpMetricsObserver,
+} from './http.ts'
 
-const DEFAULT_PAGE_SIZE = 1_000
+export const KAPT_LIST_PAGE_SIZE = 1_000
+const DEFAULT_PAGE_SIZE = KAPT_LIST_PAGE_SIZE
 export const KAPT_SUCCESS_RESULT_CODE = '00'
 
 export type JsonRecord = Record<string, unknown>
@@ -82,43 +87,47 @@ const addServiceKey = (url: URL, serviceKey: string): void => {
 export const readKaptPage = async (
   serviceKey: string,
   pageNo: number,
+  observer?: HttpMetricsObserver,
 ): Promise<KaptListPage> => {
   const url = new URL(EXTERNAL_API_URLS.kaptComplexList)
   addServiceKey(url, serviceKey)
   url.searchParams.set('pageNo', String(pageNo))
   url.searchParams.set('numOfRows', String(DEFAULT_PAGE_SIZE))
 
-  const raw = await fetchJson(url)
-  const response = requireKaptResponse(raw)
-  const header = requireRecord(response.header, 'response.header')
-  if (header.resultCode !== KAPT_SUCCESS_RESULT_CODE) {
-    throw new Error(
-      `K-apt list API failed: ${String(header.resultCode)} ${String(header.resultMsg)}`,
-    )
-  }
+  return fetchParsedJson(url, (raw) => {
+    const response = requireKaptResponse(raw)
+    const header = requireRecord(response.header, 'response.header')
+    if (header.resultCode !== KAPT_SUCCESS_RESULT_CODE) {
+      throw new Error(
+        `K-apt list API failed: ${String(header.resultCode)} ${String(header.resultMsg)}`,
+      )
+    }
 
-  const body = requireRecord(response.body, 'response.body')
-  const rawItems = requireArray(body.items, 'response.body.items')
+    const body = requireRecord(response.body, 'response.body')
+    const rawItems = requireArray(body.items, 'response.body.items')
 
-  return {
-    items: rawItems.map((item, index) =>
-      requireRecord(item, `response.body.items[${index}]`),
-    ),
-    pageNo: requireInteger(body.pageNo, 'response.body.pageNo'),
-    numOfRows: requireInteger(body.numOfRows, 'response.body.numOfRows'),
-    totalCount: requireInteger(body.totalCount, 'response.body.totalCount'),
-    raw,
-  }
+    return {
+      items: rawItems.map((item, index) =>
+        requireRecord(item, `response.body.items[${index}]`),
+      ),
+      pageNo: requireInteger(body.pageNo, 'response.body.pageNo'),
+      numOfRows: requireInteger(body.numOfRows, 'response.body.numOfRows'),
+      totalCount: requireInteger(body.totalCount, 'response.body.totalCount'),
+      raw,
+    }
+  }, {}, { observer })
 }
 
-export const readKaptBasis = async (
+export const readKaptBasis = async <T = unknown>(
   serviceKey: string,
   kaptCode: string,
-): Promise<unknown> => {
+  parse: (value: unknown) => T = (value) => value as T,
+  observer?: HttpMetricsObserver,
+): Promise<T> => {
   const url = new URL(EXTERNAL_API_URLS.kaptComplexBasis)
   addServiceKey(url, serviceKey)
   url.searchParams.set('kaptCode', kaptCode)
-  return fetchJson(url)
+  return fetchParsedJson(url, parse, {}, { observer })
 }
 
 export const readRebPage = async (

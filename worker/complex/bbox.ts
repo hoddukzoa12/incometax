@@ -1,4 +1,5 @@
 import type { ComplexBboxResponse, ComplexSummary } from '../../shared/complex'
+import type { RecentTrade, TradeMatchLevel, TradeSource } from '../../shared/trade'
 
 const BAD_REQUEST_STATUS = 400
 const MAXIMUM_COMPLEX_RESULTS = 500
@@ -19,10 +20,17 @@ interface ComplexRow {
   readonly road_address: string | null
   readonly legal_dong_code: string
   readonly approval_date: string | null
-  readonly building_count: number
-  readonly household_count: number
+  readonly building_count: number | null
+  readonly household_count: number | null
   readonly lat: number
   readonly lng: number
+  readonly latest_trade_id: string | null
+  readonly latest_trade_source: TradeSource | null
+  readonly latest_trade_match_level: TradeMatchLevel | null
+  readonly latest_trade_date: string | null
+  readonly latest_trade_amount: number | null
+  readonly latest_trade_area: number | null
+  readonly latest_trade_floor: number | null
 }
 
 const coordinate = (
@@ -58,6 +66,28 @@ export const parseBounds = (searchParams: URLSearchParams): Bounds => {
   return bounds
 }
 
+const toLatestTrade = (row: ComplexRow): RecentTrade | null => {
+  if (
+    !row.latest_trade_id ||
+    !row.latest_trade_source ||
+    !row.latest_trade_match_level ||
+    !row.latest_trade_date ||
+    row.latest_trade_amount === null ||
+    row.latest_trade_area === null
+  ) {
+    return null
+  }
+  return {
+    tradeId: row.latest_trade_id,
+    source: row.latest_trade_source,
+    matchLevel: row.latest_trade_match_level,
+    dealDate: row.latest_trade_date,
+    dealAmount: row.latest_trade_amount,
+    exclusiveArea: row.latest_trade_area,
+    floor: row.latest_trade_floor,
+  }
+}
+
 const toSummary = (row: ComplexRow): ComplexSummary => ({
   complexId: row.complex_id,
   name: row.name,
@@ -69,6 +99,7 @@ const toSummary = (row: ComplexRow): ComplexSummary => ({
   householdCount: row.household_count,
   lat: row.lat,
   lng: row.lng,
+  latestTrade: toLatestTrade(row),
 })
 
 export const queryComplexes = async (
@@ -77,13 +108,29 @@ export const queryComplexes = async (
 ): Promise<ComplexBboxResponse> => {
   const result = await database
     .prepare(
-      `SELECT complex_id, name, legal_address, road_address,
-              legal_dong_code, approval_date, building_count,
-              household_count, lat, lng
+      `SELECT complex.complex_id, complex.name, complex.legal_address,
+              complex.road_address, complex.legal_dong_code,
+              complex.approval_date, complex.building_count,
+              complex.household_count, complex.lat, complex.lng,
+              latest.trade_id AS latest_trade_id,
+              latest.source AS latest_trade_source,
+              latest.match_level AS latest_trade_match_level,
+              latest.deal_date AS latest_trade_date,
+              latest.deal_amount AS latest_trade_amount,
+              latest.exclusive_area AS latest_trade_area,
+              latest.floor AS latest_trade_floor
          FROM complex
-        WHERE lat BETWEEN ?1 AND ?2
-          AND lng BETWEEN ?3 AND ?4
-        ORDER BY household_count DESC, complex_id ASC
+         LEFT JOIN trade AS latest
+           ON latest.trade_id = (
+             SELECT candidate.trade_id
+               FROM trade AS candidate
+              WHERE candidate.complex_id = complex.complex_id
+              ORDER BY candidate.deal_date DESC, candidate.trade_id ASC
+              LIMIT 1
+           )
+        WHERE complex.lat BETWEEN ?1 AND ?2
+          AND complex.lng BETWEEN ?3 AND ?4
+        ORDER BY complex.household_count DESC, complex.complex_id ASC
         LIMIT ?5`,
     )
     .bind(

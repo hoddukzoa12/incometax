@@ -4,6 +4,7 @@ import {
   requireRecord,
   requireString,
 } from './complex-source.ts'
+import { NonRetryableRequestError } from './http.ts'
 
 export interface ComplexDraft {
   readonly complexId: string
@@ -16,10 +17,23 @@ export interface ComplexDraft {
   readonly householdCount: number
 }
 
+export class UnusableKaptBasisError extends NonRetryableRequestError {
+  readonly fields: readonly string[]
+
+  constructor(fields: readonly string[]) {
+    super(`K-apt basis required fields are empty: ${fields.join(', ')}`)
+    this.name = 'UnusableKaptBasisError'
+    this.fields = fields
+  }
+}
+
 const optionalString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 
 const nonNegativeInteger = (value: unknown, path: string): number => {
+  if (value === null || value === undefined || value === '') {
+    throw new TypeError(`Expected non-negative integer at ${path}`)
+  }
   const parsed = typeof value === 'number' ? value : Number(value)
   if (!Number.isInteger(parsed) || parsed < 0) {
     throw new TypeError(`Expected non-negative integer at ${path}`)
@@ -46,7 +60,10 @@ const approvalDate = (value: unknown): string | null => {
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`
 }
 
-export const normalizeKaptBasisResponse = (payload: unknown): ComplexDraft => {
+export const normalizeKaptBasisResponse = (
+  payload: unknown,
+  requestedComplexId?: string,
+): ComplexDraft => {
   const response = requireKaptResponse(payload)
   const header = requireRecord(response.header, 'response.header')
   if (header.resultCode !== KAPT_SUCCESS_RESULT_CODE) {
@@ -57,9 +74,40 @@ export const normalizeKaptBasisResponse = (payload: unknown): ComplexDraft => {
 
   const body = requireRecord(response.body, 'response.body')
   const item = requireRecord(body.item, 'response.body.item')
+  const responseCodeMissing =
+    item.kaptCode === null ||
+    item.kaptCode === undefined ||
+    (typeof item.kaptCode === 'string' && item.kaptCode.trim() === '')
+  // 2026-08-04 실측에서 정상(00) 상세 응답 일부가 kaptCode만 빈 문자열로
+  // 반환했다. 목록에서 검증되어 요청 키로 사용된 코드를 그 경우에만 보완한다.
+  const complexIdValue = responseCodeMissing
+    ? requestedComplexId
+    : item.kaptCode
+  const requiredFieldValues = {
+    kaptCode: complexIdValue,
+    kaptName: item.kaptName,
+    kaptAddr: item.kaptAddr,
+    bjdCode: item.bjdCode,
+    kaptDongCnt: item.kaptDongCnt,
+    kaptdaCnt: item.kaptdaCnt,
+  }
+  const unusableFields = Object.entries(requiredFieldValues)
+    .filter(
+      ([, value]) =>
+        value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.trim() === ''),
+    )
+    .map(([field]) => field)
+  if (unusableFields.length > 0) {
+    throw new UnusableKaptBasisError(unusableFields)
+  }
 
   return {
-    complexId: requireString(item.kaptCode, 'response.body.item.kaptCode').trim(),
+    complexId: requireString(
+      complexIdValue,
+      'response.body.item.kaptCode',
+    ).trim(),
     name: requireString(item.kaptName, 'response.body.item.kaptName').trim(),
     legalAddress: requireString(
       item.kaptAddr,

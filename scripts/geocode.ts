@@ -58,6 +58,8 @@ const main = async (): Promise<void> => {
   if (!refreshState) {
     throw new Error('No verified complex refresh is staged')
   }
+  const expectedStagedCount =
+    refreshState.expected_count - refreshState.exclusions.length
 
   const inputs = await readStagedAddresses(location)
   const results: GeocodingResult[] = []
@@ -124,14 +126,14 @@ const main = async (): Promise<void> => {
   }
   await writeJsonReport(resolve(values.output), report)
 
-  if (validation.total_count !== refreshState.expected_count) {
+  if (validation.total_count !== expectedStagedCount) {
     throw new Error(
-      `Staging count ${validation.total_count} does not match verified source count ${refreshState.expected_count}`,
+      `Staging count ${validation.total_count} does not match expected usable source count ${expectedStagedCount}`,
     )
   }
-  if (validation.geocoded_count !== refreshState.expected_count) {
+  if (validation.geocoded_count !== expectedStagedCount) {
     throw new Error(
-      `Only ${validation.geocoded_count}/${refreshState.expected_count} records were geocoded; live data was kept`,
+      `Only ${validation.geocoded_count}/${expectedStagedCount} records were geocoded; live data was kept`,
     )
   }
   if (!requiredRegionsPresent(validation)) {
@@ -152,4 +154,8 @@ const main = async (): Promise<void> => {
   )
 }
 
-await main()
+await main().catch((error: unknown) => {
+  const reason = error instanceof Error ? error.message : String(error)
+  console.error(`Complex geocoding stopped cleanly: ${reason}`)
+  process.exitCode = 1
+})

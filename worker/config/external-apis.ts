@@ -9,6 +9,22 @@ export const EXTERNAL_API_URLS = {
     'https://api.odcloud.kr/api/AptIdInfoSvc/v1/getAptInfo',
   kakaoAddressSearch:
     'https://dapi.kakao.com/v2/local/search/address.json',
+  kakaoKeywordSearch:
+    'https://dapi.kakao.com/v2/local/search/keyword.json',
+  kakaoCoordinateRegionCode:
+    'https://dapi.kakao.com/v2/local/geo/coord2regioncode.json',
+  apartmentTrades:
+    'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade',
+  rowhouseTrades:
+    'https://apis.data.go.kr/1613000/RTMSDataSvcRHTrade/getRTMSDataSvcRHTrade',
+  officetelTrades:
+    'https://apis.data.go.kr/1613000/RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade',
+} as const
+
+export const TRADE_SOURCE_URLS = {
+  apt: EXTERNAL_API_URLS.apartmentTrades,
+  rowhouse: EXTERNAL_API_URLS.rowhouseTrades,
+  officetel: EXTERNAL_API_URLS.officetelTrades,
 } as const
 
 export const MOIS_REGION_CODE_URL = EXTERNAL_API_URLS.moisRegionCodes

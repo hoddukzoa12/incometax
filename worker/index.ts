@@ -3,6 +3,7 @@ import type {
   OfficialPriceRequest,
 } from '../shared/official-price'
 import { handleComplexBbox } from './complex/bbox'
+import { handleComplexTrades } from './complex/trades'
 import { addressesToPnu } from './ldong/lookup'
 import {
   LDONG_SNAPSHOT_KEY,
@@ -12,6 +13,7 @@ import {
 } from './ldong/refresh'
 import { CloudflareOfficialPriceCache } from './realty-price/cache'
 import { OfficialPriceService } from './realty-price'
+import { refreshTradesFromCron } from './trade/refresh'
 
 const NO_CONTENT_STATUS = 204
 const BAD_REQUEST_STATUS = 400
@@ -148,15 +150,32 @@ export default {
     if (url.pathname === '/api/complexes' && request.method === 'GET') {
       return handleComplexBbox(url, env.COMPLEX_DB)
     }
+    const complexTradesPath = /^\/api\/complexes\/([^/]+)\/trades$/.exec(
+      url.pathname,
+    )
+    if (complexTradesPath && request.method === 'GET') {
+      return handleComplexTrades(url, env.COMPLEX_DB, complexTradesPath[1])
+    }
 
     return new Response(null, { status: NO_CONTENT_STATUS })
   },
 
   async scheduled(controller, env, context): Promise<void> {
-    if (controller.cron !== LDONG_REFRESH_CRON) return
+    if (controller.cron === LDONG_REFRESH_CRON) {
+      context.waitUntil(
+        refreshLdong(env).catch((error) => {
+          console.error('법정동코드 정기 갱신 실패', error)
+        }),
+      )
+      return
+    }
     context.waitUntil(
-      refreshLdong(env).catch((error) => {
-        console.error('법정동코드 정기 갱신 실패', error)
+      refreshTradesFromCron(
+        env.COMPLEX_DB,
+        env.DATA_GO_KR_SERVICE_KEY,
+        controller.scheduledTime,
+      ).catch((error) => {
+        console.error('실거래가 정기 갱신 실패', error)
       }),
     )
   },

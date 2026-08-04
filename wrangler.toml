@@ -11,7 +11,7 @@ id = "44ac6675379f452d976b9ea9c5ebe24a"
 preview_id = "92a68cc4a68e45a4abef51d80ae47274"
 
 [triggers]
-crons = ["0 19 * * *"]
+crons = ["0 19 * * *", "7,22,37,52 * * * *"]
 
 [[d1_databases]]
 binding = "COMPLEX_DB"

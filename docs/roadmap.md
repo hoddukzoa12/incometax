@@ -103,9 +103,33 @@ P3은 Worker 계층까지 Wave 1에서 만들 수 있다. UI 통합만 P2 이후
 
 **산출물**
 - `src/map/` — 카카오맵 SDK 로딩, bbox 기반 라벨 로딩, 줌 레벨 정책, 겹침 처리
-- `src/map/PriceLabel` — `kakao.maps.CustomOverlay` 기반 2단 라벨 (가격 / 거래연도)
+- `src/map/PriceLabel` — `kakao.maps.CustomOverlay` 기반 2단 라벨 (가격 / 평형)
 - `src/map/constants.ts` — 최소 표시 줌 레벨, 마커 상한 (R2)
 - `src/sidebar/` — 단지 기본정보 + 실거래가 내역 + 연도별 평균가 차트
+- `src/search/` — 단지 이름 검색 (`services.Places`)
+
+**API를 좌표와 가격으로 분리한다**
+
+현재 `/api/complexes`가 `ComplexSummary.latestTrade`로 좌표와 가격을 한 응답에 묶어
+반환한다. **분리한다.**
+
+```
+GET /api/complexes?south=&north=&west=&east=        → 위치 + 단지 기본정보
+GET /api/complexes/prices?south=&north=&west=&east= → complexId별 가격
+```
+
+클라이언트가 `complexId`로 합친다.
+
+**근거.** 부동산114(`api.propx.co.kr`)가 같은 bbox를 두 엔드포인트로 나눠 부른다
+— `/props/gis`(위치)와 `/props/gis/sales`(가격). 이유가 분명하다: **실거래/시세 토글을
+바꿔도 단지 위치는 변하지 않으므로 다시 받을 이유가 없다.**
+
+우리도 "실거래가 / 공시가격" 같은 표시 전환이 생기면 같은 문제를 만난다. 위치는 안정적이라
+길게 캐시할 수 있고 가격은 자주 바뀐다. 캐시 수명이 다른 데이터를 한 응답에 묶으면 둘 다
+짧은 쪽에 맞춰진다.
+
+> 지금은 토글이 없어 당장의 이득이 없는 **선행 투자**다. 나중에 나누려면 타입·클라이언트
+> 상태·캐시를 함께 고쳐야 하므로 지금이 가장 싸다.
 
 **검증**
 - 전국 줌에서 라벨을 전부 뿌리지 않는다. 일정 줌 이상에서만 표시
@@ -115,10 +139,63 @@ P3은 Worker 계층까지 Wave 1에서 만들 수 있다. UI 통합만 P2 이후
 
 **선행** P1
 
+**SDK 사용법은 [kakao-map-reference.md](./kakao-map-reference.md)에 정리했다.**
+공식 샘플 77개를 전수 조사한 결과이며, 채택/미사용 판정과 주의사항이 있다.
+
+**라벨 설계 — 부동산114 참고 (2026-08-04 실물 확인)**
+
+```
+┌──────────┐
+│ 27.5억   │  ← 실거래가
+│  32평    │  ← 전용면적
+└────▼─────┘
+```
+
+- **`가격 + 평형`이다. 가격 + 연도가 아니다.** 32평 27.5억과 60평 27.5억은 다른 물건이고,
+  세금은 면적을 따라가므로 평형이 없으면 비교가 성립하지 않는다
+- **실거래가 없는 단지는 숨기지 않는다.** 연한 색 + 평형만 표시한다
+  (아파트 매칭률 95.02%이므로 반드시 남는다)
+
+**겹침 해결 — 레벨별 하이브리드**
+
+`MarkerClusterer`는 `Marker` 전용이라 `CustomOverlay` 라벨에 걸리지 않는다. 그래서:
+
+| 레벨 | 표시 |
+|---|---|
+| 확대 | `CustomOverlay` 가격 라벨 |
+| 축소 | `Marker` + `MarkerClusterer` → **"N개 단지"** |
+
+`chickenClusterer` 샘플의 `calculator` + `texts` + `styles` 조합이 그 패턴이다.
+
 **주의**
-- `CustomOverlay`는 **클러스터링이 자동으로 되지 않는다.** 카카오의 `MarkerClusterer`는
-  `Marker` 전용이라 적용되지 않는다. 줌 정책·상한·겹침 회피를 직접 구현해야 한다
+- 지도 레벨은 **작을수록 확대**다. 부등호 방향을 틀리기 쉽다
+- `bounds_changed`는 드래그 중 연속 발생한다. `idle` 또는 디바운스 필수
+- 사이드바 토글로 컨테이너 폭이 바뀌면 `map.relayout()` 호출
 - 차트는 React용 라이브러리를 쓴다 (`vue-chartjs` 아님)
+
+**참고 샘플** — [apis.map.kakao.com/web/sample](https://apis.map.kakao.com/web/sample/)
+
+| 샘플 | 쓰임 |
+|---|---|
+| `customOverlay2` | **HTML/CSS 기반 콘텐츠** — 2단 가격 라벨의 기반 |
+| `removableCustomOverlay` | 닫기 가능한 오버레이 — 사이드바 열림/닫힘 참고 |
+| `addMapBoundsChangedEvent` | **bbox 갱신 트리거** — 디바운스해서 `/api/complexes` 호출 |
+| `addMapZoomChangedEvent` | 줌 레벨 정책 (최소 표시 레벨 판정) |
+| `addTilesloadedEvent` | 타일 로딩 완료 — 초기 렌더 타이밍 |
+| `setBounds` / `changeLevel` | 지도 범위·레벨 제어 |
+| **`keywordList`** | **사이드바 단지 이름 검색** — 목록 + 페이지네이션 + 마커 연동 |
+
+> **단지 이름 검색을 P2 범위에 포함한다.** 지도를 뒤지지 않고 "은마"를 쳐서 바로 찾아가는
+> 경로가 필요하다. `keywordList` 샘플이 그 패턴이며, **이 용도에서는 45개 상한이 문제되지
+> 않는다** — 이름을 알고 찾는 것이기 때문이다.
+>
+> 같은 API라도 **"이름으로 찾기"는 되고 "영역을 빠짐없이 나열하기"는 안 된다**(측정:
+> 강남 bbox `total_count` 2,254 vs `pageable_count` 45). 지도 마커는 D1 bbox 조회를 쓰고,
+> 이름 검색만 카카오를 쓴다.
+
+> `basicClusterer`·`addClustererClickEvent` 샘플이 있지만 **우리 라벨에는 못 쓴다.**
+> `MarkerClusterer`는 `Marker`만 받는다. 낮은 줌에서는 라벨 대신 `Marker`로 전환해
+> 클러스터러를 쓰는 하이브리드 방식은 가능하니, 필요하면 그때 검토한다.
 
 ---
 
