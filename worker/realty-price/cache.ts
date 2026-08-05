@@ -39,7 +39,8 @@ export class CloudflareOfficialPriceCache implements OfficialPriceCache {
   ): Promise<OfficialPriceLookupResult | null> {
     const response = await this.cache.match(cacheRequest(request, pnu))
     if (!response) return null
-    return response.json<OfficialPriceLookupResult>()
+    const cached = await response.json<OfficialPriceLookupResult>()
+    return { ...cached, key: request.key }
   }
 
   async put(

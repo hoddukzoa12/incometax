@@ -7,7 +7,6 @@
     "dev": "concurrently --kill-others-on-fail \"vite\" \"wrangler dev\"",
     "geocode:complexes": "node --env-file-if-exists=.dev.vars scripts/geocode.ts",
     "ingest:complexes": "node --env-file-if-exists=.dev.vars scripts/ingest-complexes.ts",
-    "ingest:trades": "node --env-file-if-exists=.dev.vars scripts/ingest-trades.ts",
     "verify:complex-api": "node --env-file-if-exists=.dev.vars scripts/verify-complex-api.ts",
     "test": "npm run test:node && npm run test:workers",
     "test:node": "vitest run --exclude 'tests/**/*.workerd.test.ts'",
@@ -18,7 +17,8 @@
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.20.1",

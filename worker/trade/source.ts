@@ -1,11 +1,23 @@
 import type { RawTrade, TradeSource } from '../../shared/trade.ts'
-import { fetchParsedText } from '../../scripts/lib/http.ts'
 import { TRADE_SOURCE_URLS } from '../config/external-apis.ts'
 
 export const TRADE_PAGE_SIZE = 1_000
 export const MAXIMUM_TRADE_PAGES = 10
+const TRADE_REQUEST_TIMEOUT_MS = 10_000
+const TRADE_REQUEST_MAX_RETRIES = 3
+const TRADE_RETRY_DELAY_MS = [1_000, 2_000, 4_000] as const
+const RETRYABLE_TRADE_STATUS_CODES = new Set([
+  408,
+  429,
+  500,
+  502,
+  503,
+  504,
+])
 const SUCCESS_RESULT_CODES = new Set(['000', '00'])
 const NO_DATA_RESULT_CODES = new Set(['03'])
+
+class NonRetryableTradeSourceError extends Error {}
 
 const xmlDecode = (value: string): string =>
   value
@@ -163,6 +175,43 @@ export const buildTradeApiUrl = (
   return url
 }
 
+const sleep = async (milliseconds: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+const fetchTradeXml = async (url: URL): Promise<string> => {
+  let lastError: unknown
+  for (
+    let attempt = 0;
+    attempt <= TRADE_REQUEST_MAX_RETRIES;
+    attempt += 1
+  ) {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: 'application/xml,text/xml,*/*' },
+        signal: AbortSignal.timeout(TRADE_REQUEST_TIMEOUT_MS),
+      })
+      if (response.ok) return response.text()
+      await response.text()
+      if (!RETRYABLE_TRADE_STATUS_CODES.has(response.status)) {
+        throw new NonRetryableTradeSourceError(
+          `Trade API HTTP ${response.status}`,
+        )
+      }
+      lastError = new Error(`Trade API HTTP ${response.status}`)
+    } catch (error) {
+      if (error instanceof NonRetryableTradeSourceError) throw error
+      lastError = error
+    }
+    if (attempt >= TRADE_REQUEST_MAX_RETRIES) break
+    await sleep(TRADE_RETRY_DELAY_MS[attempt])
+  }
+  const reason = lastError instanceof Error ? lastError.message : String(lastError)
+  throw new Error(
+    `Trade API request failed after ${TRADE_REQUEST_MAX_RETRIES + 1} attempts: ${reason}`,
+  )
+}
+
 export const fetchTradeDataset = async (
   source: TradeSource,
   serviceKey: string,
@@ -180,7 +229,7 @@ export const fetchTradeDataset = async (
     )
     return readXml
       ? parseTradePage(await readXml(url), source)
-      : fetchParsedText(url, (xml) => parseTradePage(xml, source))
+      : parseTradePage(await fetchTradeXml(url), source)
   }
   const firstPage = await readPage(1)
   const pageCount = Math.max(

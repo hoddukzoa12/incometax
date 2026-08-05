@@ -1,0 +1,62 @@
+.unit-picker__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.unit-picker label {
+  display: grid;
+  gap: 0.3rem;
+  color: #5f697c;
+  font-size: 0.75rem;
+}
+
+.unit-picker select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid #d8deea;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #172033;
+}
+
+.unit-picker__lookup {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.65rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: #315bea;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.unit-picker__lookup:disabled {
+  background: #aeb7c9;
+  cursor: not-allowed;
+}
+
+.official-price-history {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.official-price-history li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.official-price-history time,
+.official-price-history span {
+  color: #737d90;
+  font-size: 0.75rem;
+}

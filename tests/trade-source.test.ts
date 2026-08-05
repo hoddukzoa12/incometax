@@ -81,4 +81,44 @@ describe('trade XML source', () => {
       ),
     ).rejects.toThrow('exceeds limit')
   })
+
+  it('retries a throttled source with a bounded delay', async () => {
+    vi.useFakeTimers()
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('', { status: 429 }))
+      .mockResolvedValueOnce(new Response(pageXml(1)))
+    vi.stubGlobal('fetch', fetcher)
+    try {
+      const resultPromise = fetchTradeDataset(
+        'apt',
+        'key',
+        '11680',
+        '202608',
+      )
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(resultPromise).resolves.toHaveLength(1)
+      expect(fetcher).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('does not retry a non-retryable HTTP response', async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      new Response('', { status: 400 }))
+    vi.stubGlobal('fetch', fetcher)
+    try {
+      await expect(fetchTradeDataset(
+        'apt',
+        'key',
+        '11680',
+        '202608',
+      )).rejects.toThrow('HTTP 400')
+      expect(fetcher).toHaveBeenCalledOnce()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })

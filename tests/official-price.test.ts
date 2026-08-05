@@ -32,6 +32,46 @@ function serviceWithResponses(responses: Response[]) {
 }
 
 describe('OfficialPriceService', () => {
+  it('loads apartment dong options and then rooms for the selected dong', async () => {
+    const { service, fetcher } = serviceWithResponses([
+      model([{ code: '20260626', name: '2026년 1월 1일 기준(공시일자 : 2026.04.30)' }]),
+      modelMap([{ code: 1381, notice_date: '20260626', name: '(316) 은마아파트(은마)' }]),
+      model([{ code: 1, name: '1' }, { code: 2, name: '2' }]),
+      modelMap([{ code: 1381, notice_date: '20260626', name: '(316) 은마아파트(은마)' }]),
+      model([{ code: 1, name: '1' }, { code: 2, name: '2' }]),
+      modelMap([{ code: 10, name: '101' }, { code: 11, name: '102' }]),
+    ])
+    const request = {
+      key: 'A13583507',
+      address: '서울특별시 강남구 대치동 316',
+      complexName: '은마아파트',
+      pnu: TEST_PNU,
+    }
+
+    await expect(service.lookupApartmentOptions(request, TEST_ENV)).resolves.toEqual({
+      key: 'A13583507',
+      status: 'found',
+      value: {
+        pnu: TEST_PNU,
+        dongs: [{ code: '1', name: '1' }, { code: '2', name: '2' }],
+        rooms: [],
+      },
+    })
+    await expect(service.lookupApartmentOptions(
+      { ...request, dong: '1동' },
+      TEST_ENV,
+    )).resolves.toEqual({
+      key: 'A13583507',
+      status: 'found',
+      value: {
+        pnu: TEST_PNU,
+        dongs: [{ code: '1', name: '1' }, { code: '2', name: '2' }],
+        rooms: [{ code: '10', name: '101' }, { code: '11', name: '102' }],
+      },
+    })
+    expect(fetcher).toHaveBeenCalledTimes(6)
+  })
+
   it('walks the apartment chain and returns every past year from one price call', async () => {
     const { service, fetcher } = serviceWithResponses([
       model([{ code: '20260626', name: '2026년 1월 1일 기준(공시일자 : 2026.04.30)' }]),

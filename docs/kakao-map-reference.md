@@ -11,7 +11,7 @@ P2(지도 + 사이드바) 구현에 필요한 것만 추린 실무 레퍼런스.
 
 | 과제 | 해법 | 근거 샘플 |
 |---|---|---|
-| 가격 라벨 | `CustomOverlay` + HTML | `customOverlay1/2` |
+| 단지명 라벨 | `CustomOverlay` + HTML | `customOverlay1/2` |
 | **라벨 겹침** | **낮은 줌에서 `Marker` + `MarkerClusterer`로 전환** | `chickenClusterer` |
 | bbox 갱신 | `bounds_changed` + `map.getBounds()` + 디바운스 | `addMapBoundsChangedEvent`, `mapInfo` |
 | 단지 이름 검색 | `services.Places.keywordSearch` + 페이지네이션 | `keywordList` |
@@ -106,7 +106,7 @@ React에서는 `useEffect` 정리 함수에서 반드시 `removeListener`한다.
 
 ---
 
-## 4. 오버레이 — 가격 라벨의 핵심
+## 4. 오버레이 — 단지명 라벨의 핵심
 
 ### 4.1 CustomOverlay
 
@@ -127,15 +127,18 @@ overlay.setMap(null)    // 제거
 **우리 라벨**
 
 ```
-┌──────────┐
-│ 27.5억   │  ← 가격 (실거래가)
-│  32평    │  ← 전용면적. 가격만으로는 비교가 불가능하다
-└────▼─────┘  ← yAnchor: 1 로 꼭짓점이 좌표를 가리킴
+┌──────────────┐
+│  은마아파트   │  ← 단지명만
+└──────▼───────┘  ← yAnchor: 1 로 꼭짓점이 좌표를 가리킴
 ```
+
+가격은 띄우지 않는다. 실거래가는 `법정동코드 × 거래년월` 단위로만 조회되어
+지도 이동마다 대량 호출이 필요하다. 사이드바에서 단지 하나를 열 때만 조회한다
+(roadmap P2 라벨 설계 참조).
 
 DOM이므로 `element.onclick`으로 사이드바를 연다. 별도 이벤트 등록이 필요 없다.
 
-React에서는 `createRoot(el).render(<PriceLabel .../>)` 후 그 `el`을 `content`로 넘긴다.
+React에서는 `createRoot(el).render(<ComplexLabel .../>)` 후 그 `el`을 `content`로 넘긴다.
 
 > **지도 이벤트 전파 차단**: 오버레이 내부에서 마우스를 눌렀을 때 지도가 드래그되지
 > 않게 하려면 `kakao.maps.event.preventMap`을 `mousedown`/`touchstart`에 건다.
@@ -146,7 +149,7 @@ React에서는 `createRoot(el).render(<PriceLabel .../>)` 후 그 `el`을 `conte
 전국 22,259개를 라벨로 뿌릴 수 없으므로 레벨에 따라 전환한다.
 
 ```
-레벨 1~N (확대)   → CustomOverlay 가격 라벨
+레벨 1~N (확대)   → CustomOverlay 단지명 라벨
 레벨 N+1~ (축소)  → Marker + MarkerClusterer ("N개 단지")
 ```
 
@@ -165,15 +168,17 @@ clusterer.addMarkers(markers)
 `texts`는 함수 또는 배열이다. `styles`는 `calculator` 구간마다 하나씩,
 즉 **구간 수 + 1개**를 준다. 클러스터 클릭 이벤트는 `addClustererClickEvent` 참조.
 
-### 4.3 실거래가가 없는 단지
+### 4.3 좌표가 없는 단지
 
-매칭률이 100%가 아니므로(아파트 95.02%) 가격 없는 단지가 남는다. **숨기지 않는다.**
+카카오 장소 DB에 없는 단지가 5.2%(1,148건) 남는다 — 신축·청년주택·소규모.
 
 | 상태 | 표시 |
 |---|---|
-| 실거래가 있음 | 진한 라벨 — `가격 + 평형` |
-| 실거래가 없음 | 연한 라벨 — `평형`만 |
-| 좌표 없음 (`lookup_status` 미해결) | 지도에 표시하지 않음. 검색으로만 도달 |
+| 좌표 있음 (`matched`) | 지도에 단지명 라벨 |
+| 좌표 없음 (`notFound` / `rejected`) | 지도에 없음. **검색으로 도달** |
+
+검색은 카카오가 아니라 **우리 `complex` 테이블**을 조회한다. 카카오를 검색하면
+바로 이 단지들이 영영 안 잡힌다. 좌표가 없어도 세금 계산은 정상 동작한다.
 
 ### 4.4 안 쓰는 오버레이
 

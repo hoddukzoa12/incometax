@@ -17,13 +17,6 @@ type ResultRow = {
   readonly household_count: number | null
   readonly lat: number
   readonly lng: number
-  readonly latest_trade_id: string | null
-  readonly latest_trade_source: string | null
-  readonly latest_trade_match_level: string | null
-  readonly latest_trade_date: string | null
-  readonly latest_trade_amount: number | null
-  readonly latest_trade_area: number | null
-  readonly latest_trade_floor: number | null
 }
 
 const resultRows = (count: number): ResultRow[] =>
@@ -38,22 +31,21 @@ const resultRows = (count: number): ResultRow[] =>
     household_count: count - index,
     lat: 37.5,
     lng: 127,
-    latest_trade_id: null,
-    latest_trade_source: null,
-    latest_trade_match_level: null,
-    latest_trade_date: null,
-    latest_trade_amount: null,
-    latest_trade_area: null,
-    latest_trade_floor: null,
   }))
 
-const fakeDatabase = (rows: ReturnType<typeof resultRows>): D1Database =>
+const fakeDatabase = (
+  rows: ReturnType<typeof resultRows>,
+  onPrepare: (query: string) => void = () => undefined,
+): D1Database =>
   ({
-    prepare: () => ({
-      bind: () => ({
-        all: async () => ({ results: rows }),
-      }),
-    }),
+    prepare: (query: string) => {
+      onPrepare(query)
+      return {
+        bind: () => ({
+          all: async () => ({ results: rows }),
+        }),
+      }
+    },
   }) as unknown as D1Database
 
 describe('parseBounds', () => {
@@ -102,28 +94,32 @@ describe('queryComplexes', () => {
     expect(result.truncated).toBe(true)
   })
 
-  it('includes the latest cached trade for map labels', async () => {
+  it('returns only location and basic complex data for map labels', async () => {
     const [row] = resultRows(1)
-    const result = await queryComplexes(
-      fakeDatabase([
-        {
-          ...row,
-          latest_trade_id: 'trade-1',
-          latest_trade_source: 'apt',
-          latest_trade_match_level: 'lot',
-          latest_trade_date: '2026-08-01',
-          latest_trade_amount: 2_700_000_000,
-          latest_trade_area: 84.43,
-          latest_trade_floor: 10,
-        },
-      ]),
-      { south: 37, west: 126, north: 38, east: 128 },
-    )
-
-    expect(result.items[0].latestTrade).toMatchObject({
-      tradeId: 'trade-1',
-      dealAmount: 2_700_000_000,
+    let preparedQuery = ''
+    const database = fakeDatabase([row], (query) => {
+      preparedQuery = query
     })
+    const result = await queryComplexes(database, {
+      south: 37,
+      west: 126,
+      north: 38,
+      east: 128,
+    })
+
+    expect(result.items[0]).toEqual({
+      complexId: row.complex_id,
+      name: row.name,
+      legalAddress: row.legal_address,
+      roadAddress: row.road_address,
+      legalDongCode: row.legal_dong_code,
+      approvalDate: row.approval_date,
+      buildingCount: row.building_count,
+      householdCount: row.household_count,
+      lat: row.lat,
+      lng: row.lng,
+    })
+    expect(preparedQuery).not.toMatch(/\btrade\b/i)
   })
 
   it('returns a 400 response for invalid bounds', async () => {

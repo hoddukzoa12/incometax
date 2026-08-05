@@ -77,3 +77,37 @@ export interface OfficialPriceBatchRequest {
 export interface OfficialPriceBatchResponse {
   readonly results: readonly OfficialPriceLookupResult[]
 }
+
+export interface ApartmentUnitOption {
+  readonly code: string
+  readonly name: string
+}
+
+export interface ApartmentUnitOptionsRequest {
+  readonly key: string
+  readonly address: string
+  readonly complexName: string
+  readonly pnu?: string
+  readonly dong?: string
+}
+
+export type ApartmentUnitOptionsResult =
+  | {
+      readonly key: string
+      readonly status: 'found'
+      readonly value: {
+        readonly pnu: string
+        readonly dongs: readonly ApartmentUnitOption[]
+        readonly rooms: readonly ApartmentUnitOption[]
+      }
+    }
+  | {
+      readonly key: string
+      readonly status: 'noData'
+      readonly reason: 'addressNotFound' | 'complexNotFound' | 'dongNotFound'
+    }
+  | {
+      readonly key: string
+      readonly status: 'failed'
+      readonly failure: OfficialPriceFailure
+    }

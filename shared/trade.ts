@@ -172,3 +172,9 @@ export interface ComplexTradesResponse {
   readonly complexId: string
   readonly items: readonly RecentTrade[]
 }
+
+export interface YearlyTradeAverage {
+  readonly year: string
+  readonly averageAmount: number
+  readonly tradeCount: number
+}

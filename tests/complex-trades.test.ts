@@ -1,91 +1,113 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import {
-  handleComplexTrades,
-  queryRecentTrades,
-} from '../worker/complex/trades'
+import type { ComplexTradeStore } from '../worker/trade/on-demand'
+import { handleComplexTrades } from '../worker/complex/trades'
 
-const fakeDatabase = (rows: readonly Record<string, unknown>[]): D1Database =>
-  ({
-    prepare: () => ({
-      bind: () => ({
-        all: async () => ({ results: rows }),
-      }),
-    }),
-  }) as unknown as D1Database
+const database = {} as D1Database
+const store = {} as ComplexTradeStore
 
-describe('recent complex trades API', () => {
-  it('returns recent D1 rows without calling an external source', async () => {
-    const result = await queryRecentTrades(
-      fakeDatabase([
-        {
-          complex_id: 'A10000001',
-          trade_id: 'trade-1',
-          source: 'apt',
-          match_level: 'lot',
-          deal_date: '2026-08-01',
-          deal_amount: 2_700_000_000,
-          exclusive_area: 84.43,
-          floor: 10,
-        },
-      ]),
-      'A10000001',
-      20,
+describe('complex trade HTTP API', () => {
+  it('returns cached or newly fetched trade history', async () => {
+    const lookup = vi.fn(async () => ({
+      complexId: 'A13583507',
+      items: [{
+        tradeId: 'trade-1',
+        source: 'apt' as const,
+        matchLevel: 'lot' as const,
+        dealDate: '2026-08-01',
+        dealAmount: 2_700_000_000,
+        exclusiveArea: 84.43,
+        floor: 10,
+      }],
+    }))
+    const response = await handleComplexTrades(
+      database,
+      'A13583507',
+      'service-key',
+      { store, lookup },
     )
 
-    expect(result).toEqual({
-      complexId: 'A10000001',
-      items: [
-        {
-          tradeId: 'trade-1',
-          source: 'apt',
-          matchLevel: 'lot',
-          dealDate: '2026-08-01',
-          dealAmount: 2_700_000_000,
-          exclusiveArea: 84.43,
-          floor: 10,
-        },
-      ],
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      complexId: 'A13583507',
+      items: [{ dealAmount: 2_700_000_000 }],
     })
   })
 
-  it('distinguishes an existing complex with no trades from a missing complex', async () => {
-    await expect(
-      queryRecentTrades(
-        fakeDatabase([
-          {
-            complex_id: 'A10000001',
-            trade_id: null,
-            source: null,
-            match_level: null,
-            deal_date: null,
-            deal_amount: null,
-            exclusive_area: null,
-            floor: null,
-          },
-        ]),
-        'A10000001',
-        20,
-      ),
-    ).resolves.toEqual({ complexId: 'A10000001', items: [] })
-    await expect(
-      queryRecentTrades(fakeDatabase([]), 'missing', 20),
-    ).resolves.toBeNull()
+  it('coalesces simultaneous sidebar opens for the same complex', async () => {
+    let resolveLookup: ((value: {
+      readonly complexId: string
+      readonly items: readonly []
+    }) => void) | undefined
+    const lookup = vi.fn(() => new Promise<{
+      readonly complexId: string
+      readonly items: readonly []
+    }>((resolve) => {
+      resolveLookup = resolve
+    }))
+    const first = handleComplexTrades(database, 'A13583507', 'service-key', {
+      store,
+      lookup,
+    })
+    const second = handleComplexTrades(database, 'A13583507', 'service-key', {
+      store,
+      lookup,
+    })
+    resolveLookup?.({ complexId: 'A13583507', items: [] })
+
+    const responses = await Promise.all([first, second])
+    expect(responses.map((response) => response.status)).toEqual([200, 200])
+    expect(lookup).toHaveBeenCalledOnce()
   })
 
-  it('rejects invalid limits and returns 404 for missing complexes', async () => {
-    const invalid = await handleComplexTrades(
-      new URL('https://example.test/api/complexes/A1/trades?limit=101'),
-      fakeDatabase([]),
-      'A1',
+  it('returns an empty list as a normal successful result', async () => {
+    const response = await handleComplexTrades(
+      database,
+      'A13583507',
+      'service-key',
+      {
+        store,
+        lookup: vi.fn(async () => ({ complexId: 'A13583507', items: [] })),
+      },
     )
-    expect(invalid.status).toBe(400)
 
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      complexId: 'A13583507',
+      items: [],
+    })
+  })
+
+  it('distinguishes missing complexes from source failures', async () => {
     const missing = await handleComplexTrades(
-      new URL('https://example.test/api/complexes/missing/trades'),
-      fakeDatabase([]),
+      database,
       'missing',
+      'service-key',
+      { store, lookup: vi.fn(async () => null) },
     )
     expect(missing.status).toBe(404)
+
+    const failed = await handleComplexTrades(
+      database,
+      'A13583507',
+      'service-key',
+      {
+        store,
+        lookup: vi.fn(async () => {
+          throw new Error('source unavailable')
+        }),
+      },
+    )
+    expect(failed.status).toBe(502)
+    await expect(failed.json()).resolves.toMatchObject({ retryable: true })
+  })
+
+  it('rejects invalid encoded complex identifiers', async () => {
+    const response = await handleComplexTrades(
+      database,
+      '%E0%A4%A',
+      'service-key',
+    )
+    expect(response.status).toBe(400)
   })
 })

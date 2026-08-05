@@ -1,4 +1,6 @@
 import type {
+  ApartmentUnitOptionsRequest,
+  ApartmentUnitOptionsResult,
   OfficialPriceFailure,
   OfficialPriceLookupResult,
   OfficialPriceRequest,
@@ -9,7 +11,10 @@ import {
   type AddressPnuResolution,
 } from '../ldong/lookup'
 import type { LdongRefreshEnv } from '../ldong/refresh'
-import { lookupApartmentOfficialPrice } from './apartment'
+import {
+  lookupApartmentOfficialPrice,
+  lookupApartmentUnitOptions,
+} from './apartment'
 import type { OfficialPriceCache } from './cache'
 import {
   realtyPriceClient,
@@ -18,8 +23,12 @@ import {
   responseList,
 } from './client'
 import { lookupDetachedHouseOfficialPrice } from './detached-house'
-import { noData, requiredText } from './normalize'
-import { parsePnu, type NoticeDate } from './params'
+import { requiredText } from './normalize'
+import {
+  parsePnu,
+  type NoticeDate,
+  type ParsedPnu,
+} from './params'
 
 const NOTICE_DATE_NAME_PATTERN =
   /(\d{4})년.*공시일자\s*:\s*(\d{4})\.(\d{2})\.(\d{2})/
@@ -31,7 +40,27 @@ interface OfficialPriceServiceDependencies {
   readonly resolvePnu?: typeof resolveAddressToPnu
 }
 
-function invalidRequest(key: string, message: string): OfficialPriceLookupResult {
+type PnuLookup =
+  | { readonly status: 'found'; readonly pnu: string; readonly parsed: ParsedPnu }
+  | {
+      readonly status: 'failed'
+      readonly result:
+        | {
+            readonly key: string
+            readonly status: 'noData'
+            readonly reason: 'addressNotFound'
+          }
+        | {
+            readonly key: string
+            readonly status: 'failed'
+            readonly failure: OfficialPriceFailure
+          }
+    }
+
+function invalidRequest(
+  key: string,
+  message: string,
+): Extract<OfficialPriceLookupResult, { readonly status: 'failed' }> {
   return {
     key,
     status: 'failed',
@@ -95,17 +124,15 @@ export class OfficialPriceService {
     if (validationFailure) return validationFailure
 
     try {
-      const resolution: AddressPnuResolution = request.pnu
-        ? { status: 'found', pnu: request.pnu }
-        : await this.resolvePnu(request.address, env, context)
-      const resolutionFailure = this.handleResolution(request.key, resolution)
-      if (resolutionFailure) return resolutionFailure
-
-      const pnu = resolution.status === 'found' ? resolution.pnu : ''
-      const parsedPnu = parsePnu(pnu)
-      if (!parsedPnu) {
-        return invalidRequest(request.key, 'PNU 형식이 올바르지 않습니다.')
-      }
+      const pnuLookup = await this.lookupPnu(
+        request.key,
+        request.address,
+        request.pnu,
+        env,
+        context,
+      )
+      if (pnuLookup.status === 'failed') return pnuLookup.result
+      const { pnu, parsed: parsedPnu } = pnuLookup
 
       const cached = await this.cache?.get(request, pnu)
       if (cached) return cached
@@ -135,6 +162,42 @@ export class OfficialPriceService {
     }
   }
 
+  async lookupApartmentOptions(
+    request: ApartmentUnitOptionsRequest,
+    env: LdongRefreshEnv,
+    context?: ExecutionContext,
+  ): Promise<ApartmentUnitOptionsResult> {
+    if (!request.key.trim() || !request.address.trim() || !request.complexName.trim()) {
+      return invalidRequest(
+        request.key,
+        '동·호 목록 조회에는 단지명과 주소가 필요합니다.',
+      )
+    }
+    try {
+      const pnuLookup = await this.lookupPnu(
+        request.key,
+        request.address,
+        request.pnu,
+        env,
+        context,
+      )
+      if (pnuLookup.status === 'failed') return pnuLookup.result
+      return await lookupApartmentUnitOptions(
+        request,
+        pnuLookup.pnu,
+        pnuLookup.parsed,
+        await this.latestNoticeDate(),
+        this.client,
+      )
+    } catch (error) {
+      return {
+        key: request.key,
+        status: 'failed',
+        failure: sourceFailure(error),
+      }
+    }
+  }
+
   private validateRequest(
     request: OfficialPriceRequest,
   ): OfficialPriceLookupResult | null {
@@ -151,21 +214,45 @@ export class OfficialPriceService {
     return null
   }
 
-  private handleResolution(
+  private async lookupPnu(
     key: string,
-    resolution: AddressPnuResolution,
-  ): OfficialPriceLookupResult | null {
-    if (resolution.status === 'noData') return noData(key, 'addressNotFound')
-    if (resolution.status === 'found') return null
-    return {
-      key,
-      status: 'failed',
-      failure: {
-        kind: 'sourceUnavailable',
-        message: '법정동코드 캐시가 준비되지 않았습니다.',
-        retryable: true,
-      },
+    address: string,
+    pnu: string | undefined,
+    env: LdongRefreshEnv,
+    context?: ExecutionContext,
+  ): Promise<PnuLookup> {
+    const resolution: AddressPnuResolution = pnu
+      ? { status: 'found', pnu }
+      : await this.resolvePnu(address, env, context)
+    if (resolution.status === 'noData') {
+      return {
+        status: 'failed',
+        result: { key, status: 'noData', reason: 'addressNotFound' },
+      }
     }
+    if (resolution.status === 'cacheUnavailable') {
+      return {
+        status: 'failed',
+        result: {
+          key,
+          status: 'failed',
+          failure: {
+            kind: 'sourceUnavailable',
+            message: '법정동코드 캐시가 준비되지 않았습니다.',
+            retryable: true,
+          },
+        },
+      }
+    }
+    const resolvedPnu = resolution.pnu
+    const parsed = parsePnu(resolvedPnu)
+    if (!parsed) {
+      return {
+        status: 'failed',
+        result: invalidRequest(key, 'PNU 형식이 올바르지 않습니다.'),
+      }
+    }
+    return { status: 'found', pnu: resolvedPnu, parsed }
   }
 
   private async latestNoticeDate(): Promise<NoticeDate> {

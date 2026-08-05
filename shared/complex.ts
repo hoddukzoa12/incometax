@@ -1,5 +1,3 @@
-import type { RecentTrade } from './trade'
-
 export const COMPLEX_LOOKUP_STATUSES = [
   'pending',
   'matched',
@@ -8,6 +6,8 @@ export const COMPLEX_LOOKUP_STATUSES = [
 ] as const
 
 export type ComplexLookupStatus = (typeof COMPLEX_LOOKUP_STATUSES)[number]
+
+export const COMPLEX_BBOX_ITEM_LIMIT = 500
 
 export const RETRYABLE_COMPLEX_LOOKUP_STATUSES = [
   'rejected',
@@ -62,7 +62,6 @@ export interface ComplexSummary {
   readonly householdCount: number | null
   readonly lat: number
   readonly lng: number
-  readonly latestTrade: RecentTrade | null
 }
 
 export interface ComplexBboxResponse {
