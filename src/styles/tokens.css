@@ -1,0 +1,42 @@
+:root {
+  --font-family-sans:
+    Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --color-accent: #173f5f;
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f7f8fa;
+  --color-neutral-100: #eef1f4;
+  --color-neutral-200: #e0e4e8;
+  --color-neutral-300: #ccd2d8;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #515963;
+  --color-neutral-700: #38414b;
+  --color-neutral-900: #1f2933;
+  --color-danger: #b42318;
+  --color-warning: #8a5a00;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  --shadow-lg: 0 8px 24px color-mix(in srgb, var(--color-accent) 14%, transparent);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+}

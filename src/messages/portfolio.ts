@@ -21,7 +21,7 @@ export const PORTFOLIO_MESSAGES = {
   residing: '거주 주택',
   nonResiding: '비거주 주택',
   soleHouseholdOwner: '세대 내 1인 단독 소유',
-  areaKindLabel: '지역 구분',
+  areaKindLabel: '지역 구분 (자동 판정 · 필요 시 변경)',
   adjustedArea: '조정대상지역',
   generalArea: '일반지역',
   remove: '목록에서 삭제',

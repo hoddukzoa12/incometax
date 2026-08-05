@@ -24,7 +24,7 @@ import {
   toComplexMatchCandidate,
   tradeCheckpointKey,
 } from '../../worker/trade/repository-data.ts'
-import { sqlString } from '../../worker/trade/sql.ts'
+import { sqlString } from '../../worker/d1/sql.ts'
 import { queryD1Rows, runD1, type D1Location } from './d1.ts'
 
 export class CliTradeRefreshRepository implements TradeRefreshRepository {

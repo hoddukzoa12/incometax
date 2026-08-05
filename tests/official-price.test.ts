@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { OfficialPriceRequest } from '../shared/official-price'
 import type { OfficialPriceLookupResult } from '../shared/official-price'
-import type { OfficialPriceCache } from '../worker/realty-price/cache'
+import type {
+  ApartmentUnitOptionsCache,
+  OfficialPriceCache,
+} from '../worker/realty-price/cache'
 import { RealtyPriceClient } from '../worker/realty-price/client'
 import { OfficialPriceService } from '../worker/realty-price'
 
@@ -20,16 +23,66 @@ function modelMap(list: readonly Record<string, unknown>[]): Response {
   return Response.json({ modelMap: { list } })
 }
 
-function serviceWithResponses(responses: Response[]) {
+const EMPTY_LIST_SHAPES = ['emptyArray', 'null', 'missing'] as const
+type EmptyListShape = typeof EMPTY_LIST_SHAPES[number]
+
+function emptyListResponse(shape: EmptyListShape): Response {
+  const modelByShape = {
+    emptyArray: { list: [] },
+    null: { list: null },
+    missing: {},
+  } as const
+  return Response.json({ model: modelByShape[shape] })
+}
+
+function serviceWithFetcher(
+  fetcher: typeof fetch,
+  unitOptionsCache?: ApartmentUnitOptionsCache,
+) {
   let now = Date.UTC(2026, 7, 4)
-  const fetcher = vi.fn(async () => responses.shift()!)
   const client = new RealtyPriceClient({
-    fetcher: fetcher as typeof fetch,
+    fetcher,
     now: () => now,
     sleep: async (milliseconds) => { now += milliseconds },
   })
-  return { service: new OfficialPriceService({ client, now: () => now }), fetcher }
+  return {
+    service: new OfficialPriceService({
+      client,
+      now: () => now,
+      unitOptionsCache,
+    }),
+    fetcher,
+  }
 }
+
+function serviceWithResponses(responses: Response[]) {
+  const fetcher = vi.fn(async () => responses.shift()!)
+  return {
+    ...serviceWithFetcher(fetcher as typeof fetch),
+    fetcher,
+  }
+}
+
+const apartmentRequest = (): OfficialPriceRequest => ({
+  key: 'apt-unit',
+  assetKind: 'apartment',
+  address: '서울특별시 강남구 대치동 316',
+  complexName: '은마아파트',
+  dong: '1동',
+  room: '101호',
+  pnu: TEST_PNU,
+})
+
+const noticeResponse = (): Response => model([{
+  code: '20260626',
+  name: '2026년 1월 1일 기준(공시일자 : 2026.04.30)',
+}])
+
+const complexResponse = (): Response => modelMap([{
+  code: 1381,
+  notice_date: '20260626',
+  name: '(316) 은마아파트(은마)',
+}])
 
 describe('OfficialPriceService', () => {
   it('loads apartment dong options and then rooms for the selected dong', async () => {
@@ -70,6 +123,42 @@ describe('OfficialPriceService', () => {
       },
     })
     expect(fetcher).toHaveBeenCalledTimes(6)
+  })
+
+  it('reuses only a successful cached unit list', async () => {
+    const responses = [
+      noticeResponse(),
+      complexResponse(),
+      model([{ code: 1, name: '1' }]),
+    ]
+    const fetcher = vi.fn(async () => responses.shift()!)
+    let cached: Awaited<ReturnType<
+      ApartmentUnitOptionsCache['getApartmentOptions']
+    >> = null
+    const unitOptionsCache: ApartmentUnitOptionsCache = {
+      getApartmentOptions: vi.fn(async () => cached),
+      putApartmentOptions: vi.fn(async (_request, _pnu, result) => {
+        cached = result.status === 'found' ? result : null
+      }),
+    }
+    const { service } = serviceWithFetcher(
+      fetcher as typeof fetch,
+      unitOptionsCache,
+    )
+    const request = {
+      key: 'A13583507',
+      address: '서울특별시 강남구 대치동 316',
+      complexName: '은마아파트',
+      pnu: TEST_PNU,
+    }
+
+    expect((await service.lookupApartmentOptions(request, TEST_ENV)).status)
+      .toBe('found')
+    expect((await service.lookupApartmentOptions(request, TEST_ENV)).status)
+      .toBe('found')
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    expect(unitOptionsCache.getApartmentOptions).toHaveBeenCalledTimes(2)
+    expect(unitOptionsCache.putApartmentOptions).toHaveBeenCalledTimes(1)
   })
 
   it('walks the apartment chain and returns every past year from one price call', async () => {
@@ -118,6 +207,290 @@ describe('OfficialPriceService', () => {
       },
     })
     expect(fetcher).toHaveBeenCalledTimes(5)
+  })
+
+  it('never sends the D1 complex name as an upstream search filter', async () => {
+    const urls: URL[] = []
+    const responses = [
+      noticeResponse(),
+      complexResponse(),
+      model([{ code: 1, name: '1' }]),
+      modelMap([{ code: 10, name: '101' }]),
+      model([{
+        notice_date_name: '2026.1.1',
+        notice_amt: '2,237,000,000',
+        priv_area: '76.79',
+      }]),
+    ]
+    const fetcher = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      urls.push(new URL(String(input)))
+      return responses.shift()!
+    })
+    const { service } = serviceWithFetcher(fetcher as typeof fetch)
+
+    await expect(service.lookup(apartmentRequest(), TEST_ENV))
+      .resolves.toMatchObject({ status: 'found' })
+
+    const apartmentRequests = urls.filter((url) =>
+      url.searchParams.has('apt_name'))
+    expect(apartmentRequests).toHaveLength(4)
+    expect(apartmentRequests.every((url) =>
+      url.searchParams.get('apt_name') === '')).toBe(true)
+  })
+
+  it('uses the only parcel row even when its registered name differs', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      model([{
+        code: 7001,
+        notice_date: '20260626',
+        name: '(73) 경남아파트(경남)',
+      }]),
+      model([{ code: 1, name: '1' }]),
+    ])
+
+    await expect(service.lookupApartmentOptions({
+      key: 'single-mismatch',
+      address: '서울특별시 도봉구 쌍문동 73',
+      complexName: '쌍문경남',
+      pnu: TEST_PNU,
+    }, TEST_ENV)).resolves.toMatchObject({
+      status: 'found',
+      value: { dongs: [{ code: '1', name: '1' }] },
+    })
+  })
+
+  it('chooses the one normalized name match among parcel candidates', async () => {
+    const requestedUrls: URL[] = []
+    const responses = [
+      noticeResponse(),
+      model([
+        { code: 1381, notice_date: '20260626', name: '(316) 은마아파트(은마)' },
+        { code: 9999, notice_date: '20260626', name: '(316) 다른아파트' },
+      ]),
+      model([{ code: 1, name: '1' }]),
+    ]
+    const fetcher = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      requestedUrls.push(new URL(String(input)))
+      return responses.shift()!
+    })
+    const { service } = serviceWithFetcher(fetcher as typeof fetch)
+
+    await expect(service.lookupApartmentOptions({
+      key: 'normalized-match',
+      address: '서울특별시 강남구 대치동 316',
+      complexName: '은마아파트',
+      pnu: TEST_PNU,
+    }, TEST_ENV)).resolves.toMatchObject({ status: 'found' })
+
+    expect(requestedUrls.at(-1)?.searchParams.get('apt_code')).toBe('1381')
+  })
+
+  it('returns a distinct ambiguity failure instead of guessing a parcel row', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      model([
+        { code: 1001, notice_date: '20260626', name: '(73) 경남아파트' },
+        { code: 1002, notice_date: '20260626', name: '(73) 현대아파트' },
+      ]),
+    ])
+
+    const result = await service.lookupApartmentOptions({
+      key: 'ambiguous-complex',
+      address: '서울특별시 도봉구 쌍문동 73',
+      complexName: '쌍문미확정',
+      pnu: TEST_PNU,
+    }, TEST_ENV)
+
+    expect(result).toMatchObject({
+      key: 'ambiguous-complex',
+      status: 'failed',
+      failure: {
+        kind: 'complexAmbiguous',
+        retryable: false,
+      },
+    })
+    expect(result.status === 'failed' && result.failure.message)
+      .toContain('(73) 경남아파트')
+    expect(result.status === 'failed' && result.failure.message)
+      .toContain('(73) 현대아파트')
+  })
+
+  it('returns complexNotFound only when a parcel has no listed complex', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      model([]),
+    ])
+
+    await expect(service.lookup(apartmentRequest(), TEST_ENV)).resolves.toEqual({
+      key: 'apt-unit',
+      status: 'noData',
+      reason: 'complexNotFound',
+    })
+  })
+
+  it('returns dongNotFound only after a successful list omits the dong', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      complexResponse(),
+      model([{ code: 2, name: '2' }]),
+    ])
+
+    await expect(service.lookup(apartmentRequest(), TEST_ENV)).resolves.toEqual({
+      key: 'apt-unit',
+      status: 'noData',
+      reason: 'dongNotFound',
+    })
+  })
+
+  it('returns roomNotFound only after a successful list omits the room', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      complexResponse(),
+      model([{ code: 1, name: '1' }]),
+      modelMap([{ code: 11, name: '102' }]),
+    ])
+
+    await expect(service.lookup(apartmentRequest(), TEST_ENV)).resolves.toEqual({
+      key: 'apt-unit',
+      status: 'noData',
+      reason: 'roomNotFound',
+    })
+  })
+
+  it('returns priceNotFound when the listed room has no price rows', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      complexResponse(),
+      model([{ code: 1, name: '1' }]),
+      modelMap([{ code: 10, name: '101' }]),
+      model([]),
+    ])
+
+    await expect(service.lookup(apartmentRequest(), TEST_ENV)).resolves.toEqual({
+      key: 'apt-unit',
+      status: 'noData',
+      reason: 'priceNotFound',
+    })
+  })
+
+  const emptyListNoDataCases = EMPTY_LIST_SHAPES.flatMap((shape) => [
+    {
+      shape,
+      reason: 'complexNotFound' as const,
+      beforeEmpty: () => [noticeResponse()],
+    },
+    {
+      shape,
+      reason: 'dongNotFound' as const,
+      beforeEmpty: () => [noticeResponse(), complexResponse()],
+    },
+    {
+      shape,
+      reason: 'roomNotFound' as const,
+      beforeEmpty: () => [
+        noticeResponse(),
+        complexResponse(),
+        model([{ code: 1, name: '1' }]),
+      ],
+    },
+    {
+      shape,
+      reason: 'priceNotFound' as const,
+      beforeEmpty: () => [
+        noticeResponse(),
+        complexResponse(),
+        model([{ code: 1, name: '1' }]),
+        modelMap([{ code: 10, name: '101' }]),
+      ],
+    },
+  ])
+
+  it.each(emptyListNoDataCases)(
+    'returns $reason for a $shape source list',
+    async ({ shape, reason, beforeEmpty }) => {
+      const { service } = serviceWithResponses([
+        ...beforeEmpty(),
+        emptyListResponse(shape),
+      ])
+
+      await expect(service.lookup(apartmentRequest(), TEST_ENV)).resolves.toEqual({
+        key: 'apt-unit',
+        status: 'noData',
+        reason,
+      })
+    },
+  )
+
+  it('returns failed instead of missing-unit data when a list transport fails', async () => {
+    let requestCount = 0
+    const fetcher = vi.fn(async () => {
+      requestCount += 1
+      if (requestCount === 1) return noticeResponse()
+      throw new TypeError('mocked network outage')
+    })
+    const { service } = serviceWithFetcher(fetcher as typeof fetch)
+
+    const result = await service.lookup(apartmentRequest(), TEST_ENV)
+
+    expect(result).toMatchObject({
+      key: 'apt-unit',
+      status: 'failed',
+      failure: { kind: 'sourceUnavailable', retryable: true },
+    })
+    expect('reason' in result).toBe(false)
+  })
+
+  it('returns a distinct non-retryable failed state for a list CAPTCHA', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      new Response('<html><div class="g-recaptcha">verify</div></html>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    ])
+
+    const result = await service.lookup(apartmentRequest(), TEST_ENV)
+
+    expect(result).toMatchObject({
+      key: 'apt-unit',
+      status: 'failed',
+      failure: { kind: 'captchaRequired', retryable: false },
+    })
+    expect('reason' in result).toBe(false)
+  })
+
+  it('keeps a non-JSON HTML error page in the failed path', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      new Response('<html><title>upstream error</title></html>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    ])
+
+    const result = await service.lookup(apartmentRequest(), TEST_ENV)
+
+    expect(result).toMatchObject({
+      key: 'apt-unit',
+      status: 'failed',
+      failure: { kind: 'invalidSourceResponse', retryable: false },
+    })
+    expect('reason' in result).toBe(false)
+  })
+
+  it('keeps a row missing a required field in the failed path', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      model([{ code: 1381 }]),
+    ])
+
+    const result = await service.lookup(apartmentRequest(), TEST_ENV)
+
+    expect(result).toMatchObject({
+      key: 'apt-unit',
+      status: 'failed',
+      failure: { kind: 'invalidSourceResponse', retryable: false },
+    })
+    expect('reason' in result).toBe(false)
   })
 
   it('queries detached houses at parcel level without requiring a unit', async () => {

@@ -16,14 +16,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-shell__header">
-        <h1 className="app-shell__title">{APP_MESSAGES.title}</h1>
-        <p className="app-shell__subtitle">{APP_MESSAGES.subtitle}</p>
-      </header>
       <main className="app-shell__body">
         <div className="app-shell__map">
           <ComplexMap onComplexSelect={setSelectedComplexId} />
           <div className="app-shell__search">
+            <div className="app-shell__identity">
+              <h1 className="app-shell__title">{APP_MESSAGES.title}</h1>
+              <p className="app-shell__subtitle">{APP_MESSAGES.subtitle}</p>
+            </div>
             <ComplexSearch onSelectComplex={setSelectedComplexId} />
           </div>
           <PortfolioPanel

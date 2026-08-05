@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import type { PortfolioItem } from '../shared/holding-tax'
+import type {
+  HoldingTaxInput,
+  PortfolioItem,
+} from '../shared/holding-tax'
 import type { TaxYear } from '../shared/tax-rules'
 import { calculateHoldingTax } from '../src/holding/calc'
 
 const HOLDING_YEARS = [2026, 2027, 2028] as const satisfies readonly TaxYear[]
 const ONE_WON = 1
+const OWNER_BELOW_CREDIT_AGE = 59
+const NON_BINDING_PRIOR_YEAR_TAX = {
+  propertyBaseTax: 10_000_000,
+  comprehensiveCalculatedTax: 10_000_000,
+} as const
 
 const createItem = (
   overrides: Partial<PortfolioItem> = {},
@@ -16,14 +24,25 @@ const createItem = (
   isSoleHouseholdOwner: true,
   residency: 'residing',
   areaKind: 'general',
+  holdingYears: 3,
+  residenceYears: 3,
   ...overrides,
 })
+
+type HoldingTaxContext = Pick<
+  HoldingTaxInput,
+  'ownerAge' | 'priorYearTax'
+>
 
 const calculate = (
   year: TaxYear,
   items: readonly PortfolioItem[],
   householdHomeCount = items.length,
-) => calculateHoldingTax({ year, householdHomeCount, items })
+  context: HoldingTaxContext = {
+    ownerAge: OWNER_BELOW_CREDIT_AGE,
+    priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+  },
+) => calculateHoldingTax({ year, householdHomeCount, items, ...context })
 
 describe('calculateHoldingTax single-house golden cases', () => {
   it('matches H1 for a resident one-house owner', () => {
@@ -365,6 +384,197 @@ describe('calculateHoldingTax single-house golden cases', () => {
       )
       expect(result.totalTax).toBe(expected[year].total)
     }
+  })
+})
+
+describe('calculateHoldingTax credit and burden-cap golden cases', () => {
+  it('matches H12 with the rate cap applied before the amount cap', () => {
+    const expected = {
+      2026: {
+        netTax: 1_896_000,
+        creditAmount: 1_516_800,
+        payableTax: 379_200,
+        ruralSpecialTax: 75_840,
+        comprehensiveTax: 455_040,
+        totalTax: 5_279_040,
+      },
+      2027: {
+        netTax: 1_584_000,
+        creditAmount: 1_267_200,
+        payableTax: 316_800,
+        ruralSpecialTax: 63_360,
+        comprehensiveTax: 380_160,
+        totalTax: 5_204_160,
+      },
+      2028: {
+        netTax: 1_584_000,
+        creditAmount: 1_267_200,
+        payableTax: 316_800,
+        ruralSpecialTax: 63_360,
+        comprehensiveTax: 380_160,
+        totalTax: 5_204_160,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(
+        year,
+        [createItem({ holdingYears: 15, residenceYears: 15 })],
+        1,
+        {
+          ownerAge: 70,
+          priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+        },
+      )
+      const comprehensiveTax = result.comprehensiveTax
+
+      expect(result.propertyTaxTotal).toBe(4_824_000)
+      expect(comprehensiveTax.netTax).toBe(expected[year].netTax)
+      expect(comprehensiveTax.taxCredit).toMatchObject({
+        status: 'computed',
+        ageRate: 0.4,
+        periodRate: 0.5,
+        nominalRate: 0.9,
+        appliedRate: 0.8,
+        amount: expected[year].creditAmount,
+        isRateCapped: true,
+        isAmountCapped: false,
+      })
+      expect(comprehensiveTax.taxBurdenCap).toMatchObject({
+        status: 'computed',
+        excessAmount: 0,
+      })
+      expect(comprehensiveTax.payableTax).toBe(expected[year].payableTax)
+      expect(comprehensiveTax.ruralSpecialTax).toBe(
+        expected[year].ruralSpecialTax,
+      )
+      expect(comprehensiveTax.totalTax).toBe(
+        expected[year].comprehensiveTax,
+      )
+      expect(result.totalTax).toBe(expected[year].totalTax)
+    }
+  })
+
+  it('matches H13 when the annual amount cap binds', () => {
+    const expected = {
+      2026: {
+        netTax: 12_816_000,
+        calculatedCreditAmount: 10_252_800,
+        creditAmount: 10_252_800,
+        amountCap: null,
+        payableTax: 2_563_200,
+        ruralSpecialTax: 512_640,
+        comprehensiveTax: 3_075_840,
+        totalTax: 13_479_840,
+        isAmountCapped: false,
+      },
+      2027: {
+        netTax: 17_424_000,
+        calculatedCreditAmount: 13_939_200,
+        creditAmount: 8_000_000,
+        amountCap: 8_000_000,
+        payableTax: 9_424_000,
+        ruralSpecialTax: 1_884_800,
+        comprehensiveTax: 11_308_800,
+        totalTax: 21_712_800,
+        isAmountCapped: true,
+      },
+      2028: {
+        netTax: 20_524_000,
+        calculatedCreditAmount: 16_419_200,
+        creditAmount: 6_000_000,
+        amountCap: 6_000_000,
+        payableTax: 14_524_000,
+        ruralSpecialTax: 2_904_800,
+        comprehensiveTax: 17_428_800,
+        totalTax: 27_832_800,
+        isAmountCapped: true,
+      },
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const result = calculate(
+        year,
+        [
+          createItem({
+            officialPrice: 4_000_000_000,
+            holdingYears: 15,
+            residenceYears: 15,
+          }),
+        ],
+        1,
+        {
+          ownerAge: 70,
+          priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+        },
+      )
+      const comprehensiveTax = result.comprehensiveTax
+
+      expect(result.propertyTaxTotal).toBe(10_404_000)
+      expect(comprehensiveTax.netTax).toBe(expected[year].netTax)
+      expect(comprehensiveTax.taxCredit).toMatchObject({
+        status: 'computed',
+        appliedRate: 0.8,
+        calculatedAmount: expected[year].calculatedCreditAmount,
+        amountCap: expected[year].amountCap,
+        amount: expected[year].creditAmount,
+        isAmountCapped: expected[year].isAmountCapped,
+      })
+      expect(comprehensiveTax.payableTax).toBe(expected[year].payableTax)
+      expect(comprehensiveTax.ruralSpecialTax).toBe(
+        expected[year].ruralSpecialTax,
+      )
+      expect(comprehensiveTax.totalTax).toBe(
+        expected[year].comprehensiveTax,
+      )
+      expect(result.totalTax).toBe(expected[year].totalTax)
+    }
+  })
+
+  it('matches H14 using only prior property base tax and comprehensive calculated tax', () => {
+    const result = calculate(
+      2027,
+      [
+        createItem({
+          officialPrice: 2_500_000_000,
+          holdingYears: 3,
+          residenceYears: 3,
+        }),
+      ],
+      1,
+      {
+        ownerAge: OWNER_BELOW_CREDIT_AGE,
+        priorYearTax: {
+          propertyBaseTax: 2_610_000,
+          comprehensiveCalculatedTax: 1_272_000,
+        },
+      },
+    )
+    const comprehensiveTax = result.comprehensiveTax
+
+    expect(result.propertyTaxes[0]).toMatchObject({
+      baseTax: 3_870_000,
+      localEducationTax: 774_000,
+      cityAreaTax: 1_575_000,
+      totalTax: 6_219_000,
+    })
+    expect(comprehensiveTax.netTax).toBe(4_424_000)
+    expect(comprehensiveTax.taxCredit).toMatchObject({
+      status: 'computed',
+      amount: 0,
+    })
+    expect(comprehensiveTax.taxBurdenCap).toEqual({
+      status: 'computed',
+      rate: 2,
+      priorYearBase: 3_882_000,
+      maximumTaxBurden: 7_764_000,
+      currentYearBase: 8_294_000,
+      excessAmount: 530_000,
+    })
+    expect(comprehensiveTax.payableTax).toBe(3_894_000)
+    expect(comprehensiveTax.ruralSpecialTax).toBe(778_800)
+    expect(comprehensiveTax.totalTax).toBe(4_672_800)
+    expect(result.totalTax).toBe(10_891_800)
   })
 })
 
@@ -822,6 +1032,34 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
     ).not.toThrow()
   })
 
+  it('reports missing credit and burden-cap inputs without returning a confident total', () => {
+    const result = calculateHoldingTax({
+      year: 2027,
+      householdHomeCount: 1,
+      items: [createItem()],
+    })
+
+    expect(result.calculationStatus).toBe('missingInputs')
+    expect(result.comprehensiveTax.taxCredit).toEqual({
+      status: 'notComputed',
+      missingInputs: ['ownerAge'],
+      amount: null,
+    })
+    expect(result.comprehensiveTax.taxBurdenCap).toEqual({
+      status: 'notComputed',
+      rate: 2,
+      missingInputs: [
+        'priorYearPropertyBaseTax',
+        'priorYearComprehensiveCalculatedTax',
+      ],
+      excessAmount: null,
+    })
+    expect(result.comprehensiveTax.payableTax).toBeNull()
+    expect(result.comprehensiveTax.ruralSpecialTax).toBeNull()
+    expect(result.comprehensiveTax.totalTax).toBeNull()
+    expect(result.totalTax).toBeNull()
+  })
+
   it('rejects a household home count smaller than the taxed item count', () => {
     expect(() =>
       calculateHoldingTax({
@@ -863,6 +1101,40 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
           isSoleHouseholdOwner: 'yes' as unknown as boolean,
         }),
       ]),
+    ).toThrow(RangeError)
+  })
+
+  it('rejects invalid owner, period, and prior-year facts when provided', () => {
+    expect(() =>
+      calculateHoldingTax({
+        year: 2027,
+        householdHomeCount: 1,
+        items: [createItem()],
+        ownerAge: -1,
+        priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+      }),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculateHoldingTax({
+        year: 2027,
+        householdHomeCount: 1,
+        items: [createItem()],
+        ownerAge: OWNER_BELOW_CREDIT_AGE,
+        priorYearTax: {
+          propertyBaseTax: 1.5,
+          comprehensiveCalculatedTax: 0,
+        },
+      }),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2027, [
+        createItem({
+          holdingYears: undefined as unknown as number,
+        }),
+      ]),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2027, [createItem({ residenceYears: -1 })]),
     ).toThrow(RangeError)
   })
 })

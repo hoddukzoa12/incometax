@@ -1,5 +1,3 @@
-import type { ApartmentOfficialPriceRequest } from '../../shared/official-price'
-
 const PNU_LENGTH = 19
 
 export interface ParsedPnu {
@@ -33,7 +31,6 @@ export function parsePnu(pnu: string): ParsedPnu | null {
 }
 
 export function apartmentParams(
-  request: ApartmentOfficialPriceRequest,
   pnu: ParsedPnu,
   notice: NoticeDate,
 ): Record<string, string> {
@@ -50,7 +47,7 @@ export function apartmentParams(
     notice_date_year: notice.publishedDate,
     reg: pnu.legalDongCode.slice(0, 5),
     eub: pnu.legalDongCode.slice(5),
-    apt_name: request.complexName,
+    apt_name: '',
     bun1: pnu.mainNumber,
     bun2: pnu.subNumber,
     road_code: '',

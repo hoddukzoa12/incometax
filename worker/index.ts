@@ -8,6 +8,7 @@ import {
   handleComplexDetail,
   handleComplexSearch,
 } from './complex/catalog'
+import { handleComplexOfficialPrice } from './complex/official-price'
 import { handleComplexTrades } from './complex/trades'
 import { handleComplexUnitOptions } from './complex/unit-options'
 import { addressesToPnu } from './ldong/lookup'
@@ -82,10 +83,14 @@ function normalizeOfficialPriceBatch(
 let officialPriceService: OfficialPriceService | null = null
 
 function getOfficialPriceService(): OfficialPriceService {
-  const workerCaches = caches as CacheStorage & { readonly default: Cache }
-  officialPriceService ??= new OfficialPriceService({
-    cache: new CloudflareOfficialPriceCache(workerCaches.default),
-  })
+  if (!officialPriceService) {
+    const workerCaches = caches as CacheStorage & { readonly default: Cache }
+    const cache = new CloudflareOfficialPriceCache(workerCaches.default)
+    officialPriceService = new OfficialPriceService({
+      cache,
+      unitOptionsCache: cache,
+    })
+  }
   return officialPriceService
 }
 
@@ -170,6 +175,18 @@ export default {
         env.COMPLEX_DB,
         complexTradesPath[1],
         env.DATA_GO_KR_SERVICE_KEY,
+      )
+    }
+    const complexOfficialPricePath =
+      /^\/api\/complexes\/([^/]+)\/official-price$/.exec(url.pathname)
+    if (complexOfficialPricePath && request.method === 'POST') {
+      return handleComplexOfficialPrice(
+        request,
+        env.COMPLEX_DB,
+        complexOfficialPricePath[1],
+        getOfficialPriceService(),
+        env,
+        context,
       )
     }
     const complexUnitOptionsPath =

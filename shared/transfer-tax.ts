@@ -1,15 +1,14 @@
 import type { AssetKind } from './assets'
+import type { OwnershipPeriod } from './ownership'
 import type { HouseholdKind, TaxYear } from './tax-rules'
 
-export interface TransferTaxInput {
+export interface TransferTaxInput extends OwnershipPeriod {
   readonly assetKind: AssetKind
   readonly year: TaxYear
   readonly householdKind: HouseholdKind
   readonly salePrice: number
   readonly acquisitionPrice: number
   readonly necessaryExpenses: number
-  readonly holdingYears: number
-  readonly residenceYears: number
   readonly isTaxResident?: boolean
   readonly isRelatedPartyTransaction?: boolean
   readonly deductionCapApportionmentRatio?: number

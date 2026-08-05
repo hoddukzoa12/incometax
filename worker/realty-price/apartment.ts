@@ -8,11 +8,11 @@ import type {
 import { REALTY_PRICE_PATHS } from '../config/external-apis'
 import { RealtyPriceClient, responseList } from './client'
 import {
-  findComplex,
   findUnit,
   noData,
   normalizeHistory,
   requiredText,
+  resolveComplex,
   text,
   validateOptionRows,
 } from './normalize'
@@ -28,36 +28,61 @@ interface ApartmentLookupContext {
   readonly noticeDate: string
 }
 
-type ApartmentUnitOptionsSourceResult = Exclude<
-  ApartmentUnitOptionsResult,
-  { readonly status: 'failed' }
->
+const AMBIGUOUS_COMPLEX_MESSAGE_PREFIX =
+  '동일 필지의 공동주택을 확정할 수 없습니다:'
+
+type ApartmentContextResolution =
+  | { readonly status: 'found'; readonly context: ApartmentLookupContext }
+  | { readonly status: 'notFound' }
+  | {
+      readonly status: 'ambiguous'
+      readonly candidateNames: readonly string[]
+    }
 
 const loadApartmentContext = async (
   request: ApartmentUnitOptionsRequest,
   parsedPnu: ParsedPnu,
   notice: NoticeDate,
   client: RealtyPriceClient,
-): Promise<ApartmentLookupContext | null> => {
-  const common = apartmentParams({
-    ...request,
-    assetKind: 'apartment',
-    dong: request.dong ?? '',
-    room: '',
-  }, parsedPnu, notice)
+): Promise<ApartmentContextResolution> => {
+  const common = apartmentParams(parsedPnu, notice)
   const complexRows = responseList(await client.request(
     REALTY_PRICE_PATHS.apartmentSearch,
     common,
   ))
   validateOptionRows(complexRows, '단지')
-  const complex = findComplex(complexRows, request.complexName)
-  if (!complex) return null
+  const resolution = resolveComplex(complexRows, request.complexName)
+  if (resolution.status === 'notFound') return resolution
+  if (resolution.status === 'ambiguous') {
+    return {
+      status: 'ambiguous',
+      candidateNames: resolution.candidates.map((candidate) =>
+        requiredText(candidate, 'name', '단지 name')),
+    }
+  }
+  const complex = resolution.row
   return {
-    common,
-    complexCode: requiredText(complex, 'code', '단지 code'),
-    noticeDate: text(complex.notice_date) || notice.code,
+    status: 'found',
+    context: {
+      common,
+      complexCode: requiredText(complex, 'code', '단지 code'),
+      noticeDate: text(complex.notice_date) || notice.code,
+    },
   }
 }
+
+const ambiguousComplex = (
+  key: string,
+  candidateNames: readonly string[],
+): Extract<OfficialPriceLookupResult, { readonly status: 'failed' }> => ({
+  key,
+  status: 'failed' as const,
+  failure: {
+    kind: 'complexAmbiguous' as const,
+    message: `${AMBIGUOUS_COMPLEX_MESSAGE_PREFIX} ${candidateNames.join(', ')}`,
+    retryable: false,
+  },
+})
 
 const loadDongRows = async (
   context: ApartmentLookupContext,
@@ -111,11 +136,15 @@ export async function lookupApartmentUnitOptions(
   parsedPnu: ParsedPnu,
   notice: NoticeDate,
   client: RealtyPriceClient,
-): Promise<ApartmentUnitOptionsSourceResult> {
-  const context = await loadApartmentContext(request, parsedPnu, notice, client)
-  if (!context) {
+): Promise<ApartmentUnitOptionsResult> {
+  const resolution = await loadApartmentContext(request, parsedPnu, notice, client)
+  if (resolution.status === 'notFound') {
     return { key: request.key, status: 'noData', reason: 'complexNotFound' }
   }
+  if (resolution.status === 'ambiguous') {
+    return ambiguousComplex(request.key, resolution.candidateNames)
+  }
+  const { context } = resolution
   const dongRows = await loadDongRows(context, client)
   if (!request.dong) {
     return {
@@ -152,8 +181,14 @@ export async function lookupApartmentOfficialPrice(
   notice: NoticeDate,
   client: RealtyPriceClient,
 ): Promise<OfficialPriceLookupResult> {
-  const context = await loadApartmentContext(request, parsedPnu, notice, client)
-  if (!context) return noData(request.key, 'complexNotFound')
+  const resolution = await loadApartmentContext(request, parsedPnu, notice, client)
+  if (resolution.status === 'notFound') {
+    return noData(request.key, 'complexNotFound')
+  }
+  if (resolution.status === 'ambiguous') {
+    return ambiguousComplex(request.key, resolution.candidateNames)
+  }
+  const { context } = resolution
   const dongRows = await loadDongRows(context, client)
   const dong = findUnit(dongRows, request.dong, '동')
   if (!dong) return noData(request.key, 'dongNotFound')

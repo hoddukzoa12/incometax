@@ -1,5 +1,6 @@
 import { ASSET_KINDS } from '../../shared/assets'
 import type { HoldingTaxInput } from '../../shared/holding-tax'
+import { hasValidOwnershipPeriod } from '../validation/ownership-period'
 
 const ZERO_AMOUNT = 0
 const FULL_OWNERSHIP_SHARE = 1
@@ -13,6 +14,12 @@ const INVALID_HOUSEHOLD_HOME_COUNT_MESSAGE =
   'Household home count must be a positive integer at least as large as the number of taxed portfolio items'
 const INVALID_SOLE_HOUSEHOLD_OWNER_MESSAGE =
   'Sole household owner status must be a boolean'
+const INVALID_OWNERSHIP_PERIOD_MESSAGE =
+  'Holding and residence periods must be finite non-negative year values'
+const INVALID_OWNER_AGE_MESSAGE =
+  'Owner age must be a non-negative integer when provided'
+const INVALID_PRIOR_YEAR_TAX_MESSAGE =
+  'Prior-year tax figures must be non-negative integer won amounts when provided'
 const UNSUPPORTED_ASSET_KIND_MESSAGE = 'Unsupported asset kind for holding tax'
 
 const isSupportedAssetKind = (assetKind: string): boolean =>
@@ -31,6 +38,30 @@ export const assertValidHoldingTaxInput = (
     input.householdHomeCount < input.items.length
   ) {
     throw new RangeError(INVALID_HOUSEHOLD_HOME_COUNT_MESSAGE)
+  }
+
+  if (
+    input.ownerAge !== undefined &&
+    (!Number.isFinite(input.ownerAge) ||
+      input.ownerAge < ZERO_AMOUNT ||
+      !Number.isInteger(input.ownerAge))
+  ) {
+    throw new RangeError(INVALID_OWNER_AGE_MESSAGE)
+  }
+
+  const priorYearFigures = [
+    input.priorYearTax?.propertyBaseTax,
+    input.priorYearTax?.comprehensiveCalculatedTax,
+  ].filter((amount): amount is number => amount !== undefined)
+  if (
+    priorYearFigures.some(
+      (amount) =>
+        !Number.isFinite(amount) ||
+        amount < ZERO_AMOUNT ||
+        !Number.isSafeInteger(amount),
+    )
+  ) {
+    throw new RangeError(INVALID_PRIOR_YEAR_TAX_MESSAGE)
   }
 
   for (const item of input.items) {
@@ -56,6 +87,10 @@ export const assertValidHoldingTaxInput = (
 
     if (typeof item.isSoleHouseholdOwner !== 'boolean') {
       throw new RangeError(INVALID_SOLE_HOUSEHOLD_OWNER_MESSAGE)
+    }
+
+    if (!hasValidOwnershipPeriod(item)) {
+      throw new RangeError(INVALID_OWNERSHIP_PERIOD_MESSAGE)
     }
   }
 }

@@ -27,6 +27,28 @@ describe('RealtyPriceClient', () => {
     expect(responseList(await client.request('/two', {}))).toEqual([{ code: 'modelMap' }])
   })
 
+  it.each([
+    ['null', { model: { list: null } }],
+    ['a missing key', { model: {} }],
+  ])('treats %s list as zero rows', async (_description, payload) => {
+    const client = new RealtyPriceClient({
+      fetcher: vi.fn(async () => jsonResponse(payload)),
+    })
+
+    await expect(client.request('/no-data', {}).then(responseList))
+      .resolves.toEqual([])
+  })
+
+  it('rejects a non-array list as a schema failure', async () => {
+    const client = new RealtyPriceClient({
+      fetcher: vi.fn(async () => jsonResponse({ model: { list: 'invalid' } })),
+    })
+    const response = await client.request('/invalid-list', {})
+
+    expect(() => responseList(response))
+      .toThrow(expect.objectContaining({ kind: 'invalidResponse' }))
+  })
+
   it('serializes calls, keeps 260ms spacing, and retries 400/429/5xx', async () => {
     const statuses = [400, 429, 503, 200, 200, 200]
     const starts: number[] = []

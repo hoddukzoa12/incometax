@@ -1,5 +1,6 @@
 import { MOIS_REGION_CODE_URL } from '../config/external-apis'
 import { DEFAULT_FETCHER } from '../http/fetch'
+import { isLegalDongCode } from '../../shared/legal-dong'
 
 export const LDONG_SNAPSHOT_KEY = 'ldong:snapshot:v1'
 
@@ -185,7 +186,7 @@ function ingestRows(
   for (const row of rows) {
     const name = String(row.locatadd_nm ?? '').replace(/\s+/g, ' ').trim()
     const code = String(row.region_cd ?? '').padStart(10, '0')
-    if (name && /^\d{10}$/.test(code)) target[name] = code
+    if (name && isLegalDongCode(code)) target[name] = code
   }
 }
 

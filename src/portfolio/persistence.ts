@@ -9,12 +9,14 @@ import {
   type AreaKind,
   type Residency,
 } from '../../shared/tax-rules'
+import { isLegalDongCode } from '../../shared/legal-dong'
 import { ownershipShareFromFraction } from './ownership-share'
 
 export const PORTFOLIO_STORAGE_KEY = 'incometax.portfolio'
-export const PORTFOLIO_SCHEMA_VERSION = 2
+export const PORTFOLIO_SCHEMA_VERSION = 3
 
-const PREVIOUS_PORTFOLIO_SCHEMA_VERSION = 1
+const PREVIOUS_PORTFOLIO_SCHEMA_VERSION = 2
+const LEGACY_PORTFOLIO_SCHEMA_VERSION = 1
 const LEGACY_ASSET_KIND: AssetKind = 'apartment'
 
 interface StorageAdapter {
@@ -37,6 +39,9 @@ const isNonEmptyString = (value: unknown): value is string =>
 
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string'
+
+const isNullableLegalDongCode = (value: unknown): value is string | null =>
+  value === null || isLegalDongCode(value)
 
 const isNullablePositiveNumber = (value: unknown): value is number | null =>
   value === null || (
@@ -73,6 +78,7 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
     !isNonEmptyString(value.id) ||
     !isOneOf(value.assetKind, ASSET_KINDS) ||
     !isNullableString(value.complexId) ||
+    !isNullableLegalDongCode(value.legalDongCode) ||
     !isNonEmptyString(value.complexName) ||
     !isNonEmptyString(value.address) ||
     !isNullableString(value.dong) ||
@@ -89,6 +95,7 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
     id: value.id,
     assetKind: value.assetKind,
     complexId: value.complexId,
+    legalDongCode: value.legalDongCode,
     complexName: value.complexName,
     address: value.address,
     dong: value.dong,
@@ -104,7 +111,16 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
 
 const migratePreviousItem = (value: unknown): StoredPortfolioItem | null => {
   if (!isRecord(value)) return null
-  return readCurrentItem({ ...value, assetKind: LEGACY_ASSET_KIND })
+  return readCurrentItem({ ...value, legalDongCode: null })
+}
+
+const migrateLegacyItem = (value: unknown): StoredPortfolioItem | null => {
+  if (!isRecord(value)) return null
+  return readCurrentItem({
+    ...value,
+    assetKind: LEGACY_ASSET_KIND,
+    legalDongCode: null,
+  })
 }
 
 const readItems = (
@@ -134,6 +150,9 @@ export const decodePortfolio = (
   }
   if (parsed.version === PREVIOUS_PORTFOLIO_SCHEMA_VERSION) {
     return readItems(parsed.items, migratePreviousItem) ?? []
+  }
+  if (parsed.version === LEGACY_PORTFOLIO_SCHEMA_VERSION) {
+    return readItems(parsed.items, migrateLegacyItem) ?? []
   }
   return []
 }

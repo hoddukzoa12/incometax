@@ -42,10 +42,19 @@ export const calculateHoldingTax = (
     propertyTaxHouseholdKind,
     input.householdHomeCount,
     propertyTaxes,
+    input.ownerAge,
+    input.priorYearTax,
     rules,
   )
+  const calculationStatus =
+    comprehensiveTax.totalTax === null ? 'missingInputs' : 'complete'
+  const totalTax =
+    comprehensiveTax.totalTax === null
+      ? null
+      : propertyTaxTotal + comprehensiveTax.totalTax
 
   return {
+    calculationStatus,
     year: input.year,
     householdHomeCount: input.householdHomeCount,
     propertyTaxHouseholdKind,
@@ -53,6 +62,6 @@ export const calculateHoldingTax = (
     propertyTaxes,
     propertyTaxTotal,
     comprehensiveTax,
-    totalTax: propertyTaxTotal + comprehensiveTax.totalTax,
+    totalTax,
   }
 }

@@ -1,12 +1,10 @@
 import type {
-  OfficialPriceLookupStage,
-  OfficialPriceRequest,
+  ComplexOfficialPriceRequest,
   OfficialPriceResolutionResult,
 } from '../../shared/official-price'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 import {
-  fetchOfficialPrice,
-  fetchPnu,
+  fetchComplexOfficialPrice,
   InvalidSidebarApiResponseError,
 } from './api'
 
@@ -18,14 +16,13 @@ const isAbortError = (error: unknown): boolean =>
 
 const failedResolution = (
   key: string,
-  lookupStage: OfficialPriceLookupStage,
   error: unknown,
 ): OfficialPriceResolutionResult => {
   const invalidResponse = error instanceof InvalidSidebarApiResponseError
   return {
     key,
     status: 'failed',
-    lookupStage,
+    lookupStage: 'officialPrice',
     failure: {
       kind: invalidResponse ? 'invalidSourceResponse' : 'sourceUnavailable',
       message: error instanceof Error
@@ -36,37 +33,22 @@ const failedResolution = (
   }
 }
 
-export async function lookupOfficialPriceByAddress(
-  request: OfficialPriceRequest,
+export async function lookupOfficialPriceForComplex(
+  complexId: string,
+  request: ComplexOfficialPriceRequest,
   signal: AbortSignal,
   fetcher: typeof fetch = CLIENT_FETCHER,
 ): Promise<OfficialPriceResolutionResult> {
-  let pnu: string | null
   try {
-    pnu = await fetchPnu(request.address, signal, fetcher)
-  } catch (error) {
-    if (isAbortError(error)) throw error
-    return failedResolution(request.key, 'addressToPnu', error)
-  }
-
-  if (!pnu) {
-    return {
-      key: request.key,
-      status: 'noData',
-      lookupStage: 'addressToPnu',
-      reason: 'addressNotFound',
-    }
-  }
-
-  try {
-    const result = await fetchOfficialPrice(
-      { ...request, pnu },
+    const result = await fetchComplexOfficialPrice(
+      complexId,
+      request,
       signal,
       fetcher,
     )
     return { ...result, lookupStage: 'officialPrice' }
   } catch (error) {
     if (isAbortError(error)) throw error
-    return failedResolution(request.key, 'officialPrice', error)
+    return failedResolution(request.key, error)
   }
 }

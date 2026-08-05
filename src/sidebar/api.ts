@@ -1,14 +1,13 @@
 import type { ComplexStagingRecord } from '../../shared/complex'
-import type { PnuBatchRequest, PnuBatchResponse } from '../../shared/pnu'
 import type { ComplexTradesResponse, RecentTrade } from '../../shared/trade'
-import type {
-  ApartmentUnitOption,
-  ApartmentUnitOptionsResult,
-  OfficialPriceBatchResponse,
-  OfficialPriceFailureKind,
-  OfficialPriceLookupResult,
-  OfficialPriceNoDataReason,
-  OfficialPriceRequest,
+import {
+  OFFICIAL_PRICE_FAILURE_KINDS,
+  type ApartmentUnitOption,
+  type ApartmentUnitOptionsResult,
+  type ComplexOfficialPriceRequest,
+  type OfficialPriceFailureKind,
+  type OfficialPriceLookupResult,
+  type OfficialPriceNoDataReason,
 } from '../../shared/official-price'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 import { isComplexRecord } from '../search/api'
@@ -19,6 +18,9 @@ const complexDetailEndpoint = (complexId: string): string =>
 const complexTradesEndpoint = (complexId: string): string =>
   `/api/complexes/${encodeURIComponent(complexId)}/trades`
 
+const complexOfficialPriceEndpoint = (complexId: string): string =>
+  `/api/complexes/${encodeURIComponent(complexId)}/official-price`
+
 const complexUnitOptionsEndpoint = (complexId: string, dong?: string): string => {
   const url = new URL(
     `/api/complexes/${encodeURIComponent(complexId)}/unit-options`,
@@ -28,17 +30,12 @@ const complexUnitOptionsEndpoint = (complexId: string, dong?: string): string =>
   return url.toString()
 }
 
-const OFFICIAL_PRICE_ENDPOINT = '/api/realty-prices'
-const PNU_ENDPOINT = '/api/pnu'
 const CLIENT_FETCHER: typeof fetch = (input, init) =>
   globalThis.fetch(input, init)
 
-const OFFICIAL_PRICE_FAILURE_KINDS = new Set<OfficialPriceFailureKind>([
-  'invalidRequest',
-  'sourceUnavailable',
-  'captchaRequired',
-  'invalidSourceResponse',
-])
+const OFFICIAL_PRICE_FAILURE_KIND_SET = new Set<OfficialPriceFailureKind>(
+  OFFICIAL_PRICE_FAILURE_KINDS,
+)
 
 const OFFICIAL_PRICE_NO_DATA_REASONS = new Set<OfficialPriceNoDataReason>([
   'addressNotFound',
@@ -88,7 +85,7 @@ const isUnitOptionsResult = (
   if (value.status === 'failed') {
     return isRecord(value.failure) &&
       typeof value.failure.kind === 'string' &&
-      OFFICIAL_PRICE_FAILURE_KINDS.has(
+      OFFICIAL_PRICE_FAILURE_KIND_SET.has(
         value.failure.kind as OfficialPriceFailureKind,
       ) &&
       typeof value.failure.message === 'string' &&
@@ -113,7 +110,7 @@ const isOfficialPriceResult = (value: unknown): value is OfficialPriceLookupResu
   if (value.status === 'failed') {
     return isRecord(value.failure) &&
       typeof value.failure.kind === 'string' &&
-      OFFICIAL_PRICE_FAILURE_KINDS.has(
+      OFFICIAL_PRICE_FAILURE_KIND_SET.has(
         value.failure.kind as OfficialPriceFailureKind,
       ) &&
       typeof value.failure.message === 'string' &&
@@ -130,14 +127,6 @@ const isOfficialPriceResult = (value: unknown): value is OfficialPriceLookupResu
       typeof item.price === 'number' &&
       (item.exclusiveArea === null || typeof item.exclusiveArea === 'number'))
 }
-
-const isPnuBatchResponse = (value: unknown): value is PnuBatchResponse =>
-  isRecord(value) &&
-  Array.isArray(value.results) &&
-  value.results.every((item) =>
-    isRecord(item) &&
-    typeof item.address === 'string' &&
-    (item.pnu === null || typeof item.pnu === 'string'))
 
 const responseJson = async (
   response: Response,
@@ -188,56 +177,24 @@ export async function fetchApartmentUnitOptions(
   return body
 }
 
-export async function fetchOfficialPrice(
-  request: OfficialPriceRequest,
+export async function fetchComplexOfficialPrice(
+  complexId: string,
+  request: ComplexOfficialPriceRequest,
   signal: AbortSignal,
   fetcher: typeof fetch = CLIENT_FETCHER,
 ): Promise<OfficialPriceLookupResult> {
-  const response = await fetcher(OFFICIAL_PRICE_ENDPOINT, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ items: [request] }),
-    signal,
-  })
-  if (!response.ok) throw new Error(SIDEBAR_MESSAGES.priceRequestFailed)
-  const body = await responseJson(response, SIDEBAR_MESSAGES.priceResponseInvalid)
-  if (!isRecord(body) || !Array.isArray(body.results) || body.results.length !== 1) {
-    throw new InvalidSidebarApiResponseError(
-      SIDEBAR_MESSAGES.priceResponseInvalid,
-    )
-  }
-  const result = (body as unknown as OfficialPriceBatchResponse).results[0]
-  if (!isOfficialPriceResult(result) || result.key !== request.key) {
-    throw new InvalidSidebarApiResponseError(
-      SIDEBAR_MESSAGES.priceResponseInvalid,
-    )
-  }
-  return result
-}
-
-export async function fetchPnu(
-  address: string,
-  signal: AbortSignal,
-  fetcher: typeof fetch = CLIENT_FETCHER,
-): Promise<string | null> {
-  const request: PnuBatchRequest = { addresses: [address] }
-  const response = await fetcher(PNU_ENDPOINT, {
+  const response = await fetcher(complexOfficialPriceEndpoint(complexId), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(request),
     signal,
   })
-  if (!response.ok) throw new Error(SIDEBAR_MESSAGES.pnuRequestFailed)
-
-  const body = await responseJson(response, SIDEBAR_MESSAGES.pnuResponseInvalid)
-  if (
-    !isPnuBatchResponse(body) ||
-    body.results.length !== 1 ||
-    body.results[0].address !== address
-  ) {
+  if (!response.ok) throw new Error(SIDEBAR_MESSAGES.priceRequestFailed)
+  const body = await responseJson(response, SIDEBAR_MESSAGES.priceResponseInvalid)
+  if (!isOfficialPriceResult(body) || body.key !== request.key) {
     throw new InvalidSidebarApiResponseError(
-      SIDEBAR_MESSAGES.pnuResponseInvalid,
+      SIDEBAR_MESSAGES.priceResponseInvalid,
     )
   }
-  return body.results[0].pnu
+  return body
 }

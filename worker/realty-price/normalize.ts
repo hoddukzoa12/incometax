@@ -10,6 +10,7 @@ import {
 
 const NORMALIZATION_PUNCTUATION_PATTERN = /[()（）[\]{}'".,·ㆍ]/g
 const SOFT_HYPHEN_PATTERN = /\u00ad/g
+const COMPLEX_LOT_PREFIX_PATTERN = /^\s*\(\s*\d+(?:-\d+)?\s*\)\s*/
 
 export function text(value: unknown): string {
   return value == null
@@ -37,21 +38,34 @@ function normalizeName(value: string): string {
     .toUpperCase()
 }
 
+function normalizeComplexName(value: string): string {
+  return normalizeName(value.replace(COMPLEX_LOT_PREFIX_PATTERN, ''))
+}
+
 function normalizeUnit(value: string, suffix: '동' | '호'): string {
   return normalizeName(value.replace(new RegExp(`${suffix}$`), ''))
 }
 
-export function findComplex(
+export type ComplexResolution =
+  | { readonly status: 'found'; readonly row: RealtyRow }
+  | { readonly status: 'notFound' }
+  | { readonly status: 'ambiguous'; readonly candidates: readonly RealtyRow[] }
+
+export function resolveComplex(
   rows: readonly RealtyRow[],
   complexName: string,
-): RealtyRow | null {
-  const target = normalizeName(complexName)
-  if (!target) return rows.length === 1 ? rows[0] : null
+): ComplexResolution {
+  if (rows.length === 0) return { status: 'notFound' }
+  if (rows.length === 1) return { status: 'found', row: rows[0] }
 
-  return rows.find((row) => {
-    const candidate = normalizeName(text(row.name))
+  const target = normalizeComplexName(complexName)
+  const matches = target ? rows.filter((row) => {
+    const candidate = normalizeComplexName(text(row.name))
     return candidate.includes(target) || target.includes(candidate)
-  }) ?? null
+  }) : []
+  return matches.length === 1
+    ? { status: 'found', row: matches[0] }
+    : { status: 'ambiguous', candidates: rows }
 }
 
 export function findUnit(

@@ -1,5 +1,6 @@
 import { ASSET_KINDS } from '../../shared/assets'
 import type { TransferTaxInput } from '../../shared/transfer-tax'
+import { hasValidOwnershipPeriod } from '../validation/ownership-period'
 
 const DEFAULT_CAP_APPORTIONMENT_RATIO = 1
 const MINIMUM_RATIO = 0
@@ -42,10 +43,7 @@ export const assertValidTransferTaxInput = (
     throw new RangeError(INVALID_AMOUNT_MESSAGE)
   }
 
-  const periods = [input.holdingYears, input.residenceYears]
-  if (
-    periods.some((period) => !Number.isFinite(period) || period < ZERO_AMOUNT)
-  ) {
+  if (!hasValidOwnershipPeriod(input)) {
     throw new RangeError(INVALID_PERIOD_MESSAGE)
   }
 

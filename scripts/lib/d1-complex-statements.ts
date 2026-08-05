@@ -2,6 +2,11 @@ import type {
   ComplexListRecord,
   ComplexStagingRecord,
 } from '../../shared/complex.ts'
+import {
+  sqlNullableNumber,
+  sqlNullableString,
+  sqlString,
+} from '../../worker/d1/sql.ts'
 
 // Cloudflare D1 SQL statement limit:
 // https://developers.cloudflare.com/d1/platform/limits/
@@ -9,14 +14,6 @@ export const D1_SQL_STATEMENT_MAX_BYTES = 100_000
 const D1_SQL_STATEMENT_SAFETY_MARGIN_BYTES = 10_000
 const D1_SQL_STATEMENT_CHUNK_MAX_BYTES =
   D1_SQL_STATEMENT_MAX_BYTES - D1_SQL_STATEMENT_SAFETY_MARGIN_BYTES
-
-export const sqlString = (value: string): string =>
-  `'${value.replaceAll("'", "''")}'`
-
-const sqlNullableString = (value: string | null): string =>
-  value === null ? 'NULL' : sqlString(value)
-const sqlNullableNumber = (value: number | null): string =>
-  value === null ? 'NULL' : String(value)
 
 const COMPLEX_UPSERT_PREFIX = `INSERT INTO complex_staging (
        complex_id, name, legal_address, road_address, legal_dong_code,

@@ -1,8 +1,8 @@
 .complex-search {
   position: relative;
   width: min(24rem, calc(100vw - 2rem));
-  color: #172033;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--color-neutral-900);
+  font-family: var(--font-family-sans);
 }
 
 .complex-search__label {
@@ -17,18 +17,18 @@
   box-sizing: border-box;
   width: 100%;
   min-height: 3rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d8deea;
-  border-radius: 0.8rem;
-  background: #fff;
-  box-shadow: 0 0.5rem 1.5rem rgb(23 32 51 / 12%);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-0);
+  box-shadow: var(--shadow-sm);
   color: inherit;
   font: inherit;
 }
 
 .complex-search__input:focus {
-  border-color: #315bea;
-  outline: 3px solid rgb(49 91 234 / 15%);
+  border-color: var(--color-accent);
+  outline: 3px solid color-mix(in srgb, var(--color-accent) 15%, transparent);
 }
 
 .complex-search__results,
@@ -37,16 +37,16 @@
   z-index: 20;
   box-sizing: border-box;
   width: 100%;
-  margin: 0.4rem 0 0;
-  border: 1px solid #e1e5ee;
-  border-radius: 0.75rem;
-  background: #fff;
-  box-shadow: 0 0.75rem 2rem rgb(23 32 51 / 15%);
+  margin: var(--space-1) 0 0;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-0);
+  box-shadow: var(--shadow-lg);
 }
 
 .complex-search__results {
   max-height: min(28rem, 60vh);
-  padding: 0.35rem;
+  padding: var(--space-1);
   overflow-y: auto;
   list-style: none;
 }
@@ -54,10 +54,10 @@
 .complex-search__result button {
   display: grid;
   width: 100%;
-  gap: 0.2rem;
-  padding: 0.7rem 0.75rem;
+  gap: var(--space-1);
+  padding: var(--space-3);
   border: 0;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -67,25 +67,25 @@
 
 .complex-search__result button:hover,
 .complex-search__result[aria-selected="true"] button {
-  background: #f2f5ff;
+  background: var(--color-neutral-100);
 }
 
 .complex-search__result span,
 .complex-search__result small {
-  color: #677187;
-  font-size: 0.78rem;
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-md);
 }
 
 .complex-search__result small {
-  color: #a05a00;
+  color: var(--color-warning);
 }
 
 .complex-search__status {
-  padding: 0.85rem 1rem;
-  color: #677187;
-  font-size: 0.85rem;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-md);
 }
 
 .complex-search__status--error {
-  color: #b42318;
+  color: var(--color-danger);
 }

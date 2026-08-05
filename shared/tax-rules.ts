@@ -17,6 +17,11 @@ export interface RateBand {
   readonly rate: number
 }
 
+export interface MinimumRateBand {
+  readonly minimum: number
+  readonly rate: number
+}
+
 export type PropertyTaxSurtaxBase = 'baseTax' | 'taxableBase'
 
 export interface PropertyTaxSurtaxRule {
@@ -74,6 +79,24 @@ export type ComprehensiveBracketRules =
       readonly brackets: readonly Bracket[]
     }
 
+export type ComprehensivePeriodCreditKind =
+  | 'holding'
+  | 'maximum'
+  | 'residence'
+
+export interface ComprehensiveTaxCreditRules {
+  readonly ageRates: readonly MinimumRateBand[]
+  readonly holdingPeriodRates: readonly MinimumRateBand[]
+  readonly residencePeriodRates: readonly MinimumRateBand[]
+  readonly periodCreditKind: ComprehensivePeriodCreditKind
+  readonly maximumRate: number
+  readonly amountCap: number | null
+}
+
+export interface ComprehensiveTaxBurdenCapRules {
+  readonly rate: number
+}
+
 export interface ComprehensiveTaxRules {
   readonly taxableThresholds: Readonly<Record<HouseholdKind, number>>
   readonly basicDeductions: ComprehensiveBasicDeductionRules
@@ -82,6 +105,8 @@ export interface ComprehensiveTaxRules {
   readonly elevatedHomeCountMinimum: number
   readonly propertyTaxCreditRate: number
   readonly ruralSpecialTaxRate: number
+  readonly taxCredit: ComprehensiveTaxCreditRules
+  readonly taxBurdenCap: ComprehensiveTaxBurdenCapRules
 }
 
 export interface HoldingPeriodTaxRate {

@@ -4,6 +4,7 @@ import {
   requireRecord,
   requireString,
 } from './complex-source.ts'
+import { isLegalDongCode } from '../../shared/legal-dong.ts'
 import { NonRetryableRequestError } from './http.ts'
 
 export interface ComplexDraft {
@@ -43,7 +44,7 @@ const nonNegativeInteger = (value: unknown, path: string): number => {
 
 const legalDongCode = (value: unknown): string => {
   const code = requireString(value, 'response.body.item.bjdCode').trim()
-  if (!/^\d{10}$/.test(code)) {
+  if (!isLegalDongCode(code)) {
     throw new TypeError('Expected 10-digit legal dong code')
   }
   return code

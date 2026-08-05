@@ -1,3 +1,5 @@
+import { isLegalDongCode } from '../../shared/legal-dong'
+
 const HYPHEN_VARIANTS_PATTERN = /[‐‑‒–—−]/g
 const LOT_TOKEN_PATTERN = /^산$|^산?\d/
 const LOT_NUMBER_PATTERN = /^(산)?\s*(\d+)(?:-(\d+))?/
@@ -35,7 +37,7 @@ export function buildPnu(
   parsed: ParsedLotAddress,
   legalDongCode: string,
 ): string | null {
-  if (!/^\d{10}$/.test(legalDongCode)) return null
+  if (!isLegalDongCode(legalDongCode)) return null
   if (!/^\d{1,4}$/.test(parsed.mainNumber)) return null
   if (!/^\d{1,4}$/.test(parsed.subNumber)) return null
 

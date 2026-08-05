@@ -5,7 +5,6 @@ import type {
   OfficialPriceLookupResult,
   OfficialPriceRequest,
 } from '../../shared/official-price'
-import { REALTY_PRICE_PATHS } from '../config/external-apis'
 import {
   resolveAddressToPnu,
   type AddressPnuResolution,
@@ -15,27 +14,27 @@ import {
   lookupApartmentOfficialPrice,
   lookupApartmentUnitOptions,
 } from './apartment'
-import type { OfficialPriceCache } from './cache'
+import type {
+  ApartmentUnitOptionsCache,
+  OfficialPriceCache,
+} from './cache'
 import {
   realtyPriceClient,
   RealtyPriceClient,
   RealtySourceError,
-  responseList,
 } from './client'
 import { lookupDetachedHouseOfficialPrice } from './detached-house'
-import { requiredText } from './normalize'
+import { loadLatestNoticeDate } from './notice-date'
 import {
   parsePnu,
   type NoticeDate,
   type ParsedPnu,
 } from './params'
 
-const NOTICE_DATE_NAME_PATTERN =
-  /(\d{4})년.*공시일자\s*:\s*(\d{4})\.(\d{2})\.(\d{2})/
-
 interface OfficialPriceServiceDependencies {
   readonly client?: RealtyPriceClient
   readonly cache?: OfficialPriceCache
+  readonly unitOptionsCache?: ApartmentUnitOptionsCache
   readonly now?: () => number
   readonly resolvePnu?: typeof resolveAddressToPnu
 }
@@ -92,6 +91,7 @@ function sourceFailure(error: unknown): OfficialPriceFailure {
 export class OfficialPriceService {
   private readonly client: RealtyPriceClient
   private readonly cache?: OfficialPriceCache
+  private readonly unitOptionsCache?: ApartmentUnitOptionsCache
   private readonly now: () => number
   private readonly resolvePnu: typeof resolveAddressToPnu
   private noticePromise: Promise<NoticeDate> | null = null
@@ -99,6 +99,7 @@ export class OfficialPriceService {
   constructor(dependencies: OfficialPriceServiceDependencies = {}) {
     this.client = dependencies.client ?? realtyPriceClient
     this.cache = dependencies.cache
+    this.unitOptionsCache = dependencies.unitOptionsCache
     this.now = dependencies.now ?? Date.now
     this.resolvePnu = dependencies.resolvePnu ?? resolveAddressToPnu
   }
@@ -182,13 +183,26 @@ export class OfficialPriceService {
         context,
       )
       if (pnuLookup.status === 'failed') return pnuLookup.result
-      return await lookupApartmentUnitOptions(
+
+      const cached = await this.unitOptionsCache?.getApartmentOptions(
+        request,
+        pnuLookup.pnu,
+      )
+      if (cached) return cached
+
+      const result = await lookupApartmentUnitOptions(
         request,
         pnuLookup.pnu,
         pnuLookup.parsed,
         await this.latestNoticeDate(),
         this.client,
       )
+      await this.unitOptionsCache?.putApartmentOptions(
+        request,
+        pnuLookup.pnu,
+        result,
+      )
+      return result
     } catch (error) {
       return {
         key: request.key,
@@ -257,43 +271,12 @@ export class OfficialPriceService {
 
   private async latestNoticeDate(): Promise<NoticeDate> {
     if (!this.noticePromise) {
-      this.noticePromise = this.loadLatestNoticeDate().catch((error) => {
-        this.noticePromise = null
-        throw error
-      })
+      this.noticePromise = loadLatestNoticeDate(this.client, this.now)
+        .catch((error) => {
+          this.noticePromise = null
+          throw error
+        })
     }
     return this.noticePromise
-  }
-
-  private async loadLatestNoticeDate(): Promise<NoticeDate> {
-    const currentYear = String(new Date(this.now()).getFullYear())
-    const rows = responseList(await this.client.request(
-      REALTY_PRICE_PATHS.noticeDates,
-      { year: currentYear },
-    ))
-    const first = rows[0]
-    if (!first) {
-      throw new RealtySourceError(
-        'invalidResponse',
-        '공동주택 고시일자를 확인하지 못했습니다.',
-        false,
-      )
-    }
-
-    const code = requiredText(first, 'code', '고시일자 code')
-    const name = requiredText(first, 'name', '고시일자 name')
-    const match = NOTICE_DATE_NAME_PATTERN.exec(name)
-    if (!match) {
-      throw new RealtySourceError(
-        'invalidResponse',
-        '공동주택 고시일자 형식이 변경되었습니다.',
-        false,
-      )
-    }
-    return {
-      code,
-      year: match[1],
-      publishedDate: `${match[2]}${match[3]}${match[4]}`,
-    }
   }
 }

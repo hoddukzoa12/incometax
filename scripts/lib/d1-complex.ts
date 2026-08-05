@@ -4,10 +4,10 @@ import {
   type ComplexListRecord,
   type ComplexStagingRecord,
 } from '../../shared/complex.ts'
+import { sqlString } from '../../worker/d1/sql.ts'
 import {
   complexListCheckpointStatements,
   complexDraftUpsertStatements,
-  sqlString,
 } from './d1-complex-statements.ts'
 import {
   queryD1Rows,
@@ -73,21 +73,6 @@ export interface StagingValidation {
   readonly rejected_count: number
 }
 
-const runWrangler = async (
-  sql: string,
-  location: D1Location,
-  operation: D1ExecutionMeasurement['operation'],
-  observer?: D1ExecutionObserver,
-): ReturnType<typeof runD1> => runD1(sql, location, { operation, observer })
-
-const queryRows = async <T extends object>(
-  sql: string,
-  location: D1Location,
-  observer?: D1ExecutionObserver,
-): Promise<readonly T[]> => {
-  return queryD1Rows<T>(sql, location, observer)
-}
-
 const parseExclusions = (
   serialized: string,
 ): readonly ComplexListExclusion[] => {
@@ -123,7 +108,7 @@ export const readRefreshState = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<RefreshState | null> => {
-  const rows = await queryRows<RefreshStateRow>(
+  const rows = await queryD1Rows<RefreshStateRow>(
     `SELECT verification_observed_at, expected_count,
             list_fields_json, excluded_records_json
        FROM complex_refresh_state
@@ -133,7 +118,7 @@ export const readRefreshState = async (
   )
   const row = rows[0]
   if (!row) return null
-  const checkpointRows = await queryRows<ListCheckpointRow>(
+  const checkpointRows = await queryD1Rows<ListCheckpointRow>(
     `SELECT page, complex_id, name, legal_dong_code,
             province, district, legal_dong, ri
        FROM complex_list_checkpoint
@@ -170,7 +155,7 @@ export const startRefresh = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<void> => {
-  await runWrangler(
+  await runD1(
     `DELETE FROM complex_list_checkpoint;
      DELETE FROM complex_staging;
      INSERT INTO complex_refresh_state (
@@ -186,8 +171,7 @@ export const startRefresh = async (
        list_fields_json = excluded.list_fields_json,
        excluded_records_json = excluded.excluded_records_json;`,
     location,
-    'write',
-    observer,
+    { operation: 'write', observer },
   )
 }
 
@@ -201,7 +185,7 @@ export const saveComplexListPage = async (
   if (records.length === 0) {
     throw new Error(`Complex list page ${page} has no checkpoint records`)
   }
-  const pages = await queryRows<{ page: number }>(
+  const pages = await queryD1Rows<{ page: number }>(
     'SELECT DISTINCT page FROM complex_list_checkpoint ORDER BY page',
     location,
     observer,
@@ -222,7 +206,7 @@ export const saveComplexListPage = async (
     operation: 'write',
     observer,
   })
-  const committedRows = await queryRows<{ record_count: number }>(
+  const committedRows = await queryD1Rows<{ record_count: number }>(
     `SELECT COUNT(*) AS record_count
        FROM complex_list_checkpoint
       WHERE page = ${page}`,
@@ -238,14 +222,13 @@ export const resetComplexListCheckpoint = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<void> => {
-  await runWrangler(
+  await runD1(
     `DELETE FROM complex_list_checkpoint;
      UPDATE complex_refresh_state
         SET list_fields_json = '[]'
       WHERE singleton = 1;`,
     location,
-    'write',
-    observer,
+    { operation: 'write', observer },
   )
 }
 
@@ -262,7 +245,7 @@ export const saveComplexExclusion = async (
       exclusion.reason,
     ]),
   )
-  await runWrangler(
+  await runD1(
     `UPDATE complex_refresh_state
         SET excluded_records_json = json_insert(
               excluded_records_json,
@@ -276,8 +259,7 @@ export const saveComplexExclusion = async (
            WHERE json_extract(value, '$[0]') = ${sqlString(exclusion.complexId)}
         );`,
     location,
-    'write',
-    observer,
+    { operation: 'write', observer },
   )
 }
 
@@ -285,14 +267,17 @@ export const clearStagedComplexes = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<void> => {
-  await runWrangler('DELETE FROM complex_staging', location, 'write', observer)
+  await runD1('DELETE FROM complex_staging', location, {
+    operation: 'write',
+    observer,
+  })
 }
 
 export const readStagedComplexIds = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<Set<string>> => {
-  const rows = await queryRows<{ complex_id: string }>(
+  const rows = await queryD1Rows<{ complex_id: string }>(
     'SELECT complex_id FROM complex_staging',
     location,
     observer,
@@ -304,7 +289,7 @@ export const readCompletedComplexLookupIds = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<Set<string>> => {
-  const rows = await queryRows<{ complex_id: string }>(
+  const rows = await queryD1Rows<{ complex_id: string }>(
     `SELECT complex_id
        FROM complex_staging
       WHERE lookup_status <> 'pending'`,
@@ -330,11 +315,10 @@ export const stageActiveComplexesForRetry = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<void> => {
-  await runWrangler(
+  await runD1(
     COMPLEX_RETRY_STAGING_SQL,
     location,
-    'write',
-    observer,
+    { operation: 'write', observer },
   )
 }
 
@@ -343,7 +327,7 @@ export const readRetryableComplexLookupIds = async (
   observer?: D1ExecutionObserver,
 ): Promise<Set<string>> => {
   const statuses = RETRYABLE_COMPLEX_LOOKUP_STATUSES.map(sqlString).join(', ')
-  const rows = await queryRows<{ complex_id: string }>(
+  const rows = await queryD1Rows<{ complex_id: string }>(
     `SELECT complex_id
        FROM complex_staging
       WHERE lookup_status IN (${statuses})`,
@@ -374,7 +358,7 @@ export const readStagedAddresses = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<readonly StagedAddress[]> =>
-  queryRows<StagedAddress>(
+  queryD1Rows<StagedAddress>(
     `SELECT complex_id,
             COALESCE(NULLIF(road_address, ''), legal_address) AS primary_address,
             CASE
@@ -396,7 +380,7 @@ export const updateGeocodedComplexes = async (
 ): Promise<void> => {
   const successes = results.filter((result) => result.status === 'success')
   if (successes.length === 0) return
-  await runWrangler(
+  await runD1(
     successes
       .map(
         (result) =>
@@ -407,8 +391,7 @@ export const updateGeocodedComplexes = async (
       )
       .join('\n'),
     location,
-    'write',
-    observer,
+    { operation: 'write', observer },
   )
 }
 
@@ -416,7 +399,7 @@ export const readStagingValidation = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<StagingValidation> => {
-  const rows = await queryRows<StagingValidation>(
+  const rows = await queryD1Rows<StagingValidation>(
     `SELECT COUNT(*) AS total_count,
             COALESCE(SUM(CASE WHEN lat IS NOT NULL AND lng IS NOT NULL THEN 1 ELSE 0 END), 0)
               AS geocoded_count,
@@ -488,5 +471,8 @@ export const activateStaging = async (
 ): Promise<void> => {
   // Wrangler maps the semicolon-separated statements to one D1 batch. D1 batches
   // are transactions, so the upsert and delete-missing steps commit together.
-  await runWrangler(COMPLEX_ACTIVATION_SQL, location, 'write', observer)
+  await runD1(COMPLEX_ACTIVATION_SQL, location, {
+    operation: 'write',
+    observer,
+  })
 }

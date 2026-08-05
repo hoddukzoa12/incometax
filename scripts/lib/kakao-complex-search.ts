@@ -2,6 +2,7 @@ import type {
   CompleteComplexListRecord,
   ComplexStagingRecord,
 } from '../../shared/complex.ts'
+import { isLegalDongCode } from '../../shared/legal-dong.ts'
 import { EXTERNAL_API_URLS } from '../../worker/config/external-apis.ts'
 import {
   fetchParsedJson,
@@ -13,7 +14,6 @@ const KAKAO_AUTH_SCHEME = 'KakaoAK'
 const PARENTHETICAL_NAME_SUFFIX_PATTERN = /\s*\([^()]*\)\s*$/u
 const APT_NAME_SUFFIX_PATTERN = /\s*A\.?P\.?T\.?\s*$/iu
 const LEGAL_DONG_REGION_TYPE = 'B'
-const LEGAL_DONG_CODE_PATTERN = /^\d{10}$/u
 const KAKAO_BAD_COORDINATE_STATUS = 400
 const KAKAO_QUOTA_EXCEEDED_CODE = -10
 const KAKAO_BAD_COORDINATE_REASON =
@@ -147,7 +147,7 @@ export const parseKakaoLegalDongCodeResponse = (
   )
   if (!isRecord(legalDong)) return null
   const code = requiredString(legalDong.code, 'legal-dong document.code')
-  if (!LEGAL_DONG_CODE_PATTERN.test(code)) {
+  if (!isLegalDongCode(code)) {
     throw new TypeError('Kakao legal-dong code must contain 10 digits')
   }
   return code

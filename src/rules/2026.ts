@@ -7,6 +7,12 @@ import {
   COMPREHENSIVE_TAX_COMMON_RULES,
   COMPREHENSIVE_TAXABLE_THRESHOLDS_2026,
 } from './comprehensive-tax'
+import {
+  COMPREHENSIVE_TAX_BURDEN_CAP_RULES_2026,
+} from './comprehensive-tax-burden-cap'
+import {
+  COMPREHENSIVE_TAX_CREDIT_RULES_2026,
+} from './comprehensive-tax-credit'
 import { PROPERTY_TAX_RULES } from './property-tax'
 import {
   TRANSFER_BASIC_DEDUCTIONS_2026,
@@ -28,6 +34,8 @@ export const TAX_RULES_2026 = {
       threeOrMoreHomes:
         COMPREHENSIVE_TAX_BRACKETS_2026_THREE_OR_MORE_HOMES,
     },
+    taxCredit: COMPREHENSIVE_TAX_CREDIT_RULES_2026,
+    taxBurdenCap: COMPREHENSIVE_TAX_BURDEN_CAP_RULES_2026,
   },
   transferTax: {
     ...TRANSFER_TAX_COMMON_RULES,
@@ -36,4 +44,3 @@ export const TAX_RULES_2026 = {
     basicDeductions: TRANSFER_BASIC_DEDUCTIONS_2026,
   },
 } as const satisfies TaxRules
-

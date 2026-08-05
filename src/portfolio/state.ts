@@ -3,12 +3,12 @@ import type {
   PortfolioItemSeed,
   StoredPortfolioItem,
 } from '../../shared/portfolio'
-import type { AreaKind, Residency } from '../../shared/tax-rules'
+import type { Residency } from '../../shared/tax-rules'
+import { resolveAreaKind } from '../../data/adjusted-areas'
 import { ownershipShareFromFraction } from './ownership-share'
 
 const DEFAULT_OWNERSHIP_SHARE = ownershipShareFromFraction(1)
 const DEFAULT_RESIDENCY: Residency = 'nonResiding'
-const DEFAULT_AREA_KIND: AreaKind = 'general'
 const DEFAULT_IS_SOLE_HOUSEHOLD_OWNER = true
 
 export const createStoredPortfolioItem = (
@@ -20,7 +20,7 @@ export const createStoredPortfolioItem = (
   ownershipShare: DEFAULT_OWNERSHIP_SHARE,
   isSoleHouseholdOwner: DEFAULT_IS_SOLE_HOUSEHOLD_OWNER,
   residency: DEFAULT_RESIDENCY,
-  areaKind: DEFAULT_AREA_KIND,
+  areaKind: resolveAreaKind(seed.legalDongCode),
 })
 
 export const removePortfolioItem = (

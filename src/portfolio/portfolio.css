@@ -1,35 +1,35 @@
 .portfolio-panel {
   position: absolute;
   z-index: 9;
-  right: 1rem;
-  bottom: 1rem;
+  right: var(--space-4);
+  bottom: var(--space-4);
   display: grid;
   justify-items: end;
-  max-width: calc(100% - 2rem);
-  color: #172033;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  max-width: calc(100% - var(--space-6) - var(--space-2));
+  color: var(--color-neutral-900);
+  font-family: var(--font-family-sans);
 }
 
 .portfolio-panel__toggle {
-  padding: 0.7rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border: 0;
-  border-radius: 999px;
-  background: #102f3d;
-  box-shadow: 0 0.5rem 1.5rem rgb(16 47 61 / 22%);
-  color: #fff;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-neutral-0);
   cursor: pointer;
-  font-weight: 800;
+  font-weight: var(--font-weight-bold);
 }
 
 .portfolio-panel__body {
   width: min(28rem, calc(100vw - 2rem));
   max-height: min(39rem, calc(100vh - 9rem));
-  margin-top: 0.6rem;
+  margin-top: var(--space-2);
   overflow-y: auto;
-  border: 1px solid #d8deea;
-  border-radius: 1rem;
-  background: #f7f8fb;
-  box-shadow: 0 1rem 3rem rgb(23 32 51 / 20%);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-50);
+  box-shadow: var(--shadow-lg);
 }
 
 .portfolio-panel__header {
@@ -39,123 +39,123 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  border-bottom: 1px solid #e1e5ee;
-  background: rgb(247 248 251 / 96%);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-200);
+  background: color-mix(in srgb, var(--color-neutral-50) 96%, transparent);
   backdrop-filter: blur(0.5rem);
 }
 
 .portfolio-panel__header h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
 }
 
 .portfolio-panel__header button,
 .portfolio-item__remove {
   border: 0;
   background: transparent;
-  color: #5f697c;
+  color: var(--color-neutral-600);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: var(--font-size-sm);
 }
 
 .portfolio-panel__empty {
-  padding: 2rem 1rem;
+  padding: var(--space-6) var(--space-4);
   text-align: center;
 }
 
 .portfolio-panel__empty p {
-  margin: 0.45rem 0 0;
-  color: #737d90;
-  font-size: 0.82rem;
+  margin: var(--space-2) 0 0;
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-md);
   line-height: 1.5;
 }
 
 .portfolio-panel__list {
   display: grid;
-  gap: 0.8rem;
+  gap: var(--space-3);
   margin: 0;
-  padding: 0.8rem;
+  padding: var(--space-3);
   list-style: none;
 }
 
 .portfolio-item {
-  padding: 1rem;
-  border: 1px solid #e1e5ee;
-  border-radius: 0.8rem;
-  background: #fff;
+  padding: var(--space-4);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-0);
 }
 
 .portfolio-item__heading {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: flex-start;
   justify-content: space-between;
 }
 
 .portfolio-item__heading h3 {
-  margin: 0.15rem 0 0;
-  font-size: 1rem;
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-base);
 }
 
 .portfolio-item__kind {
-  color: #315bea;
-  font-size: 0.7rem;
-  font-weight: 800;
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
 }
 
 .portfolio-item__remove {
   flex: none;
-  color: #b42318;
+  color: var(--color-danger);
 }
 
 .portfolio-item__address,
 .portfolio-item__identity {
-  margin: 0.5rem 0 0;
-  color: #737d90;
-  font-size: 0.75rem;
+  margin: var(--space-2) 0 0;
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-sm);
 }
 
 .portfolio-item__price {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0.8rem 0;
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.55rem;
-  background: #edf3ff;
-  color: #315bea;
-  font-size: 0.78rem;
+  margin: var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-700);
+  font-size: var(--font-size-md);
 }
 
 .portfolio-item__price--incomplete {
-  background: #fff5eb;
-  color: #a15c08;
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-neutral-0));
+  color: var(--color-warning);
 }
 
 .portfolio-item__fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: var(--space-2);
 }
 
 .portfolio-item__fields label {
   display: grid;
-  gap: 0.3rem;
-  color: #5f697c;
-  font-size: 0.7rem;
+  gap: var(--space-1);
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
 }
 
 .portfolio-item__fields input,
 .portfolio-item__fields select {
   width: 100%;
   min-width: 0;
-  padding: 0.5rem;
-  border: 1px solid #d8deea;
-  border-radius: 0.45rem;
-  background: #fff;
-  color: #172033;
-  font-size: 0.75rem;
+  padding: var(--space-2);
+  border: 1px solid var(--color-neutral-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+  color: var(--color-neutral-900);
+  font-size: var(--font-size-sm);
 }
 
 .portfolio-item__share-input {
@@ -163,40 +163,40 @@
 }
 
 .portfolio-item__share-input input {
-  padding-right: 1.5rem;
+  padding-right: var(--space-6);
 }
 
 .portfolio-item__share-input > span {
   position: absolute;
   top: 50%;
-  right: 0.5rem;
+  right: var(--space-2);
   transform: translateY(-50%);
 }
 
 .portfolio-item__field-error {
-  margin: 0.45rem 0 0;
-  color: #b42318;
-  font-size: 0.7rem;
+  margin: var(--space-2) 0 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
 }
 
 .portfolio-item__check {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.7rem;
-  color: #414b61;
-  font-size: 0.75rem;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  color: var(--color-neutral-700);
+  font-size: var(--font-size-sm);
 }
 
 @media (max-width: 40rem) {
   .portfolio-panel {
-    right: 0.75rem;
-    bottom: 0.75rem;
-    max-width: calc(100% - 1.5rem);
+    right: var(--space-3);
+    bottom: var(--space-3);
+    max-width: calc(100% - var(--space-6));
   }
 
   .portfolio-panel__body {
-    width: calc(100vw - 1.5rem);
+    width: calc(100vw - var(--space-6));
     max-height: min(34rem, calc(100vh - 8rem));
   }
 

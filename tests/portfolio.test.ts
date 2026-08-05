@@ -12,7 +12,10 @@ import {
   ownershipPercentFromNumber,
   ownershipShareFromFraction,
 } from '../src/portfolio/ownership-share'
-import { createStoredPortfolioItem } from '../src/portfolio/state'
+import {
+  createStoredPortfolioItem,
+  updatePortfolioItem,
+} from '../src/portfolio/state'
 
 class MemoryStorage {
   readonly values = new Map<string, string>()
@@ -31,6 +34,7 @@ const seed = (
 ): PortfolioItemSeed => ({
   assetKind: 'apartment',
   complexId: 'A13583507',
+  legalDongCode: '1168010600',
   complexName: '은마아파트',
   address: '서울특별시 강남구 삼성로 212',
   dong: '1',
@@ -41,6 +45,20 @@ const seed = (
 })
 
 describe('portfolio persistence', () => {
+  it('derives the default area kind and still allows a manual override', () => {
+    const item = createStoredPortfolioItem(seed(), 'derived-area')
+    expect(item.areaKind).toBe('adjusted')
+
+    const [overridden] = updatePortfolioItem([item], item.id, {
+      areaKind: 'general',
+    })
+    expect(overridden.areaKind).toBe('general')
+
+    expect(createStoredPortfolioItem(seed({
+      legalDongCode: '2635010500',
+    }), 'general-area').areaKind).toBe('general')
+  })
+
   it('persists and restores the versioned portfolio shape', () => {
     const storage = new MemoryStorage()
     const items = [
@@ -66,7 +84,7 @@ describe('portfolio persistence', () => {
     })
   })
 
-  it('upgrades the previous apartment-only schema by adding assetKind', () => {
+  it('upgrades the legacy apartment-only schema', () => {
     const storage = new MemoryStorage()
     const previousVersion = JSON.stringify({
       version: 1,
@@ -92,6 +110,7 @@ describe('portfolio persistence', () => {
       id: 'legacy-one',
       assetKind: 'apartment',
       complexId: 'A13583507',
+      legalDongCode: null,
       complexName: '은마아파트',
       address: '서울특별시 강남구 삼성로 212',
       dong: null,
@@ -108,6 +127,21 @@ describe('portfolio persistence', () => {
       version: PORTFOLIO_SCHEMA_VERSION,
       items: [{ assetKind: 'apartment' }],
     })
+  })
+
+  it('upgrades schema 2 records without guessing a legal dong code', () => {
+    const previousVersion = JSON.stringify({
+      version: 2,
+      items: [{
+        ...createStoredPortfolioItem(seed(), 'schema-two'),
+        legalDongCode: undefined,
+      }],
+    })
+
+    expect(decodePortfolio(previousVersion)).toEqual([{
+      ...createStoredPortfolioItem(seed(), 'schema-two'),
+      legalDongCode: null,
+    }])
   })
 
   it('rejects invalid ownership-share fractions', () => {

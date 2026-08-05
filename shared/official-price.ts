@@ -21,6 +21,11 @@ export type OfficialPriceRequest =
   | ApartmentOfficialPriceRequest
   | DetachedHouseOfficialPriceRequest
 
+export type ComplexOfficialPriceRequest = Pick<
+  ApartmentOfficialPriceRequest,
+  'key' | 'dong' | 'room'
+>
+
 export interface OfficialPriceHistoryItem {
   readonly baseDate: string
   readonly price: number
@@ -41,11 +46,16 @@ export type OfficialPriceNoDataReason =
   | 'roomNotFound'
   | 'priceNotFound'
 
+export const OFFICIAL_PRICE_FAILURE_KINDS = [
+  'invalidRequest',
+  'sourceUnavailable',
+  'captchaRequired',
+  'invalidSourceResponse',
+  'complexAmbiguous',
+] as const
+
 export type OfficialPriceFailureKind =
-  | 'invalidRequest'
-  | 'sourceUnavailable'
-  | 'captchaRequired'
-  | 'invalidSourceResponse'
+  typeof OFFICIAL_PRICE_FAILURE_KINDS[number]
 
 export interface OfficialPriceFailure {
   readonly kind: OfficialPriceFailureKind

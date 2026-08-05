@@ -4,11 +4,15 @@ import {
   lookupComplexTrades,
   type ComplexTradeStore,
 } from '../trade/on-demand'
+import {
+  COMPLEX_NOT_FOUND_MESSAGE,
+  decodeComplexId,
+  INVALID_COMPLEX_ID_MESSAGE,
+} from './request'
 
 const BAD_REQUEST_STATUS = 400
 const NOT_FOUND_STATUS = 404
 const BAD_GATEWAY_STATUS = 502
-const COMPLEX_NOT_FOUND_MESSAGE = '단지를 찾을 수 없습니다.'
 const TRADE_LOOKUP_FAILED_MESSAGE =
   '실거래가 원천 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.'
 
@@ -28,14 +32,10 @@ export const handleComplexTrades = async (
   serviceKey: string,
   dependencies: ComplexTradesHandlerDependencies = {},
 ): Promise<Response> => {
-  let complexId: string
-  try {
-    complexId = decodeURIComponent(encodedComplexId).trim()
-    if (!complexId) throw new TypeError('Invalid complex id')
-  } catch (error) {
-    if (!(error instanceof TypeError || error instanceof URIError)) throw error
+  const complexId = decodeComplexId(encodedComplexId)
+  if (!complexId) {
     return Response.json(
-      { error: error.message },
+      { error: INVALID_COMPLEX_ID_MESSAGE },
       { status: BAD_REQUEST_STATUS },
     )
   }

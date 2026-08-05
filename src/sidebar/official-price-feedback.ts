@@ -1,5 +1,6 @@
 import type {
   ApartmentUnitOptionsResult,
+  OfficialPriceFailure,
   OfficialPriceFailureKind,
   OfficialPriceLookupStage,
   OfficialPriceNoDataReason,
@@ -28,8 +29,17 @@ const FAILURE_MESSAGES = {
   },
 } as const satisfies Record<
   'unitOptions' | OfficialPriceLookupStage,
-  Record<OfficialPriceFailureKind, string>
+  Record<Exclude<OfficialPriceFailureKind, 'complexAmbiguous'>, string>
 >
+
+type FailureMessageScope = keyof typeof FAILURE_MESSAGES
+
+const failureMessage = (
+  scope: FailureMessageScope,
+  failure: OfficialPriceFailure,
+): string => failure.kind === 'complexAmbiguous'
+  ? failure.message
+  : FAILURE_MESSAGES[scope][failure.kind]
 
 const NO_DATA_MESSAGES = {
   addressNotFound: SIDEBAR_MESSAGES.addressNotFound,
@@ -42,7 +52,7 @@ const NO_DATA_MESSAGES = {
 export const unitOptionsFailureMessage = (
   result: ApartmentUnitOptionsResult,
 ): string | null => result.status === 'failed'
-  ? FAILURE_MESSAGES.unitOptions[result.failure.kind]
+  ? failureMessage('unitOptions', result.failure)
   : null
 
 export const unitOptionsNoDataMessage = (
@@ -61,7 +71,7 @@ export const unitOptionsNoDataMessage = (
 export const officialPriceFailureMessage = (
   result: OfficialPriceResolutionResult,
 ): string | null => result.status === 'failed'
-  ? FAILURE_MESSAGES[result.lookupStage][result.failure.kind]
+  ? failureMessage(result.lookupStage, result.failure)
   : null
 
 export const officialPriceNoDataMessage = (

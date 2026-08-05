@@ -18,6 +18,8 @@ export interface StoredPortfolioItem {
   readonly id: string
   readonly assetKind: AssetKind
   readonly complexId: string | null
+  // null is reserved for records migrated from schemas that predate P4-4.
+  readonly legalDongCode: string | null
   readonly complexName: string
   readonly address: string
   readonly dong: string | null
@@ -33,6 +35,7 @@ export interface StoredPortfolioItem {
 export interface PortfolioItemSeed {
   readonly assetKind: AssetKind
   readonly complexId: string | null
+  readonly legalDongCode: string
   readonly complexName: string
   readonly address: string
   readonly dong: string | null

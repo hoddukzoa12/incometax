@@ -2,7 +2,7 @@ import type {
   TradeDatasetResult,
   TradeRefreshPlan,
 } from '../../shared/trade.ts'
-import { sqlNullableNumber, sqlString } from './sql.ts'
+import { sqlNullableNumber, sqlString } from '../d1/sql.ts'
 
 const TRADE_INSERT_BATCH_SIZE = 125
 

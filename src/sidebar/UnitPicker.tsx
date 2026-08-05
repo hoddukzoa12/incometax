@@ -16,7 +16,8 @@ import {
   unitOptionsFailureMessage,
   unitOptionsNoDataMessage,
 } from './official-price-feedback'
-import { lookupOfficialPriceByAddress } from './official-price-lookup'
+import { lookupOfficialPriceForComplex } from './official-price-lookup'
+import { UnitSelectionFields } from './UnitSelectionFields'
 import './official-price.css'
 
 type RemoteResult<T> =
@@ -27,8 +28,10 @@ type RemoteResult<T> =
 const PRICE_HISTORY_PAGE_SIZE = 6
 const CURRENT_PRICE_HISTORY_ITEM_INDEX = 0
 
-const optionLabel = (name: string, suffix: string): string =>
-  name.endsWith(suffix) ? name : `${name}${suffix}`
+interface PriceQuery {
+  readonly dong: string
+  readonly room: string
+}
 
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
@@ -51,6 +54,7 @@ export function UnitPicker({
   const [priceResult, setPriceResult] = useState<
     RemoteResult<OfficialPriceResolutionResult> | null
   >(null)
+  const [priceQuery, setPriceQuery] = useState<PriceQuery | null>(null)
   const [visiblePriceCount, setVisiblePriceCount] = useState(
     PRICE_HISTORY_PAGE_SIZE,
   )
@@ -65,8 +69,13 @@ export function UnitPicker({
     return () => controller.abort()
   }, [complex.complexId])
 
+  const optionsFailure = dongOptions.status === 'loaded'
+    ? unitOptionsFailureMessage(dongOptions.value)
+    : null
+  const manualDong = dongOptions.status === 'failed' || Boolean(optionsFailure)
+
   useEffect(() => {
-    if (!selectedDong) return
+    if (!selectedDong || manualDong) return
     const controller = new AbortController()
     fetchApartmentUnitOptions(
       complex.complexId,
@@ -76,9 +85,24 @@ export function UnitPicker({
       .then((value) => setRoomOptions({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setRoomOptions({ status: 'failed' })
+    })
+    return () => controller.abort()
+  }, [complex.complexId, manualDong, selectedDong])
+
+  useEffect(() => {
+    if (!priceQuery) return
+    const controller = new AbortController()
+    lookupOfficialPriceForComplex(complex.complexId, {
+      key: `${complex.complexId}:${priceQuery.dong}:${priceQuery.room}`,
+      dong: priceQuery.dong,
+      room: priceQuery.room,
+    }, controller.signal)
+      .then((value) => setPriceResult({ status: 'loaded', value }))
+      .catch((error: unknown) => {
+        if (!isAbortError(error)) setPriceResult({ status: 'failed' })
       })
     return () => controller.abort()
-  }, [complex.complexId, selectedDong])
+  }, [complex.complexId, priceQuery])
 
   const dongs = dongOptions.status === 'loaded' &&
     dongOptions.value.status === 'found'
@@ -88,15 +112,14 @@ export function UnitPicker({
     roomOptions.value.status === 'found'
     ? roomOptions.value.value.rooms
     : []
-  const optionsFailure = dongOptions.status === 'loaded'
-    ? unitOptionsFailureMessage(dongOptions.value)
-    : null
   const optionsNoData = dongOptions.status === 'loaded'
     ? unitOptionsNoDataMessage(dongOptions.value, 'dongs')
     : null
   const roomFailure = roomOptions?.status === 'loaded'
     ? unitOptionsFailureMessage(roomOptions.value)
     : null
+  const manualRoom = manualDong || roomOptions?.status === 'failed' ||
+    Boolean(roomFailure)
   const roomsNoData = roomOptions?.status === 'loaded'
     ? unitOptionsNoDataMessage(roomOptions.value, 'rooms')
     : null
@@ -111,101 +134,65 @@ export function UnitPicker({
     ? priceResult.value.value.items[CURRENT_PRICE_HISTORY_ITEM_INDEX] ?? null
     : null
 
-  const submit = async () => {
-    if (!selectedDong || !selectedRoom) return
-    const controller = new AbortController()
+  const requestPrice = (dong: string, room: string) => {
+    const query = { dong: dong.trim(), room: room.trim() }
+    if (!query.dong || !query.room) return
     setVisiblePriceCount(PRICE_HISTORY_PAGE_SIZE)
     setPriceResult({ status: 'loading' })
-    try {
-      const value = await lookupOfficialPriceByAddress({
-        key: `${complex.complexId}:${selectedDong}:${selectedRoom}`,
-        assetKind: 'apartment',
-        address: complex.legalAddress,
-        complexName: complex.name,
-        dong: selectedDong,
-        room: selectedRoom,
-      }, controller.signal)
-      setPriceResult({ status: 'loaded', value })
-    } catch (error) {
-      if (!isAbortError(error)) setPriceResult({ status: 'failed' })
-    }
+    setPriceQuery(query)
+  }
+
+  const resetPrice = () => {
+    setPriceQuery(null)
+    setPriceResult(null)
+    setVisiblePriceCount(PRICE_HISTORY_PAGE_SIZE)
+  }
+
+  const changeDong = (dong: string) => {
+    setSelectedDong(dong)
+    setSelectedRoom('')
+    resetPrice()
+    setRoomOptions(dong && !manualDong ? { status: 'loading' } : null)
+  }
+
+  const changeRoom = (room: string) => {
+    setSelectedRoom(room)
+    resetPrice()
+  }
+
+  const selectRoom = (room: string) => {
+    setSelectedRoom(room)
+    if (room) requestPrice(selectedDong, room)
+    else resetPrice()
   }
 
   return (
     <section className="complex-sidebar__section unit-picker">
       <h3>{SIDEBAR_MESSAGES.officialPriceTitle}</h3>
       <p className="unit-picker__guide">{SIDEBAR_MESSAGES.exactPriceGuide}</p>
-      {dongOptions.status === 'loading' && (
-        <p className="complex-sidebar__loading">{SIDEBAR_MESSAGES.unitLoading}</p>
-      )}
-      {(dongOptions.status === 'failed' || optionsFailure) && (
-        <p className="complex-sidebar__error" role="alert">
-          {optionsFailure ?? SIDEBAR_MESSAGES.unitFailed}
-        </p>
-      )}
-      {optionsNoData && (
-        <p className="complex-sidebar__empty">{optionsNoData}</p>
-      )}
-      {dongs.length > 0 && (
-        <div className="unit-picker__fields">
-          <label>
-            <span>{SIDEBAR_MESSAGES.dongLabel}</span>
-            <select
-              value={selectedDong}
-              onChange={(event) => {
-                const dong = event.target.value
-                setSelectedDong(dong)
-                setSelectedRoom('')
-                setPriceResult(null)
-                setVisiblePriceCount(PRICE_HISTORY_PAGE_SIZE)
-                setRoomOptions(dong ? { status: 'loading' } : null)
-              }}
-            >
-              <option value="">{SIDEBAR_MESSAGES.selectDong}</option>
-              {dongs.map((option) => (
-                <option key={option.code} value={option.name}>
-                  {optionLabel(option.name, SIDEBAR_MESSAGES.dongSuffix)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>{SIDEBAR_MESSAGES.roomLabel}</span>
-            <select
-              value={selectedRoom}
-              disabled={!selectedDong || roomOptions?.status === 'loading'}
-              onChange={(event) => {
-                setSelectedRoom(event.target.value)
-                setPriceResult(null)
-                setVisiblePriceCount(PRICE_HISTORY_PAGE_SIZE)
-              }}
-            >
-              <option value="">{SIDEBAR_MESSAGES.selectRoom}</option>
-              {rooms.map((option) => (
-                <option key={option.code} value={option.name}>
-                  {optionLabel(option.name, SIDEBAR_MESSAGES.roomSuffix)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-      {(roomOptions?.status === 'failed' || roomFailure) && (
-        <p className="complex-sidebar__error" role="alert">
-          {roomFailure ?? SIDEBAR_MESSAGES.unitFailed}
-        </p>
-      )}
-      {roomsNoData && (
-        <p className="complex-sidebar__empty">{roomsNoData}</p>
-      )}
-      <button
-        className="unit-picker__lookup"
-        type="button"
-        disabled={!selectedDong || !selectedRoom || priceResult?.status === 'loading'}
-        onClick={submit}
-      >
-        {SIDEBAR_MESSAGES.priceLookup}
-      </button>
+      <UnitSelectionFields
+        dongs={dongs}
+        rooms={rooms}
+        selectedDong={selectedDong}
+        selectedRoom={selectedRoom}
+        dongLoading={dongOptions.status === 'loading'}
+        roomLoading={roomOptions?.status === 'loading'}
+        dongError={optionsFailure ?? (
+          dongOptions.status === 'failed' ? SIDEBAR_MESSAGES.dongFailed : null
+        )}
+        roomError={roomFailure ?? (
+          roomOptions?.status === 'failed' ? SIDEBAR_MESSAGES.roomFailed : null
+        )}
+        dongNoData={optionsNoData}
+        roomNoData={roomsNoData}
+        manualDong={manualDong}
+        manualRoom={manualRoom}
+        lookupLoading={priceResult?.status === 'loading'}
+        onDongChange={changeDong}
+        onRoomChange={changeRoom}
+        onRoomSelect={selectRoom}
+        onLookup={() => requestPrice(selectedDong, selectedRoom)}
+      />
 
       {priceResult?.status === 'loading' && (
         <p className="complex-sidebar__loading">{SIDEBAR_MESSAGES.priceLoading}</p>
@@ -262,6 +249,7 @@ export function UnitPicker({
         onClick={() => onAddToPortfolio({
           assetKind: 'apartment',
           complexId: complex.complexId,
+          legalDongCode: complex.legalDongCode,
           complexName: complex.name,
           address: complex.roadAddress ?? complex.legalAddress,
           dong: selectedDong || null,

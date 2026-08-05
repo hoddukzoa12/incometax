@@ -15,6 +15,16 @@ import { yearlyTradeAverages } from './trade-chart-data'
 
 const WON_PER_EOK = 100_000_000
 const CHART_HEIGHT_PX = 180
+const CHART_Y_AXIS_WIDTH_PX = 48
+const CHART_GRID_DASH_PATTERN = '3 3'
+const CHART_ACCENT_COLOR = 'var(--color-accent)'
+const CHART_RADIUS_TOKEN = '--radius-sm'
+const CHART_SPACING_TOKEN = '--space-1'
+
+const readPixelToken = (token: string): number =>
+  Number.parseFloat(
+    window.getComputedStyle(document.documentElement).getPropertyValue(token),
+  )
 
 export function YearlyTradeChart({
   trades,
@@ -25,6 +35,8 @@ export function YearlyTradeChart({
 }) {
   const data = yearlyTradeAverages(trades)
   if (!data.length) return null
+  const chartBarRadius = readPixelToken(CHART_RADIUS_TOKEN)
+  const chartMargin = readPixelToken(CHART_SPACING_TOKEN)
 
   return (
     <section className="yearly-trade-chart">
@@ -33,11 +45,18 @@ export function YearlyTradeChart({
         <small>{areaLabel}</small>
       </h3>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
-        <BarChart data={data} accessibilityLayer margin={{ left: 4, right: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+        <BarChart
+          data={data}
+          accessibilityLayer
+          margin={{ left: chartMargin, right: chartMargin }}
+        >
+          <CartesianGrid
+            strokeDasharray={CHART_GRID_DASH_PATTERN}
+            vertical={false}
+          />
           <XAxis dataKey="year" tickLine={false} axisLine={false} />
           <YAxis
-            width={48}
+            width={CHART_Y_AXIS_WIDTH_PX}
             tickLine={false}
             axisLine={false}
             tickFormatter={(value: number) =>
@@ -54,8 +73,8 @@ export function YearlyTradeChart({
           <Bar
             dataKey="averageAmount"
             name={SIDEBAR_MESSAGES.averageTradePrice}
-            fill="#315bea"
-            radius={[7, 7, 0, 0]}
+            fill={CHART_ACCENT_COLOR}
+            radius={[chartBarRadius, chartBarRadius, 0, 0]}
           />
         </BarChart>
       </ResponsiveContainer>

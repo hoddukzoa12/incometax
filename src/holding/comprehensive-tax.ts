@@ -1,6 +1,7 @@
 import type {
   ComprehensiveTaxResult,
   PortfolioItem,
+  PriorYearHoldingTax,
   PropertyTaxResult,
 } from '../../shared/holding-tax'
 import type {
@@ -14,6 +15,8 @@ import {
   findApplicableTaxBracket,
   roundTaxAmount,
 } from '../rules'
+import { calculateComprehensiveTaxBurdenCap } from './comprehensive-tax-burden-cap'
+import { calculateComprehensiveTaxCredit } from './comprehensive-tax-credit'
 
 const ZERO_AMOUNT = 0
 const ZERO_RATE = 0
@@ -99,6 +102,17 @@ const createNotTaxableResult = (
   propertyTaxFairMarketValueRatio,
   propertyTaxCredit: ZERO_AMOUNT,
   netTax: ZERO_AMOUNT,
+  taxCredit: {
+    status: 'notApplicable',
+    reason: 'noComprehensiveTax',
+    amount: ZERO_AMOUNT,
+  },
+  taxBurdenCap: {
+    status: 'notApplicable',
+    reason: 'noComprehensiveTax',
+    excessAmount: ZERO_AMOUNT,
+  },
+  payableTax: ZERO_AMOUNT,
   ruralSpecialTax: ZERO_AMOUNT,
   totalTax: ZERO_AMOUNT,
 })
@@ -109,6 +123,8 @@ export const calculateComprehensiveTax = (
   propertyTaxHouseholdKind: HouseholdKind,
   householdHomeCount: number,
   propertyTaxes: readonly PropertyTaxResult[],
+  ownerAge: number | undefined,
+  priorYearTax: PriorYearHoldingTax | undefined,
   rules: TaxRules,
 ): ComprehensiveTaxResult => {
   const homeCount = householdHomeCount
@@ -174,9 +190,45 @@ export const calculateComprehensiveTax = (
     baseTax - propertyTaxCredit,
   )
   const netTax = roundTaxAmount(unroundedNetTax)
-  const ruralSpecialTax = roundTaxAmount(
-    unroundedNetTax * rules.comprehensiveTax.ruralSpecialTaxRate,
+  const taxCredit = calculateComprehensiveTaxCredit(
+    householdKind,
+    ownerAge,
+    items[0],
+    netTax,
+    rules.comprehensiveTax.taxCredit,
   )
+  const propertyBaseTaxTotal = propertyTaxes.reduce(
+    (total, propertyTax) => total + propertyTax.baseTax,
+    ZERO_AMOUNT,
+  )
+  const taxBurdenCap = calculateComprehensiveTaxBurdenCap(
+    propertyBaseTaxTotal,
+    netTax,
+    priorYearTax,
+    rules.comprehensiveTax.taxBurdenCap,
+  )
+  const unroundedPayableTax =
+    taxCredit.amount === null || taxBurdenCap.excessAmount === null
+      ? null
+      : Math.max(
+          ZERO_AMOUNT,
+          unroundedNetTax - taxCredit.amount - taxBurdenCap.excessAmount,
+        )
+  const payableTax =
+    unroundedPayableTax === null
+      ? null
+      : roundTaxAmount(unroundedPayableTax)
+  const ruralSpecialTax =
+    unroundedPayableTax === null
+      ? null
+      : roundTaxAmount(
+          unroundedPayableTax *
+            rules.comprehensiveTax.ruralSpecialTaxRate,
+        )
+  const totalTax =
+    payableTax === null || ruralSpecialTax === null
+      ? null
+      : payableTax + ruralSpecialTax
 
   return {
     status: 'taxable',
@@ -195,7 +247,10 @@ export const calculateComprehensiveTax = (
     propertyTaxFairMarketValueRatio,
     propertyTaxCredit: roundTaxAmount(propertyTaxCredit),
     netTax,
+    taxCredit,
+    taxBurdenCap,
+    payableTax,
     ruralSpecialTax,
-    totalTax: netTax + ruralSpecialTax,
+    totalTax,
   }
 }
