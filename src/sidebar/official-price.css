@@ -4,6 +4,21 @@
   gap: 0.65rem;
 }
 
+.unit-picker__guide,
+.unit-picker__exact-status {
+  margin: 0 0 0.75rem;
+  color: #5f697c;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.unit-picker__exact-status {
+  margin-top: 0.9rem;
+  margin-bottom: 0;
+  color: #315bea;
+  font-weight: 700;
+}
+
 .unit-picker label {
   display: grid;
   gap: 0.3rem;
@@ -37,6 +52,23 @@
 .unit-picker__lookup:disabled {
   background: #aeb7c9;
   cursor: not-allowed;
+}
+
+.unit-picker__add-guide {
+  margin: 1rem 0 0.5rem;
+  color: #737d90;
+  font-size: 0.75rem;
+}
+
+.unit-picker__add {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #315bea;
+  border-radius: 0.55rem;
+  background: #fff;
+  color: #315bea;
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .official-price-history {

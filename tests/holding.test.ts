@@ -812,6 +812,36 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
     expect(result.comprehensiveTax.fairMarketValueRatio).toBeCloseTo(0.8)
   })
 
+  it('accepts a household home count greater than the taxed item count', () => {
+    expect(() =>
+      calculateHoldingTax({
+        year: 2026,
+        householdHomeCount: 2,
+        items: [createItem()],
+      }),
+    ).not.toThrow()
+  })
+
+  it('rejects a household home count smaller than the taxed item count', () => {
+    expect(() =>
+      calculateHoldingTax({
+        year: 2026,
+        householdHomeCount: 1,
+        items: [createItem(), createItem()],
+      }),
+    ).toThrow(RangeError)
+  })
+
+  it('rejects a zero household home count', () => {
+    expect(() =>
+      calculateHoldingTax({
+        year: 2026,
+        householdHomeCount: 0,
+        items: [createItem()],
+      }),
+    ).toThrow(RangeError)
+  })
+
   it('rejects unsupported assets and invalid portfolio facts', () => {
     expect(() =>
       calculateHoldingTax({ year: 2026, householdHomeCount: 0, items: [] }),
@@ -826,13 +856,6 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
       calculate(2026, [
         createItem({ assetKind: 'commercial' as PortfolioItem['assetKind'] }),
       ]),
-    ).toThrow(RangeError)
-    expect(() =>
-      calculateHoldingTax({
-        year: 2026,
-        householdHomeCount: 2,
-        items: [createItem()],
-      }),
     ).toThrow(RangeError)
     expect(() =>
       calculate(2026, [

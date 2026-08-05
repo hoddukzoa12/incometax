@@ -217,11 +217,25 @@ const deduction = DEDUCTION[`${houseKind}:${residency}`]
 지금 토지·건축물 세제를 구현하지 말 것. 다만 **주택 전용 가정을 이름과 구조에 박지 않는다.**
 
 ```ts
-type AssetKind = 'apartment' | 'detachedHouse'   // 현재 지원
-//             | 'commercial' | 'land'            // P8
+type AssetKind = 'apartment' | 'detachedHouse'   // 현재 지원 (주택)
+//             | 'commercial'                     // 상가·오피스텔 (건축물) — P8
+//             | 'land'                           // 토지 — P8
 
 interface PortfolioItem { assetKind: AssetKind; /* ... */ }
 ```
+
+**토지는 `land` 하나로 부족하다.** 재산세·종부세 세율을 가르는 건 자산 유형이 아니라
+과세 구분이다. P8에서 별도 축으로 들어온다 — **지금 만들지 않는다.**
+
+```ts
+// P8. 지금 구현하지 말 것 — 축이 둘이라는 사실만 기록한다
+type LandTaxCategory = 'aggregate' | 'separateAggregate' | 'separate'
+//                     종합합산      별도합산              분리과세
+```
+
+**농지·자경농지를 `AssetKind`에 넣지 않는다.** 재산세에서는 분리과세 토지의 세율
+구분(0.07%)이고, 자경 여부는 양도세 감면 요건이다. 성격이 다른 두 축을 하나의
+열거형에 섞는 것이 곧 R1 위반이다.
 
 | 하라 | 하지 마라 |
 |---|---|
@@ -239,6 +253,19 @@ interface PortfolioItem { assetKind: AssetKind; /* ... */ }
 - 좌표는 **단지 식별용 표시 데이터**일 뿐, 세액 계산에 절대 관여하지 않는다.
   계산 경로는 주소·법정동코드·PNU만 쓴다. 좌표를 계산 입력으로 넘기면 반려
 - 단지 좌표는 D1에 저장된 값을 읽는다. 런타임 지오코딩 금지 (R2 참조)
+
+### 지도 응답 페이로드
+
+**지도 bbox 응답에는 화면을 그리는 데 필요한 필드만 담는다.** 한 화면에 수백 건이
+실리므로, 안 쓰는 필드 하나가 곧바로 수백 배로 불어난다.
+
+- 라벨 응답 = 식별자 + 표시 이름 + 좌표. 그 이상은 반려
+- 상세는 단지를 열 때 별도 엔드포인트로 받는다
+- 필드를 추가하려면 **그 필드를 지금 읽는 코드**를 함께 제시한다. "나중에 쓸 것 같아서"는 반려
+
+> 호갱노노는 마커 하나에 단지 레코드 전체(44필드 + 51필드 `area` 객체)를 실어
+> 한 화면 501.8 KB를 보낸다 — 단지당 3,425 B. 라벨에 필요한 건 이름과 좌표뿐인데도
+> 그렇다. 측정치는 [docs/hogangnono-analysis.md §3.2](./docs/hogangnono-analysis.md).
 
 ### 세법 룰 데이터
 

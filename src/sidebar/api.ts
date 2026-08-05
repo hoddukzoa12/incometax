@@ -1,4 +1,5 @@
 import type { ComplexStagingRecord } from '../../shared/complex'
+import type { PnuBatchRequest, PnuBatchResponse } from '../../shared/pnu'
 import type { ComplexTradesResponse, RecentTrade } from '../../shared/trade'
 import type {
   ApartmentUnitOption,
@@ -6,8 +7,10 @@ import type {
   OfficialPriceBatchResponse,
   OfficialPriceFailureKind,
   OfficialPriceLookupResult,
+  OfficialPriceNoDataReason,
   OfficialPriceRequest,
 } from '../../shared/official-price'
+import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 import { isComplexRecord } from '../search/api'
 
 const complexDetailEndpoint = (complexId: string): string =>
@@ -26,6 +29,9 @@ const complexUnitOptionsEndpoint = (complexId: string, dong?: string): string =>
 }
 
 const OFFICIAL_PRICE_ENDPOINT = '/api/realty-prices'
+const PNU_ENDPOINT = '/api/pnu'
+const CLIENT_FETCHER: typeof fetch = (input, init) =>
+  globalThis.fetch(input, init)
 
 const OFFICIAL_PRICE_FAILURE_KINDS = new Set<OfficialPriceFailureKind>([
   'invalidRequest',
@@ -34,8 +40,20 @@ const OFFICIAL_PRICE_FAILURE_KINDS = new Set<OfficialPriceFailureKind>([
   'invalidSourceResponse',
 ])
 
+const OFFICIAL_PRICE_NO_DATA_REASONS = new Set<OfficialPriceNoDataReason>([
+  'addressNotFound',
+  'complexNotFound',
+  'dongNotFound',
+  'roomNotFound',
+  'priceNotFound',
+])
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
+
+export class InvalidSidebarApiResponseError extends Error {
+  override readonly name = 'InvalidSidebarApiResponseError'
+}
 
 const isRecentTrade = (value: unknown): value is RecentTrade => {
   if (!isRecord(value)) return false
@@ -86,10 +104,18 @@ const isUnitOptionsResult = (
 
 const isOfficialPriceResult = (value: unknown): value is OfficialPriceLookupResult => {
   if (!isRecord(value) || typeof value.key !== 'string') return false
-  if (value.status === 'noData') return typeof value.reason === 'string'
+  if (value.status === 'noData') {
+    return typeof value.reason === 'string' &&
+      OFFICIAL_PRICE_NO_DATA_REASONS.has(
+        value.reason as OfficialPriceNoDataReason,
+      )
+  }
   if (value.status === 'failed') {
     return isRecord(value.failure) &&
       typeof value.failure.kind === 'string' &&
+      OFFICIAL_PRICE_FAILURE_KINDS.has(
+        value.failure.kind as OfficialPriceFailureKind,
+      ) &&
       typeof value.failure.message === 'string' &&
       typeof value.failure.retryable === 'boolean'
   }
@@ -105,8 +131,27 @@ const isOfficialPriceResult = (value: unknown): value is OfficialPriceLookupResu
       (item.exclusiveArea === null || typeof item.exclusiveArea === 'number'))
 }
 
+const isPnuBatchResponse = (value: unknown): value is PnuBatchResponse =>
+  isRecord(value) &&
+  Array.isArray(value.results) &&
+  value.results.every((item) =>
+    isRecord(item) &&
+    typeof item.address === 'string' &&
+    (item.pnu === null || typeof item.pnu === 'string'))
+
+const responseJson = async (
+  response: Response,
+  invalidResponseMessage: string,
+): Promise<unknown> => {
+  try {
+    return await response.json()
+  } catch {
+    throw new InvalidSidebarApiResponseError(invalidResponseMessage)
+  }
+}
+
 const getJson = async (url: string, signal: AbortSignal): Promise<unknown> => {
-  const response = await fetch(url, { signal })
+  const response = await CLIENT_FETCHER(url, { signal })
   if (!response.ok) throw new Error(`Request failed: ${response.status}`)
   return response.json()
 }
@@ -146,21 +191,53 @@ export async function fetchApartmentUnitOptions(
 export async function fetchOfficialPrice(
   request: OfficialPriceRequest,
   signal: AbortSignal,
+  fetcher: typeof fetch = CLIENT_FETCHER,
 ): Promise<OfficialPriceLookupResult> {
-  const response = await fetch(OFFICIAL_PRICE_ENDPOINT, {
+  const response = await fetcher(OFFICIAL_PRICE_ENDPOINT, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ items: [request] }),
     signal,
   })
-  if (!response.ok) throw new Error(`Official price lookup failed: ${response.status}`)
-  const body: unknown = await response.json()
+  if (!response.ok) throw new Error(SIDEBAR_MESSAGES.priceRequestFailed)
+  const body = await responseJson(response, SIDEBAR_MESSAGES.priceResponseInvalid)
   if (!isRecord(body) || !Array.isArray(body.results) || body.results.length !== 1) {
-    throw new TypeError('Official price response is invalid')
+    throw new InvalidSidebarApiResponseError(
+      SIDEBAR_MESSAGES.priceResponseInvalid,
+    )
   }
   const result = (body as unknown as OfficialPriceBatchResponse).results[0]
   if (!isOfficialPriceResult(result) || result.key !== request.key) {
-    throw new TypeError('Official price result is invalid')
+    throw new InvalidSidebarApiResponseError(
+      SIDEBAR_MESSAGES.priceResponseInvalid,
+    )
   }
   return result
+}
+
+export async function fetchPnu(
+  address: string,
+  signal: AbortSignal,
+  fetcher: typeof fetch = CLIENT_FETCHER,
+): Promise<string | null> {
+  const request: PnuBatchRequest = { addresses: [address] }
+  const response = await fetcher(PNU_ENDPOINT, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(request),
+    signal,
+  })
+  if (!response.ok) throw new Error(SIDEBAR_MESSAGES.pnuRequestFailed)
+
+  const body = await responseJson(response, SIDEBAR_MESSAGES.pnuResponseInvalid)
+  if (
+    !isPnuBatchResponse(body) ||
+    body.results.length !== 1 ||
+    body.results[0].address !== address
+  ) {
+    throw new InvalidSidebarApiResponseError(
+      SIDEBAR_MESSAGES.pnuResponseInvalid,
+    )
+  }
+  return body.results[0].pnu
 }

@@ -10,7 +10,7 @@ const INVALID_OFFICIAL_PRICE_MESSAGE =
 const INVALID_OWNERSHIP_SHARE_MESSAGE =
   'Ownership share must be greater than zero and at most one'
 const INVALID_HOUSEHOLD_HOME_COUNT_MESSAGE =
-  'Household home count must equal the number of portfolio properties'
+  'Household home count must be a positive integer at least as large as the number of taxed portfolio items'
 const INVALID_SOLE_HOUSEHOLD_OWNER_MESSAGE =
   'Sole household owner status must be a boolean'
 const UNSUPPORTED_ASSET_KIND_MESSAGE = 'Unsupported asset kind for holding tax'
@@ -27,7 +27,8 @@ export const assertValidHoldingTaxInput = (
 
   if (
     !Number.isInteger(input.householdHomeCount) ||
-    input.householdHomeCount !== input.items.length
+    input.householdHomeCount <= ZERO_AMOUNT ||
+    input.householdHomeCount < input.items.length
   ) {
     throw new RangeError(INVALID_HOUSEHOLD_HOME_COUNT_MESSAGE)
   }

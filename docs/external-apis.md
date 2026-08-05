@@ -117,22 +117,79 @@ user-agent:       (브라우저 형태)
 
 > `400`이 재시도 대상인 점에 주의. 이 서버는 과부하 시 400을 돌려준다.
 
-### 조회 흐름 — 4개 논리 단계를 순차로 타야 한다
+### P4-2b 조사 결론 — 동·호 열거 가능 (2026-08-05)
+
+`worker/realty-price/`의 실제 요청 조립과 응답 정규화, 전날 확인된 은마아파트 라이브
+가격 체인을 기준으로 계약을 추적했다. 사이트 네트워크 캡처도 시작했으나 CAPTCHA 자산이
+관측되어 아래 위험 기록 시점에 중단했고, 대체 원천은 공공데이터포털의 현재 공식 명세로
+확인했다. 적재·배치 스크립트는 실행하지 않았다.
+
+별도 `dongs`·`rooms` 엔드포인트가 있는 것은 아니다. 사이트가 단지·동·호 선택에
+**같은 `GET /notice/search/searchApt.search`를 재사용**하고 `gbnApt`와 상위 선택 코드를
+바꾸는 구조다. 이 목록은 공시가격 원천과 같은 데이터이므로 실거래가에서 추정한 목록보다
+우선한다. 동 목록까지 새로 조회하면 3회, 특정 동의 호 목록까지면 4회, 가격까지면 5회다.
+고시일자 요청은 프로세스 안에서 메모이즈할 수 있다.
+
+공동 파라미터 중 값이 있는 항목은 다음과 같다. `reg`·`eub`는 PNU의 법정동코드 앞·뒤
+5자리이고, `bun1`·`bun2`는 PNU 본번·부번의 0 패딩을 제거한 값이다.
 
 ```
-1. /notice/town/searchNoticeDate.search      { year }          → 고시일자 목록
-2a. /notice/search/searchApt.search          + 단지 파라미터    → 단지 목록
-2b. /notice/search/searchApt.search          + apt_code,
-                                               gbnApt='DONG'    → 동 목록
-3. /notice/search/searchApt.search           + dong_code       → 호 목록
-4. /notice/search/townPriceListPastYearMap.search
-       + gbnApt='HO', apt_code, dong_code, ho_code             → 가격
+page_no=1, gbn=1, year=<고시연도>, notice_date_year=<공시일 YYYYMMDD>,
+reg=<시군구코드 5>, eub=<읍면동코드 5>, apt_name=<단지명>,
+bun1=<본번>, bun2=<부번>, tabGbn=Text, print_yn=0, past_yn=1,
+searchGbnBunji=1, init_gbn=N
 ```
 
-2단계가 단지 선택과 동 선택의 두 HTTP 요청으로 나뉘므로, 실제 호출 수는 총 5회다.
+사이트 폼과 동일하게 다음 키도 빈 문자열로 보낸다.
 
-**동/호를 특정하지 않으면 가격이 나오지 않는다.** 단지 대표 공시가격이라는 개념이 없다
-(층·향·면적마다 다름). 동/호 목록은 2b·3단계가 주므로 드롭다운으로 제공하면 된다.
+```
+reg_name, sreg, seub, old_reg, old_eub, notice_date, road_code,
+initialword, build_bun1, build_bun2, gbnApt, apt_code, dong_code,
+ho_code, full_addr_name, dong_name, ho_name, notice_amt, ktown_ho_seq,
+searchGbnRoad, searchGbnBunjiYear, capcha, capcha_chk_yn, recaptcha_token
+```
+
+| 단계 | 엔드포인트 | 공동 파라미터에 덮어쓰는 값 | 결과 |
+|---|---|---|---|
+| 고시일자 | `/notice/town/searchNoticeDate.search` | `year=<현재 연도>` | `code`, `name` |
+| 단지 | `/notice/search/searchApt.search` | 없음 (`gbnApt=''`) | 단지 `code`, `name`, `notice_date` |
+| 동 | `/notice/search/searchApt.search` | `notice_date`, `gbnApt=DONG`, `apt_code` | 각 동의 `code`, `name` |
+| 호 | `/notice/search/searchApt.search` | `notice_date`, `gbnApt=HO`, `apt_code`, `dong_code`, `dong_name` | 각 호의 `code`, `name` |
+| 가격 | `/notice/search/townPriceListPastYearMap.search` | 위 호 단계 값 + `ho_code`, `ho_name` | 선택 호의 연도별 가격 |
+
+은마아파트 검증값은 `apt_code=1381`, 1동의 `dong_code=1`, 101호의
+`ho_code=10`이다. **동/호를 특정하지 않으면 가격이 나오지 않으며 단지 대표
+공시가격이라는 개념도 없다.** 따라서 UI는 동 목록을 받고, 선택된 동 코드로 호 목록을
+받는 종속 드롭다운으로 구성한다.
+
+### 다른 원천의 가능 범위와 부정 결과
+
+| 원천 | 정확한 계약 | 가능한 것 | 불가능하거나 부족한 것 |
+|---|---|---|---|
+| K-apt 기본정보 V4 (§5) | `GET https://apis.data.go.kr/1613000/AptBasisInfoServiceV4/getAphusBassInfoV4` + `serviceKey`, `kaptCode` | `kaptDongCnt`·`kaptdaCnt`로 동/세대 **수** 확인 | 동명·호명 목록 없음. K-apt에는 별도 동/호 목록 operation이 없다 |
+| 한국부동산원 단지 식별정보 | `GET https://api.odcloud.kr/api/AptIdInfoSvc/v1/getDongInfo` + `serviceKey`, `page`, `perPage`, `returnType=JSON`, `cond[COMPLEX_PK::EQ]` | `DONG_NM1`(공시가격), `DONG_NM2`(건축물대장), `DONG_NM3`(도로명주소), `GRND_FLR_CNT`로 동 열거 | 이 서비스의 operation은 `getAptInfo`·`getDongInfo`·`getHistInfo`뿐이다. `getHoInfo`/`getUnitInfo`는 없고 K-apt 코드와 `COMPLEX_PK`도 동일 키가 아니다 |
+| 건축HUB 건축물대장 전유부 | `GET https://apis.data.go.kr/1613000/BldRgstHubService/getBrExposInfo` + `serviceKey`, `sigunguCd`, `bjdongCd`, `platGbCd`, `bun`, `ji`, `pageNo`, `numOfRows`, `_type=json` | 필지의 전유부 행에 `dongNm`·`hoNm`이 있어 공식 원천으로 동/호 열거 가능 | 공시가격 단지와 건축물대장 명칭·기준시점이 다르고 여러 필지 단지는 추가 매핑이 필요하다. 별도 API 활용신청과 페이지 순회도 필요하므로 이번 조사에서는 구현하지 않았다 |
+| 아파트 실거래가 (§4) | 기존 월별 거래 API. 동 필드는 소유권 이전등기 완료 건에만 조건부 공개 | 거래된 적 있는 동의 보조 힌트 | 호 필드와 전체 재고 목록이 없고, 미거래 동은 영원히 빠진다. 현재 저장소의 `trade` 스키마와 `RawTrade`는 동 필드도 저장하지 않는다 |
+
+건축HUB의 PNU 변환은 `sigunguCd=PNU[0..5)`, `bjdongCd=PNU[5..10)`,
+`bun=PNU[11..15)`, `ji=PNU[15..19)`이다. `platGbCd`는 일반 대지 `0`, 산 `1`이라
+PNU 필지구분 `1`·`2`를 각각 `0`·`1`로 바꿔야 한다. 이 계약은
+[공공데이터포털 건축HUB 명세](https://www.data.go.kr/data/15134735/openapi.do)에서
+확인했다. 한국부동산원 동정보 계약은
+[공동주택 단지 식별정보 명세](https://www.data.go.kr/data/15106817/openapi.do) 기준이다.
+
+### 권고와 실패 의미
+
+1순위는 realtyprice.kr의 `searchApt.search` 목록을 그대로 쓰고, 단지별 동 목록과
+동별 호 목록도 성공 응답만 캐시하는 것이다. 목록 조회가 성공했는데 선택 이름이 없을
+때만 `complexNotFound`·`dongNotFound`·`roomNotFound`라는 **자료 없음**으로 확정한다.
+타임아웃·HTTP 오류·CAPTCHA·응답 스키마 변경은 `failed`로 분리하고 존재하지 않는 호로
+오인하지 않는다. 목록에 호는 있지만 가격 행만 비었으면 `priceNotFound`다.
+
+건축HUB 전유부는 realtyprice.kr 장애 시 존재 여부를 재확인할 수 있는 공식 fallback
+후보다. 다만 실제 단지 표본으로 명칭·다필지 매핑률을 검증하기 전에는 자동 fallback으로
+붙이지 않는다. 실거래가로 호 목록을 추정하거나, 가격 조회의 빈 응답만 보고 "존재하지
+않는 호"라고 단정하는 방식은 쓰지 않는다.
 
 ### 연도별 가격 — `past_yn`
 
@@ -165,6 +222,14 @@ capcha, capcha_chk_yn, recaptcha_token
 
 현재는 빈 값으로 통과하지만, **원천이 언제든 CAPTCHA를 켤 수 있다는 뜻이다.**
 켜지면 이 경로는 즉시 막힌다.
+
+**브라우저 관측 (2026-08-05).** `nfSiteLink.htm`에서 사이트의 공동주택 열람 링크를
+따르자 `/notice/town/searchOpinion.htm`이 열렸고, 페이지 로드 중
+`GET /notice/popup/captchaImg.search`가 HTTP 200으로 호출됐다. 접근성 스냅샷에는 CAPTCHA
+입력 UI가 노출되지 않았고 `searchApt.search`의 가격 조회 응답이 CAPTCHA를 요구한 것까지
+확인한 것은 아니다. 그러나 도전 이미지 요청을 발견한 즉시 지침대로 캡처를 중단했으며,
+해결·우회나 추가 realtyprice.kr 라이브 호출은 하지 않았다. 즉 **2026-08-04의 정상 가격
+조회는 유효하지만, CAPTCHA 자산은 더 이상 파라미터에만 존재하는 이론적 위험이 아니다.**
 
 설계 요구사항:
 - 공시가격 조회 실패가 **서비스 전체 실패가 되면 안 된다**

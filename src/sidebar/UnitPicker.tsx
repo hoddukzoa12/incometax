@@ -3,14 +3,20 @@ import { useEffect, useState } from 'react'
 import type { ComplexStagingRecord } from '../../shared/complex'
 import type {
   ApartmentUnitOptionsResult,
-  OfficialPriceLookupResult,
+  OfficialPriceResolutionResult,
 } from '../../shared/official-price'
+import type { PortfolioItemSeed } from '../../shared/portfolio'
+import { PORTFOLIO_MESSAGES } from '../messages/portfolio'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
-import {
-  fetchApartmentUnitOptions,
-  fetchOfficialPrice,
-} from './api'
+import { fetchApartmentUnitOptions } from './api'
 import { formatArea, formatWon } from './format'
+import {
+  officialPriceFailureMessage,
+  officialPriceNoDataMessage,
+  unitOptionsFailureMessage,
+  unitOptionsNoDataMessage,
+} from './official-price-feedback'
+import { lookupOfficialPriceByAddress } from './official-price-lookup'
 import './official-price.css'
 
 type RemoteResult<T> =
@@ -19,6 +25,7 @@ type RemoteResult<T> =
   | { readonly status: 'failed' }
 
 const PRICE_HISTORY_PAGE_SIZE = 6
+const CURRENT_PRICE_HISTORY_ITEM_INDEX = 0
 
 const optionLabel = (name: string, suffix: string): string =>
   name.endsWith(suffix) ? name : `${name}${suffix}`
@@ -26,19 +33,12 @@ const optionLabel = (name: string, suffix: string): string =>
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
 
-const sourceFailureMessage = (
-  result: ApartmentUnitOptionsResult,
-): string | null => {
-  if (result.status !== 'failed') return null
-  return result.failure.kind === 'captchaRequired'
-    ? SIDEBAR_MESSAGES.captchaRequired
-    : result.failure.message
-}
-
 export function UnitPicker({
   complex,
+  onAddToPortfolio,
 }: {
   readonly complex: ComplexStagingRecord
+  readonly onAddToPortfolio: (seed: PortfolioItemSeed) => void
 }) {
   const [dongOptions, setDongOptions] = useState<
     RemoteResult<ApartmentUnitOptionsResult>
@@ -49,7 +49,7 @@ export function UnitPicker({
   >(null)
   const [selectedRoom, setSelectedRoom] = useState('')
   const [priceResult, setPriceResult] = useState<
-    RemoteResult<OfficialPriceLookupResult> | null
+    RemoteResult<OfficialPriceResolutionResult> | null
   >(null)
   const [visiblePriceCount, setVisiblePriceCount] = useState(
     PRICE_HISTORY_PAGE_SIZE,
@@ -88,22 +88,28 @@ export function UnitPicker({
     roomOptions.value.status === 'found'
     ? roomOptions.value.value.rooms
     : []
-  const pnu = dongOptions.status === 'loaded' &&
-    dongOptions.value.status === 'found'
-    ? dongOptions.value.value.pnu
-    : undefined
   const optionsFailure = dongOptions.status === 'loaded'
-    ? sourceFailureMessage(dongOptions.value)
+    ? unitOptionsFailureMessage(dongOptions.value)
     : null
-  const optionsHaveNoData = dongOptions.status === 'loaded' &&
-    (dongOptions.value.status === 'noData' ||
-      (dongOptions.value.status === 'found' && dongs.length === 0))
+  const optionsNoData = dongOptions.status === 'loaded'
+    ? unitOptionsNoDataMessage(dongOptions.value, 'dongs')
+    : null
   const roomFailure = roomOptions?.status === 'loaded'
-    ? sourceFailureMessage(roomOptions.value)
+    ? unitOptionsFailureMessage(roomOptions.value)
     : null
-  const roomsHaveNoData = roomOptions?.status === 'loaded' &&
-    (roomOptions.value.status === 'noData' ||
-      (roomOptions.value.status === 'found' && rooms.length === 0))
+  const roomsNoData = roomOptions?.status === 'loaded'
+    ? unitOptionsNoDataMessage(roomOptions.value, 'rooms')
+    : null
+  const priceFailure = priceResult?.status === 'loaded'
+    ? officialPriceFailureMessage(priceResult.value)
+    : null
+  const priceNoData = priceResult?.status === 'loaded'
+    ? officialPriceNoDataMessage(priceResult.value)
+    : null
+  const resolvedPrice = priceResult?.status === 'loaded' &&
+    priceResult.value.status === 'found'
+    ? priceResult.value.value.items[CURRENT_PRICE_HISTORY_ITEM_INDEX] ?? null
+    : null
 
   const submit = async () => {
     if (!selectedDong || !selectedRoom) return
@@ -111,24 +117,24 @@ export function UnitPicker({
     setVisiblePriceCount(PRICE_HISTORY_PAGE_SIZE)
     setPriceResult({ status: 'loading' })
     try {
-      const value = await fetchOfficialPrice({
+      const value = await lookupOfficialPriceByAddress({
         key: `${complex.complexId}:${selectedDong}:${selectedRoom}`,
         assetKind: 'apartment',
         address: complex.legalAddress,
         complexName: complex.name,
         dong: selectedDong,
         room: selectedRoom,
-        pnu,
       }, controller.signal)
       setPriceResult({ status: 'loaded', value })
-    } catch {
-      setPriceResult({ status: 'failed' })
+    } catch (error) {
+      if (!isAbortError(error)) setPriceResult({ status: 'failed' })
     }
   }
 
   return (
     <section className="complex-sidebar__section unit-picker">
       <h3>{SIDEBAR_MESSAGES.officialPriceTitle}</h3>
+      <p className="unit-picker__guide">{SIDEBAR_MESSAGES.exactPriceGuide}</p>
       {dongOptions.status === 'loading' && (
         <p className="complex-sidebar__loading">{SIDEBAR_MESSAGES.unitLoading}</p>
       )}
@@ -137,8 +143,8 @@ export function UnitPicker({
           {optionsFailure ?? SIDEBAR_MESSAGES.unitFailed}
         </p>
       )}
-      {optionsHaveNoData && (
-        <p className="complex-sidebar__empty">{SIDEBAR_MESSAGES.unitNoData}</p>
+      {optionsNoData && (
+        <p className="complex-sidebar__empty">{optionsNoData}</p>
       )}
       {dongs.length > 0 && (
         <div className="unit-picker__fields">
@@ -189,8 +195,8 @@ export function UnitPicker({
           {roomFailure ?? SIDEBAR_MESSAGES.unitFailed}
         </p>
       )}
-      {roomsHaveNoData && (
-        <p className="complex-sidebar__empty">{SIDEBAR_MESSAGES.unitNoData}</p>
+      {roomsNoData && (
+        <p className="complex-sidebar__empty">{roomsNoData}</p>
       )}
       <button
         className="unit-picker__lookup"
@@ -209,18 +215,19 @@ export function UnitPicker({
           {SIDEBAR_MESSAGES.priceFailed}
         </p>
       )}
-      {priceResult?.status === 'loaded' && priceResult.value.status === 'noData' && (
-        <p className="complex-sidebar__empty">{SIDEBAR_MESSAGES.priceNoData}</p>
+      {priceNoData && (
+        <p className="complex-sidebar__empty">{priceNoData}</p>
       )}
-      {priceResult?.status === 'loaded' && priceResult.value.status === 'failed' && (
+      {priceFailure && (
         <p className="complex-sidebar__error" role="alert">
-          {priceResult.value.failure.kind === 'captchaRequired'
-            ? SIDEBAR_MESSAGES.captchaRequired
-            : priceResult.value.failure.message}
+          {priceFailure}
         </p>
       )}
       {priceResult?.status === 'loaded' && priceResult.value.status === 'found' && (
         <>
+          <p className="unit-picker__exact-status" role="status">
+            {SIDEBAR_MESSAGES.exactPriceShowing}
+          </p>
           <ol className="official-price-history">
             {priceResult.value.value.items
               .slice(0, visiblePriceCount)
@@ -246,6 +253,25 @@ export function UnitPicker({
           )}
         </>
       )}
+      <p className="unit-picker__add-guide">
+        {PORTFOLIO_MESSAGES.addIncompleteGuide}
+      </p>
+      <button
+        className="unit-picker__add"
+        type="button"
+        onClick={() => onAddToPortfolio({
+          assetKind: 'apartment',
+          complexId: complex.complexId,
+          complexName: complex.name,
+          address: complex.roadAddress ?? complex.legalAddress,
+          dong: selectedDong || null,
+          ho: selectedRoom || null,
+          exclusiveArea: resolvedPrice?.exclusiveArea ?? null,
+          officialPrice: resolvedPrice?.price ?? null,
+        })}
+      >
+        {PORTFOLIO_MESSAGES.addFromSidebar}
+      </button>
     </section>
   )
 }

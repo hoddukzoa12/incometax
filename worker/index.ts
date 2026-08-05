@@ -2,6 +2,7 @@ import type {
   OfficialPriceBatchRequest,
   OfficialPriceRequest,
 } from '../shared/official-price'
+import type { PnuBatchRequest, PnuBatchResponse } from '../shared/pnu'
 import { handleComplexBbox } from './complex/bbox'
 import {
   handleComplexDetail,
@@ -103,7 +104,11 @@ async function handlePnuRequest(
   if (addresses.length !== body.addresses.length) {
     return json({ error: 'addresses에는 문자열만 허용됩니다.' }, BAD_REQUEST_STATUS)
   }
-  return json({ results: await addressesToPnu(addresses, env, context) })
+  const normalizedRequest: PnuBatchRequest = { addresses }
+  const response: PnuBatchResponse = {
+    results: await addressesToPnu(normalizedRequest.addresses, env, context),
+  }
+  return json(response)
 }
 
 async function handleOfficialPriceRequest(

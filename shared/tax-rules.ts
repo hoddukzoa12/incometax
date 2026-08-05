@@ -1,6 +1,9 @@
 export type HouseholdKind = 'oneHouse' | 'multiHouse'
-export type Residency = 'residing' | 'nonResiding'
-export type AreaKind = 'adjusted' | 'general'
+export const RESIDENCIES = ['residing', 'nonResiding'] as const
+export type Residency = (typeof RESIDENCIES)[number]
+
+export const AREA_KINDS = ['adjusted', 'general'] as const
+export type AreaKind = (typeof AREA_KINDS)[number]
 export type TaxYear = 2026 | 2027 | 2028 | 2029
 
 export interface Bracket {

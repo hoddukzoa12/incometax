@@ -4,12 +4,15 @@ import ComplexMap from './map/ComplexMap'
 import { APP_MESSAGES } from './messages/app'
 import { ComplexSearch } from './search'
 import { ComplexSidebar } from './sidebar'
+import { PortfolioPanel, usePortfolio } from './portfolio'
 import './app.css'
 
 export default function App() {
   const [selectedComplexId, setSelectedComplexId] = useState<string | null>(
     null,
   )
+  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false)
+  const portfolio = usePortfolio()
 
   return (
     <div className="app-shell">
@@ -23,6 +26,11 @@ export default function App() {
           <div className="app-shell__search">
             <ComplexSearch onSelectComplex={setSelectedComplexId} />
           </div>
+          <PortfolioPanel
+            controller={portfolio}
+            open={isPortfolioOpen}
+            onOpenChange={setIsPortfolioOpen}
+          />
         </div>
         <aside
           className="app-shell__sidebar"
@@ -31,6 +39,10 @@ export default function App() {
           <ComplexSidebar
             complexId={selectedComplexId}
             onClose={() => setSelectedComplexId(null)}
+            onAddToPortfolio={(seed) => {
+              portfolio.add(seed)
+              setIsPortfolioOpen(true)
+            }}
           />
         </aside>
       </main>

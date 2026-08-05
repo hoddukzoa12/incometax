@@ -78,6 +78,13 @@ export interface OfficialPriceBatchResponse {
   readonly results: readonly OfficialPriceLookupResult[]
 }
 
+export type OfficialPriceLookupStage = 'addressToPnu' | 'officialPrice'
+
+export type OfficialPriceResolutionResult =
+  OfficialPriceLookupResult & {
+    readonly lookupStage: OfficialPriceLookupStage
+  }
+
 export interface ApartmentUnitOption {
   readonly code: string
   readonly name: string

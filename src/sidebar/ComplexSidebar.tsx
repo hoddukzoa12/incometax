@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 
 import type { RecentTrade } from '../../shared/trade'
+import type { PortfolioItemSeed } from '../../shared/portfolio'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 import { ComplexBasics } from './ComplexBasics'
 import { TradeAreaSelect } from './TradeAreaSelect'
@@ -22,11 +23,13 @@ type SidebarTab = 'officialPrice' | 'trades'
 export interface ComplexSidebarProps {
   readonly complexId: string | null
   readonly onClose: () => void
+  readonly onAddToPortfolio: (seed: PortfolioItemSeed) => void
 }
 
 export function ComplexSidebar({
   complexId,
   onClose,
+  onAddToPortfolio,
 }: ComplexSidebarProps) {
   const data = useSidebarData(complexId)
   const tabsId = useId()
@@ -134,7 +137,11 @@ export function ComplexSidebar({
           hidden={activeTab !== 'officialPrice'}
         >
           {data.detail && (
-            <UnitPicker key={data.detail.complexId} complex={data.detail} />
+            <UnitPicker
+              key={data.detail.complexId}
+              complex={data.detail}
+              onAddToPortfolio={onAddToPortfolio}
+            />
           )}
         </section>
 
