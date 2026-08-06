@@ -256,6 +256,52 @@
   font-size: var(--font-size-sm);
 }
 
+.holding-conditions__growth-input {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+}
+
+.holding-conditions__growth-input > span:last-child {
+  display: grid;
+  grid-template-columns: auto minmax(5rem, 8rem) auto;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.holding-conditions__price-history {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+}
+
+.holding-conditions__price-history section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.holding-conditions__price-history ol {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+  font-variant-numeric: tabular-nums;
+}
+
+.holding-conditions__price-history-summary {
+  color: var(--color-neutral-900);
+  font-weight: var(--font-weight-semibold);
+}
+
+.holding-overlay .holding-conditions__price-history-toggle {
+  justify-self: start;
+}
+
 .holding-conditions__thresholds {
   display: flex;
   flex-wrap: wrap;
@@ -378,6 +424,16 @@
 
 .holding-tax-changes li span {
   color: var(--color-neutral-600);
+  font-variant-numeric: tabular-nums;
+}
+
+.holding-tax-changes li > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.holding-tax-changes li b {
+  color: var(--color-neutral-900);
   font-variant-numeric: tabular-nums;
 }
 

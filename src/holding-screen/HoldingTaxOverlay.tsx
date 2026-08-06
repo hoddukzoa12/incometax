@@ -9,6 +9,7 @@ import {
   type HoldingTaxComparison,
 } from './calculation'
 import {
+  hasExactOwnerAge,
   persistHoldingTaxConditionValues,
   restoreHoldingTaxConditionValues,
 } from './condition-values'
@@ -53,12 +54,19 @@ export function HoldingTaxOverlay({
     conditions,
     controller.items,
   ])
+  const repeatsOwnerAgeByYear = comparison.status === 'calculated' &&
+    hasExactOwnerAge(
+      comparison.calculations[0].year,
+      comparison.ownerAgeByYear[comparison.calculations[0].year],
+    )
   const assumptionSummary = comparison.status === 'calculated'
     ? HOLDING_TAX_MESSAGES.assumptionsSummary(
-        comparison.calculations.map(({ year, input }) =>
+        comparison.calculations.map(({ year, input }, yearIndex) =>
           HOLDING_TAX_MESSAGES.yearAssumption(
             year,
-            comparison.ownerAgeByYear[year],
+            yearIndex === 0 || repeatsOwnerAgeByYear
+              ? comparison.ownerAgeByYear[year]
+              : null,
             comparison.taxedItems.map((item, itemIndex) =>
               HOLDING_TAX_MESSAGES.itemAssumption(
                 item.complexName,

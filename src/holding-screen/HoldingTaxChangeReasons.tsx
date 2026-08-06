@@ -1,5 +1,6 @@
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import type { HoldingTaxYearCalculation } from './calculation'
+import { formatInlineWon } from './format'
 import { holdingTaxChangeRows } from './holding-tax-change-rows'
 
 export function HoldingTaxChangeReasons({
@@ -22,12 +23,21 @@ export function HoldingTaxChangeReasons({
         {rows.map((row) => (
           <li key={row.key}>
             <strong>{row.label}</strong>
-            <span>{HOLDING_TAX_MESSAGES.changeTransition(
-              row.fromYear,
-              row.fromValue,
-              row.toYear,
-              row.toValue,
-            )}</span>
+            <div>
+              <b>{row.contribution < 0
+                ? HOLDING_TAX_MESSAGES.changeContributionDecrease(
+                    formatInlineWon(Math.abs(row.contribution)),
+                  )
+                : HOLDING_TAX_MESSAGES.changeContributionIncrease(
+                    formatInlineWon(row.contribution),
+                  )}</b>
+              <span>{HOLDING_TAX_MESSAGES.changeTransition(
+                row.fromYear,
+                row.fromValue,
+                row.toYear,
+                row.toValue,
+              )}</span>
+            </div>
           </li>
         ))}
       </ul>

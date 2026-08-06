@@ -85,6 +85,37 @@ export const HOLDING_TAX_MESSAGES = {
   areaKindLabel: '조정대상지역',
   ownershipShareLabel: '내 소유 지분',
   ownershipShareUnit: '%',
+  officialPriceAssumptionTitle: '공시가격 가정',
+  officialPriceGrowthRateLabel: '공시가격 상승률',
+  officialPriceGrowthRateValue: (rate: string, unchanged: boolean) =>
+    `연 ${rate}${unchanged ? ' (그대로)' : ''}`,
+  annualRatePrefix: '연',
+  percentUnit: '%',
+  officialPriceHistoryDescription:
+    '예측값이 아니라 조회한 공시가격 이력이에요. 해마다 오른 폭과 내린 폭을 함께 보여드려요.',
+  officialPriceHistoryTitle: (name: string) => `${name} 공시가격 이력`,
+  officialPriceHistoryUnavailable: '비교할 공시가격 이력이 없어요.',
+  officialPriceHistoryStart: (year: number, price: string) =>
+    `${year}년 ${price}`,
+  officialPriceHistoryChange: (
+    year: number,
+    price: string,
+    changeRate: string,
+  ) => `${year}년 ${price} · 전년 대비 ${changeRate}`,
+  officialPriceHistorySummary: (
+    years: number,
+    rate: string,
+    highestRise: string,
+    deepestFall: string,
+  ) => `최근 ${years}년 연평균 상승률(CAGR) 약 ${rate} · 최고 ${highestRise} · 최저 ${deepestFall}`,
+  officialPriceHistorySummaryUnavailable: (yearCount: number) =>
+    `${yearCount}년치 이력이 있어요. 연평균 상승률은 이력이 더 쌓이면 계산할 수 있어요.`,
+  officialPriceHistoryExtremum: (year: number, rate: string) =>
+    `${rate}(${year}년)`,
+  officialPriceHistoryNoRise: '오른 해 없음',
+  officialPriceHistoryNoFall: '내린 해 없음',
+  officialPriceHistoryOpen: '전체 이력 보기',
+  officialPriceHistoryClose: '최근 이력만 보기',
   generalArea: '해당하지 않음',
   adjustedArea: '해당함',
   ownerConditionsTitle: '소유자 조건',
@@ -105,15 +136,20 @@ export const HOLDING_TAX_MESSAGES = {
   yes: '네',
   no: '아니요',
   assumptionsSummary: (yearSummaries: readonly string[]) =>
-    yearSummaries.join(' / '),
+    yearSummaries.filter((summary) => summary.length > 0).join(' / '),
   yearAssumption: (
     year: number,
-    ownerAge: number,
+    ownerAge: number | null,
     itemSummaries: readonly string[],
-  ) => `${year}년 6월 1일 기준 ${[
-    ageAssumption(year, ownerAge),
-    ...itemSummaries.filter((summary) => summary.length > 0),
-  ].join(' · ')}`,
+  ) => {
+    const details = [
+      ownerAge === null ? null : ageAssumption(year, ownerAge),
+      ...itemSummaries.filter((summary) => summary.length > 0),
+    ].filter((detail): detail is string => detail !== null)
+    return details.length === 0
+      ? ''
+      : `${year}년 6월 1일 기준 ${details.join(' · ')}`
+  },
   itemAssumption: (
     name: string,
     holdingYears: number,
@@ -150,7 +186,6 @@ export const HOLDING_TAX_MESSAGES = {
   headlineUnavailable: '계산 불가',
   wonStandalone: (amount: string) => `${amount} 원`,
   wonInline: (amount: string) => `${amount}원`,
-  deductionWonStandalone: (amount: string) => `−${amount} 원`,
   changeUnavailable: '지금과의 차이를 계산할 수 없어요.',
   changeSame: '지금과 같아요.',
   changeDecrease: (amount: string) => `지금보다 ${amount} 줄어요.`,
@@ -169,6 +204,12 @@ export const HOLDING_TAX_MESSAGES = {
   },
   changeReasonsClose: '변경 이유 닫기',
   changeReasonsTitle: '바뀐 항목',
+  burdenCapChangeReason: '세부담상한',
+  beforeBurdenCapTax: '상한 적용 전 세액',
+  burdenCapApplied: (deduction: string) => `${deduction} 차감`,
+  burdenCapNotApplied: '적용 없음',
+  changeContributionIncrease: (amount: string) => `${amount} 늘리는 요인`,
+  changeContributionDecrease: (amount: string) => `${amount} 줄이는 요인`,
   changeTransition: (
     fromYear: number,
     fromValue: string,
@@ -215,7 +256,7 @@ export const HOLDING_TAX_MESSAGES = {
     '본 계산기는 세무 대리 업무를 제공하는 서비스가 아니며, 사용자가 입력한 정보와 공개된 계산 방법으로 산출한 결과를 제공하는 서비스입니다.',
     '2027년 이후 수치는 2026년 세제개편안(정부안)을 기준으로 한 예측값입니다. 개편안은 국회 통과 전이므로 심의 과정에서 달라질 수 있습니다.',
     '계산 결과는 사용자가 입력한 정보에 기초한 예측값이므로 실제 부과 세액과 다를 수 있습니다. 참고용으로만 사용해 주세요.',
-    '본 서비스는 계산 결과에 대해 어떠한 판단 또는 결정을 하지 않고, 정확성을 보증하지 않습니다.',
+    '합산배제(임대주택·사원용주택 등), 상속주택·지방 저가주택·일시적 2주택 특례, 부부공동명의 1주택자 특례 신청, 토지분 종합부동산세(종합합산·별도합산)는 계산하지 않아 해당하면 실제보다 높은 세액이 표시될 수 있습니다.',
   ],
   officialPrice: '공시가격',
   ownedOfficialPrice: '내 지분 공시가격',
@@ -259,7 +300,12 @@ export const HOLDING_TAX_MESSAGES = {
     `(합산 공시가격 − 기본공제) × 공정시장가액비율 ${rate}`,
   basisPropertyTaxCredit: '재산세와 겹치는 부분',
   basisTaxCredit: '입력한 나이·보유기간·거주기간 공제',
-  basisBurdenCap: '동일가격 모형의 전년도 기준액으로 계산',
+  basisBurdenCap: {
+    observed: (priorYear: number) =>
+      `실제 ${priorYear}년 공시가격·${priorYear}년 시행 세법으로 계산`,
+    modeled: '공시가격 상승률 가정으로 계산한 전년도 기준액(모형)',
+    unavailable: '전년도 공시가격 이력이 없어 미적용',
+  },
   basisRuralSpecialTax: (rate: string) =>
     `공제·상한 적용 후 본세의 ${rate}`,
   basisComprehensiveTaxSum: '종부세 본세 + 농어촌특별세',

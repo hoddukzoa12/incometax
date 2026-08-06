@@ -13,6 +13,7 @@ import {
   type HoldingTaxConditionValues,
   type HoldingTaxItemConditionValues,
 } from './condition-values'
+import { OfficialPriceGrowthFact } from './OfficialPriceGrowthFact'
 const ZERO_VALUE = 0
 const ZERO_SHARE = 0
 
@@ -134,6 +135,17 @@ export function HoldingTaxConditions({
           </label>
         )}
       </section>
+
+      <OfficialPriceGrowthFact
+        annualGrowthRate={conditions.annualOfficialPriceGrowthRate}
+        items={controller.items.filter(
+          ({ ownershipShare }) => ownershipShare > ZERO_SHARE,
+        )}
+        onChange={(annualOfficialPriceGrowthRate) => changeConditions({
+          ...conditions,
+          annualOfficialPriceGrowthRate,
+        })}
+      />
 
       <div className="holding-conditions__properties">
         {controller.items.map((item) => {

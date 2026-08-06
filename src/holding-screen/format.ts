@@ -4,24 +4,56 @@ const RATE_FORMATTER = new Intl.NumberFormat('ko-KR', {
   style: 'percent',
   maximumFractionDigits: 2,
 })
+const HISTORY_RATE_FORMATTER = new Intl.NumberFormat('ko-KR', {
+  style: 'percent',
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+})
+const APPROXIMATE_RATE_FORMATTER = new Intl.NumberFormat('ko-KR', {
+  style: 'percent',
+  maximumFractionDigits: 0,
+})
 const NUMBER_FORMATTER = new Intl.NumberFormat('ko-KR', {
   maximumFractionDigits: 0,
 })
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
+const ASCII_MINUS_SIGN = '-'
+const MINUS_SIGN = '−'
+
+const normalizeMinusSign = (value: string): string =>
+  value.replaceAll(ASCII_MINUS_SIGN, MINUS_SIGN)
+
+const formatNumber = (value: number): string =>
+  normalizeMinusSign(NUMBER_FORMATTER.format(value))
 
 export const formatWon = (value: number): string =>
-  HOLDING_TAX_MESSAGES.wonStandalone(NUMBER_FORMATTER.format(value))
+  HOLDING_TAX_MESSAGES.wonStandalone(formatNumber(value))
 
 export const formatInlineWon = (value: number): string =>
-  HOLDING_TAX_MESSAGES.wonInline(NUMBER_FORMATTER.format(value))
+  HOLDING_TAX_MESSAGES.wonInline(formatNumber(value))
 
 export const formatDeductionWon = (value: number): string =>
-  HOLDING_TAX_MESSAGES.deductionWonStandalone(
-    NUMBER_FORMATTER.format(Math.abs(value)),
-  )
+  value === 0
+    ? formatWon(value)
+    : formatWon(-Math.abs(value))
 
 export const formatRate = (value: number): string =>
-  RATE_FORMATTER.format(value)
+  normalizeMinusSign(RATE_FORMATTER.format(value))
+
+const withPositiveSign = (value: number, formatted: string): string =>
+  value > 0 ? `+${formatted}` : formatted
+
+export const formatSignedHistoryRate = (value: number): string =>
+  withPositiveSign(
+    value,
+    normalizeMinusSign(HISTORY_RATE_FORMATTER.format(value)),
+  )
+
+export const formatSignedApproximateRate = (value: number): string =>
+  withPositiveSign(
+    value,
+    normalizeMinusSign(APPROXIMATE_RATE_FORMATTER.format(value)),
+  )
 
 export const formatCompactDate = (value: string): string => {
   const match = ISO_DATE_PATTERN.exec(value)

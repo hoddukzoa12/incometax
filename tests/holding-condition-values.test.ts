@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  annualOfficialPriceGrowthRateFromPercent,
   DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
   persistHoldingTaxConditionValues,
   restoreHoldingTaxConditionValues,
@@ -56,5 +57,18 @@ describe('holding-tax condition values', () => {
 
     expect(restoreHoldingTaxConditionValues([], storage)
       .annualOfficialPriceGrowthRate).toBe(0.05)
+  })
+
+  it.each([
+    { percent: '0', expectedRate: 0 },
+    { percent: '5', expectedRate: 0.05 },
+    { percent: '10', expectedRate: 0.1 },
+    { percent: '-100', expectedRate: -1 },
+  ])('converts the screen value $percent% to a calculation rate', ({
+    percent,
+    expectedRate,
+  }) => {
+    expect(annualOfficialPriceGrowthRateFromPercent(percent))
+      .toBe(expectedRate)
   })
 })

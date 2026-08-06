@@ -4,7 +4,10 @@ import type {
 } from '../../shared/holding-tax'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import { TAX_RULES_BY_YEAR } from '../rules'
-import type { HoldingTaxComparisonYear } from './assessment-calendar'
+import {
+  HOLDING_TAX_COMPARISON_YEARS,
+  type HoldingTaxComparisonYear,
+} from './assessment-calendar'
 import type { HoldingTaxYearCalculation } from './calculation'
 import {
   statementRows,
@@ -20,6 +23,34 @@ import {
 
 const MISSING_INDEX = -1
 const ZERO_AMOUNT = 0
+const ONE_YEAR = 1
+
+type BurdenCapBasisKind = 'modeled' | 'observed' | 'unavailable'
+
+const OBSERVED_BURDEN_CAP_YEAR = HOLDING_TAX_COMPARISON_YEARS[0]
+
+const burdenCapBasisKind = (
+  calculation: HoldingTaxYearCalculation,
+): BurdenCapBasisKind => {
+  const capResult = calculation.result.comprehensiveTax.taxBurdenCap
+  if (capResult.status === 'notComputed') return 'unavailable'
+  return calculation.year === OBSERVED_BURDEN_CAP_YEAR
+    ? 'observed'
+    : 'modeled'
+}
+
+const burdenCapBasis = (
+  calculation: HoldingTaxYearCalculation,
+): string => {
+  const messages: Readonly<Record<BurdenCapBasisKind, string>> = {
+    observed: HOLDING_TAX_MESSAGES.basisBurdenCap.observed(
+      calculation.year - ONE_YEAR,
+    ),
+    modeled: HOLDING_TAX_MESSAGES.basisBurdenCap.modeled,
+    unavailable: HOLDING_TAX_MESSAGES.basisBurdenCap.unavailable,
+  }
+  return messages[burdenCapBasisKind(calculation)]
+}
 
 const formatAmount = (value: StatementValue): string => value === null
   ? HOLDING_TAX_MESSAGES.unavailable
@@ -105,7 +136,7 @@ export const comprehensiveRows = (
     },
     {
       label: HOLDING_TAX_MESSAGES.burdenCapDeduction,
-      basis: HOLDING_TAX_MESSAGES.basisBurdenCap,
+      basis: burdenCapBasis(selectedCalculation),
       values: results.map(({ taxBurdenCap }) =>
         burdenCapDeduction(taxBurdenCap)),
       format: formatDeduction,

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 
 import type { StoredPortfolioItem } from '../../shared/portfolio'
 import type { AreaKind } from '../../shared/tax-rules'
@@ -12,6 +12,7 @@ import {
   ownershipShareToPercent,
   type PortfolioController,
 } from '../portfolio'
+import { AutoFilledFactRow } from './AutoFilledFactRow'
 import { formatCompactDate, formatWon } from './format'
 import { TaxTermHelp } from './TaxTermHelp'
 
@@ -20,40 +21,6 @@ const FULL_OWNERSHIP_PERCENT = 100
 const toPositiveInteger = (value: string): number | null => {
   const parsed = Number(value)
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function FactRow({
-  label,
-  help,
-  value,
-  editing,
-  onEdit,
-  children,
-}: {
-  readonly label: string
-  readonly help?: ReactNode
-  readonly value: string
-  readonly editing: boolean
-  readonly onEdit?: () => void
-  readonly children: ReactNode
-}) {
-  return (
-    <div className="holding-conditions__fact">
-      <div>
-        <span>{label}</span>
-        {help}
-        <small>{HOLDING_TAX_MESSAGES.automaticFact}</small>
-      </div>
-      {editing ? children : <strong>{value}</strong>}
-      {onEdit !== undefined && (
-        <button type="button" onClick={onEdit}>
-          {editing
-            ? HOLDING_TAX_MESSAGES.finishEditingFact
-            : HOLDING_TAX_MESSAGES.editFact}
-        </button>
-      )}
-    </div>
-  )
 }
 
 export function AutoFilledPropertyFacts({
@@ -72,7 +39,7 @@ export function AutoFilledPropertyFacts({
   return (
     <section className="holding-conditions__facts">
       <h3>{HOLDING_TAX_MESSAGES.automaticFactsTitle}</h3>
-      <FactRow
+      <AutoFilledFactRow
         label={HOLDING_TAX_MESSAGES.officialPriceLabel}
         value={item.officialPrice === null
           ? HOLDING_TAX_MESSAGES.headlineUnavailable
@@ -106,7 +73,7 @@ export function AutoFilledPropertyFacts({
             />
           </label>
         </div>
-      </FactRow>
+      </AutoFilledFactRow>
       {!priceEditing && (
         <p className="holding-conditions__base-date">
           {HOLDING_TAX_MESSAGES.officialPriceBaseDateLabel}{' '}
@@ -115,7 +82,7 @@ export function AutoFilledPropertyFacts({
             : formatCompactDate(item.officialPriceBaseDate)}</strong>
         </p>
       )}
-      <FactRow
+      <AutoFilledFactRow
         label={HOLDING_TAX_MESSAGES.areaKindLabel}
         help={<TaxTermHelp term="adjustedArea" />}
         value={item.areaKind === 'adjusted'
@@ -133,8 +100,8 @@ export function AutoFilledPropertyFacts({
           <option value="general">{HOLDING_TAX_MESSAGES.generalArea}</option>
           <option value="adjusted">{HOLDING_TAX_MESSAGES.adjustedArea}</option>
         </select>
-      </FactRow>
-      <FactRow
+      </AutoFilledFactRow>
+      <AutoFilledFactRow
         label={HOLDING_TAX_MESSAGES.ownershipShareLabel}
         value={`${sharePercent}${HOLDING_TAX_MESSAGES.ownershipShareUnit}`}
         editing={partialShare || shareEditing}
@@ -170,7 +137,7 @@ export function AutoFilledPropertyFacts({
           />
           <span>{HOLDING_TAX_MESSAGES.ownershipShareUnit}</span>
         </span>
-      </FactRow>
+      </AutoFilledFactRow>
     </section>
   )
 }

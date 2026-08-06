@@ -29,6 +29,27 @@ const MAXIMUM_IMPLICIT_PERIOD_YEARS =
  */
 export const DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = 0
 const MINIMUM_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = -1
+const PERCENT_RATE_FACTOR = 100
+const OFFICIAL_PRICE_GROWTH_PERCENT_STEP = 0.1
+
+export const annualOfficialPriceGrowthPercent = {
+  minimum: MINIMUM_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE * PERCENT_RATE_FACTOR,
+  step: OFFICIAL_PRICE_GROWTH_PERCENT_STEP,
+  fromRate: (rate: number): number => rate * PERCENT_RATE_FACTOR,
+} as const
+
+export const annualOfficialPriceGrowthRateFromPercent = (
+  value: string,
+): number => {
+  const percent = Number(value)
+  if (!Number.isFinite(percent)) {
+    return DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE
+  }
+  return Math.max(
+    percent / PERCENT_RATE_FACTOR,
+    MINIMUM_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
+  )
+}
 
 const currentCreditRules =
   TAX_RULES_BY_YEAR[2026].comprehensiveTax.taxCredit
@@ -58,6 +79,11 @@ export const getOwnerAgeKnowledge = (
   }
   return { kind: 'exact', years: ownerAge } as const
 }
+
+export const hasExactOwnerAge = (
+  year: number,
+  ownerAge: number,
+): boolean => getOwnerAgeKnowledge(year, ownerAge).kind === 'exact'
 
 export const getKnownPeriodMinimumYears = (years: number): number | null =>
   years <= MAXIMUM_IMPLICIT_PERIOD_YEARS ? null : years
