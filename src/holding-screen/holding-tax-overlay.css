@@ -1,4 +1,8 @@
 .holding-overlay {
+  --holding-headline-size: clamp(2rem, 7vw, 3.5rem);
+  --holding-statement-max-height: 70vh;
+  --holding-statement-min-width: 42rem;
+  --holding-touch-target: 2.75rem;
   position: fixed;
   z-index: 20;
   inset: 0;
@@ -47,14 +51,8 @@
   font-size: var(--font-size-xl);
 }
 
-.holding-overlay__bill-note {
-  margin: var(--space-1) 0 0;
-  color: var(--color-warning);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-}
-
 .holding-overlay button {
+  min-height: var(--holding-touch-target);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-neutral-300);
   border-radius: var(--radius-sm);
@@ -85,9 +83,9 @@
 }
 
 .holding-overlay__status,
-.holding-conditions,
 .holding-result-summary,
-.holding-overlay__prose-assumptions {
+.holding-tax-changes,
+.holding-tax-details {
   padding: var(--space-6);
   border: 1px solid var(--color-neutral-200);
   border-radius: var(--radius-md);
@@ -95,8 +93,7 @@
 }
 
 .holding-overlay__status--warning,
-.holding-conditions__missing,
-.holding-overlay__cap-warning {
+.holding-conditions__missing {
   border-color: var(--color-warning);
   background: color-mix(in srgb, var(--color-warning) 8%, var(--color-neutral-0));
 }
@@ -128,15 +125,16 @@
 .holding-conditions__facts p,
 .holding-result-summary h2,
 .holding-result-summary p,
-.holding-overlay__prose-assumptions h2,
-.holding-overlay__prose-assumptions p,
+.holding-tax-changes h2,
+.holding-tax-changes ul,
+.holding-tax-details h2,
+.holding-tax-details p,
 .holding-overlay__cautions h2,
 .holding-overlay__cautions p {
   margin: 0;
 }
 
-.holding-conditions__missing,
-.holding-overlay__cap-warning {
+.holding-conditions__missing {
   padding: var(--space-3);
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-sm);
@@ -145,13 +143,8 @@
   line-height: 1.5;
 }
 
-.holding-conditions__missing ul,
-.holding-overlay__cap-warning p {
+.holding-conditions__missing ul {
   margin: var(--space-2) 0 0;
-}
-
-.holding-overlay__cap-warning p:first-child {
-  margin-top: 0;
 }
 
 .holding-conditions__owner,
@@ -159,13 +152,6 @@
 .holding-conditions__question {
   display: grid;
   gap: var(--space-2);
-}
-
-.holding-conditions__owner,
-.holding-conditions__question {
-  padding: var(--space-3);
-  border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-sm);
 }
 
 .holding-conditions__owner h2,
@@ -219,9 +205,7 @@
 }
 
 .holding-conditions__facts {
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--color-neutral-100);
+  padding: 0;
 }
 
 .holding-conditions__fact {
@@ -324,88 +308,124 @@
   color: var(--color-neutral-0);
 }
 
-.holding-overlay__model-note {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--color-neutral-100);
-  color: var(--color-neutral-700);
-  font-size: var(--font-size-md);
-}
-
 .holding-result-summary {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-.holding-result-summary__cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.holding-result-summary article {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-4);
-  border-radius: var(--radius-sm);
-  background: var(--color-neutral-100);
-}
-
-.holding-result-summary article h2 {
+.holding-result-summary__eyebrow {
   color: var(--color-neutral-600);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
 }
 
-.holding-result-summary article strong {
+.holding-result-summary h2 {
+  font-size: var(--holding-headline-size);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.holding-result-summary__change {
+  color: var(--color-accent);
   font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.holding-result-summary__comparison {
+  color: var(--color-neutral-700);
+  font-size: var(--font-size-md);
   font-variant-numeric: tabular-nums;
 }
 
-.holding-result-summary article p,
+.holding-result-summary__basis,
 .holding-result-summary__disclaimer {
   color: var(--color-neutral-500);
   font-size: var(--font-size-xs);
 }
 
-.holding-overlay__prose-assumptions {
-  display: grid;
+.holding-result-summary__actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
-.holding-overlay__prose-assumptions h2 {
+.holding-tax-changes {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.holding-tax-changes h2,
+.holding-tax-statement__header h2,
+.holding-tax-details__assumptions h2 {
   font-size: var(--font-size-lg);
 }
 
-.holding-overlay__prose-assumptions p {
+.holding-tax-changes ul {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.holding-tax-changes li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.holding-tax-changes li span {
+  color: var(--color-neutral-600);
+  font-variant-numeric: tabular-nums;
+}
+
+.holding-tax-details,
+.holding-tax-statement,
+.holding-tax-details__assumptions {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.holding-tax-statement__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.holding-tax-statement__years {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.holding-overlay .holding-tax-statement__years button[aria-selected='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-neutral-0);
+}
+
+.holding-tax-details__assumptions {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.holding-tax-details__assumptions p {
   color: var(--color-neutral-600);
   font-size: var(--font-size-md);
 }
 
-.holding-overlay__model-note span {
-  flex: none;
-  font-weight: var(--font-weight-semibold);
-}
-
-.holding-overlay__model-note p {
-  margin: 0 0 0 auto;
-  text-align: right;
-}
-
 .holding-tax-table-scroll {
   max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--color-neutral-300);
-  border-radius: var(--radius-md);
-  background: var(--color-neutral-0);
-  box-shadow: var(--shadow-sm);
+  max-height: var(--holding-statement-max-height);
+  overflow: auto;
 }
 
 .holding-tax-table {
   width: 100%;
-  min-width: max-content;
+  min-width: var(--holding-statement-min-width);
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
@@ -418,6 +438,9 @@
 }
 
 .holding-tax-table thead th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
   background: var(--color-accent);
   color: var(--color-neutral-0);
   font-size: var(--font-size-md);
@@ -459,10 +482,6 @@
   font-weight: var(--font-weight-bold);
 }
 
-.holding-tax-table__row--sub th {
-  padding-left: var(--space-6);
-}
-
 .holding-tax-table__row--strong th,
 .holding-tax-table__row--strong td {
   color: var(--color-neutral-900);
@@ -471,8 +490,8 @@
 
 .holding-overlay .tax-term-help__trigger {
   display: inline-grid;
-  width: var(--space-4);
-  height: var(--space-4);
+  width: var(--holding-touch-target);
+  height: var(--holding-touch-target);
   margin-left: var(--space-1);
   padding: 0;
   place-items: center;
@@ -541,24 +560,26 @@
 
   .holding-overlay__title-row,
   .holding-assumptions__summary,
-  .holding-overlay__model-note {
+  .holding-tax-statement__header {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .holding-overlay__model-note p {
-    margin: 0;
-    text-align: left;
-  }
-
-  .holding-result-summary__cards,
+  .holding-tax-changes li,
   .holding-conditions__fact,
   .holding-conditions__fact-inputs,
   .holding-conditions__periods {
     grid-template-columns: 1fr;
   }
 
-  .holding-conditions {
+  .holding-result-summary,
+  .holding-tax-changes,
+  .holding-tax-details,
+  .holding-conditions__properties > fieldset {
     padding: var(--space-4);
+  }
+
+  .holding-conditions {
+    padding: 0;
   }
 }

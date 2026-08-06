@@ -9,6 +9,10 @@ export const HOLDING_TAX_COMPARISON_YEARS = [
 export type HoldingTaxComparisonYear =
   (typeof HOLDING_TAX_COMPARISON_YEARS)[number]
 
+const DEFAULT_COMPARISON_YEAR_INDEX = 1
+export const HOLDING_TAX_DEFAULT_YEAR: HoldingTaxComparisonYear =
+  HOLDING_TAX_COMPARISON_YEARS[DEFAULT_COMPARISON_YEAR_INDEX]
+
 export const HOLDING_TAX_PRIOR_PRICE_YEAR = 2025
 
 // Both holding taxes use June 1 as the annual assessment date.

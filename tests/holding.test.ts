@@ -1118,7 +1118,7 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
         'priorYearPropertyBaseTax',
         'priorYearComprehensiveCalculatedTax',
       ],
-      excessAmount: null,
+      excessAmount: 0,
     })
     expect(result.comprehensiveTax.payableTax).toBeNull()
     expect(result.comprehensiveTax.ruralSpecialTax).toBeNull()

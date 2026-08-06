@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import type { PortfolioItemSeed } from '../shared/portfolio'
 import { calculateHoldingTax } from '../src/holding/calc'
 import { calculatePortfolioHoldingTax } from '../src/holding-screen/calculation'
-import type {
-  HoldingTaxConditionValues,
+import {
+  DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
+  type HoldingTaxConditionValues,
 } from '../src/holding-screen/condition-values'
 import { ownershipShareFromFraction } from '../src/portfolio/ownership-share'
 import { createStoredPortfolioItem } from '../src/portfolio/state'
@@ -26,11 +27,26 @@ const seed = (
   ...overrides,
 })
 
+const createEunmaItem = (id: string) => ({
+  ...createStoredPortfolioItem(seed({
+    complexId: id,
+    complexName: '은마',
+    officialPrice: 2_237_000_000,
+    priorOfficialPrices: [{
+      baseDate: '2025-01-01',
+      price: 1_708_000_000,
+    }],
+  }), id),
+  residency: 'residing' as const,
+})
+
 const conditionsFor = (
   items: readonly { readonly id: string }[],
   overrides: Partial<HoldingTaxConditionValues> = {},
 ): HoldingTaxConditionValues => ({
   ownerAge: 0,
+  annualOfficialPriceGrowthRate:
+    DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
   items: Object.fromEntries(items.map(({ id }) => [id, {
     holdingYears: 0,
     residenceYears: 0,
@@ -277,5 +293,203 @@ describe('holding-tax screen boundary', () => {
     if (partialShare.status !== 'calculated') return
     expect(partialShare.calculations[0].input.items[0]
       .isSoleHouseholdOwner).toBe(false)
+  })
+
+  it('uses the observed 2025 price and rules for the 2026 burden cap', () => {
+    const eunma = createEunmaItem('eunma')
+    const comparison = calculatePortfolioHoldingTax(
+      [eunma],
+      conditionsFor([eunma], {
+        items: {
+          eunma: {
+            holdingYears: 0,
+            residenceYears: 0,
+            continuesResidence: true,
+            qualifyingRelocation: null,
+          },
+        },
+      }),
+    )
+
+    expect(comparison.status).toBe('calculated')
+    if (comparison.status !== 'calculated') return
+    const current = comparison.calculations[0]
+
+    expect(current.input.priorYearTax).toEqual({
+      propertyBaseTax: 2_444_400,
+      comprehensiveCalculatedTax: 984_960,
+    })
+    expect(current.result.comprehensiveTax.taxBurdenCap).toEqual({
+      status: 'computed',
+      rate: 1.5,
+      priorYearBase: 3_429_360,
+      maximumTaxBurden: 5_144_040,
+      currentYearBase: 6_098_640,
+      excessAmount: 954_600,
+    })
+    expect(current.result).toMatchObject({
+      propertyTaxTotal: 5_485_230,
+      comprehensiveTax: {
+        netTax: 2_702_040,
+        payableTax: 1_747_440,
+        ruralSpecialTax: 349_488,
+        totalTax: 2_096_928,
+      },
+      totalTax: 7_582_158,
+    })
+    const beforeBurdenCap = calculateHoldingTax({
+      ...current.input,
+      priorYearTax: undefined,
+    })
+    expect(beforeBurdenCap.totalTax).toBe(8_727_678)
+  })
+
+  it.each([
+    {
+      annualOfficialPriceGrowthRate: 0,
+      expected: [
+        { year: 2027, officialPrice: 2_237_000_000, totalTax: 8_421_246 },
+        { year: 2028, officialPrice: 2_237_000_000, totalTax: 8_421_246 },
+      ],
+    },
+    {
+      annualOfficialPriceGrowthRate: 0.05,
+      expected: [
+        { year: 2027, officialPrice: 2_348_850_000, totalTax: 9_684_073 },
+        { year: 2028, officialPrice: 2_466_292_500, totalTax: 11_116_636 },
+      ],
+    },
+    {
+      annualOfficialPriceGrowthRate: 0.1,
+      expected: [
+        { year: 2027, officialPrice: 2_460_700_000, totalTax: 11_048_419 },
+        { year: 2028, officialPrice: 2_706_770_000, totalTax: 14_049_980 },
+      ],
+    },
+  ])(
+    'projects 2027/2028 prices and taxes at annual rate $annualOfficialPriceGrowthRate',
+    ({ annualOfficialPriceGrowthRate, expected }) => {
+      const eunma = createEunmaItem('eunma-growth')
+      const comparison = calculatePortfolioHoldingTax(
+        [eunma],
+        conditionsFor([eunma], {
+          annualOfficialPriceGrowthRate,
+          items: {
+            'eunma-growth': {
+              holdingYears: 0,
+              residenceYears: 0,
+              continuesResidence: true,
+              qualifyingRelocation: null,
+            },
+          },
+        }),
+      )
+
+      expect(comparison.status).toBe('calculated')
+      if (comparison.status !== 'calculated') return
+      const future = comparison.calculations.slice(1)
+      expect(future.map(({ year, input, result }) => ({
+        year,
+        officialPrice: input.items[0].officialPrice,
+        totalTax: result.totalTax,
+      }))).toEqual(expected)
+      for (const { result } of future) {
+        expect(result.comprehensiveTax.taxBurdenCap).toMatchObject({
+          status: 'computed',
+          excessAmount: 0,
+        })
+      }
+    },
+  )
+
+  it('applies the future burden cap when projected price growth exceeds it', () => {
+    const eunma = createEunmaItem('eunma-binding-cap')
+    const comparison = calculatePortfolioHoldingTax(
+      [eunma],
+      conditionsFor([eunma], {
+        annualOfficialPriceGrowthRate: 1,
+        items: {
+          'eunma-binding-cap': {
+            holdingYears: 0,
+            residenceYears: 0,
+            continuesResidence: true,
+            qualifyingRelocation: null,
+          },
+        },
+      }),
+    )
+
+    expect(comparison.status).toBe('calculated')
+    if (comparison.status !== 'calculated') return
+    expect(comparison.calculations.slice(1).map(({ year, result }) => ({
+      year,
+      totalTax: result.totalTax,
+      taxBurdenCap: result.comprehensiveTax.taxBurdenCap,
+    }))).toEqual([
+      {
+        year: 2027,
+        totalTax: 17_455_356,
+        taxBurdenCap: {
+          status: 'computed',
+          rate: 2,
+          priorYearBase: 6_098_640,
+          maximumTaxBurden: 12_197_280,
+          currentYearBase: 29_226_960,
+          excessAmount: 17_029_680,
+        },
+      },
+      {
+        year: 2028,
+        totalTax: 75_781_944,
+        taxBurdenCap: {
+          status: 'computed',
+          rate: 2,
+          priorYearBase: 29_226_960,
+          maximumTaxBurden: 58_453_920,
+          currentYearBase: 129_709_920,
+          excessAmount: 71_256_000,
+        },
+      },
+    ])
+  })
+
+  it('keeps the 2026 upper-bound calculation when the 2025 price is absent', () => {
+    const newBuild = {
+      ...createStoredPortfolioItem(seed({
+        complexId: 'new-build',
+        priorOfficialPrices: [],
+      }), 'new-build'),
+      residency: 'residing' as const,
+    }
+    const comparison = calculatePortfolioHoldingTax(
+      [newBuild],
+      conditionsFor([newBuild], {
+        items: {
+          'new-build': {
+            holdingYears: 0,
+            residenceYears: 0,
+            continuesResidence: true,
+            qualifyingRelocation: null,
+          },
+        },
+      }),
+    )
+
+    expect(comparison.status).toBe('calculated')
+    if (comparison.status !== 'calculated') return
+    expect(comparison.missingPriorPriceItems).toEqual([
+      expect.objectContaining({ id: 'new-build' }),
+    ])
+    expect(comparison.calculations[0].result.comprehensiveTax
+      .taxBurdenCap).toEqual({
+      status: 'notComputed',
+      rate: 1.5,
+      missingInputs: [
+        'priorYearPropertyBaseTax',
+        'priorYearComprehensiveCalculatedTax',
+      ],
+      excessAmount: 0,
+    })
+    expect(comparison.calculations[0].result.totalTax).not.toBeNull()
   })
 })

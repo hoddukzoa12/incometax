@@ -15,6 +15,11 @@ export const formatWon = (value: number): string =>
 export const formatInlineWon = (value: number): string =>
   HOLDING_TAX_MESSAGES.wonInline(NUMBER_FORMATTER.format(value))
 
+export const formatDeductionWon = (value: number): string =>
+  HOLDING_TAX_MESSAGES.deductionWonStandalone(
+    NUMBER_FORMATTER.format(Math.abs(value)),
+  )
+
 export const formatRate = (value: number): string =>
   RATE_FORMATTER.format(value)
 

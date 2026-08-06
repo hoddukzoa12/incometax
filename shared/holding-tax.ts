@@ -119,7 +119,8 @@ export interface ComprehensiveTaxBurdenCapNotComputedResult {
   readonly status: 'notComputed'
   readonly rate: number
   readonly missingInputs: readonly ComprehensiveTaxBurdenCapMissingInput[]
-  readonly excessAmount: null
+  /** 직전년도 자료가 없을 때 상한 공제를 적용하지 않은 보수적 계산값. */
+  readonly excessAmount: 0
 }
 
 export type ComprehensiveTaxBurdenCapResult =

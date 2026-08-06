@@ -7,7 +7,8 @@ import {
 } from './assessment-calendar'
 
 const ZERO_YEARS = 0
-const STORAGE_VERSION = 1
+const LEGACY_STORAGE_VERSION = 1
+const STORAGE_VERSION = 2
 const ISO_YEAR_END_INDEX = 4
 const HOLDING_TAX_CONDITIONS_STORAGE_KEY =
   'incometax.holdingTax.conditions'
@@ -19,6 +20,15 @@ const FIRST_ASSESSMENT_YEAR = Number(
 const MAXIMUM_IMPLICIT_PERIOD_YEARS =
   HOLDING_TAX_COMPARISON_YEARS[HOLDING_TAX_COMPARISON_YEARS.length - 1] -
   FIRST_ASSESSMENT_YEAR
+
+/**
+ * 미래 공시가격 연 상승률 기본값은 0%다.
+ * (a) 이 비교의 질문인 세법 개편 효과에 공시가격 변동 효과를 섞지 않고,
+ * (b) 근거 없는 공시가격 예측값을 서비스가 제시하지 않기 위해서다
+ * (docs/ux-writing-guide.md §0의 근거 없는 평균 환급액 사례 참조).
+ */
+export const DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = 0
+const MINIMUM_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = -1
 
 const currentCreditRules =
   TAX_RULES_BY_YEAR[2026].comprehensiveTax.taxCredit
@@ -61,6 +71,7 @@ export interface HoldingTaxItemConditionValues {
 
 export interface HoldingTaxConditionValues {
   readonly ownerAge: number
+  readonly annualOfficialPriceGrowthRate: number
   readonly items: Readonly<Record<string, HoldingTaxItemConditionValues>>
 }
 
@@ -76,6 +87,13 @@ const isNonNegativeInteger = (value: unknown): value is number =>
 
 const isNullableBoolean = (value: unknown): value is boolean | null =>
   value === null || typeof value === 'boolean'
+
+const isAnnualOfficialPriceGrowthRate = (
+  value: unknown,
+): value is number =>
+  typeof value === 'number' &&
+  Number.isFinite(value) &&
+  value >= MINIMUM_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE
 
 const readItemCondition = (
   value: unknown,
@@ -108,9 +126,18 @@ const readStoredConditions = (
   }
   if (typeof parsed !== 'object' || parsed === null) return null
   const record = parsed as Record<string, unknown>
+  const version = record.version
   if (
-    record.version !== STORAGE_VERSION ||
+    version !== LEGACY_STORAGE_VERSION &&
+    version !== STORAGE_VERSION
+  ) return null
+  const annualOfficialPriceGrowthRate =
+    version === LEGACY_STORAGE_VERSION
+      ? DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE
+      : record.annualOfficialPriceGrowthRate
+  if (
     !isNonNegativeInteger(record.ownerAge) ||
+    !isAnnualOfficialPriceGrowthRate(annualOfficialPriceGrowthRate) ||
     typeof record.items !== 'object' ||
     record.items === null
   ) return null
@@ -122,6 +149,7 @@ const readStoredConditions = (
   if (entries.some((entry) => entry === null)) return null
   return {
     ownerAge: record.ownerAge,
+    annualOfficialPriceGrowthRate,
     items: Object.fromEntries(entries as readonly (readonly [
       string,
       HoldingTaxItemConditionValues,
@@ -181,7 +209,12 @@ export const restoreHoldingTaxConditionValues = (
     // The defaults below keep this session usable without localStorage.
   }
   return mergeHoldingTaxConditionItems(
-    restored ?? { ownerAge: legacyOwnerAge(storage), items: {} },
+    restored ?? {
+      ownerAge: legacyOwnerAge(storage),
+      annualOfficialPriceGrowthRate:
+        DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
+      items: {},
+    },
     items,
   )
 }

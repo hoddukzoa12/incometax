@@ -5,7 +5,6 @@ import type { PortfolioController } from '../portfolio'
 import {
   calculatePortfolioHoldingTax,
   getHoldingTaxMissingConditions,
-  HOLDING_TAX_COMPARISON_YEARS,
   HOLDING_TAX_PRIOR_PRICE_YEAR,
   type HoldingTaxComparison,
 } from './calculation'
@@ -13,6 +12,7 @@ import {
   persistHoldingTaxConditionValues,
   restoreHoldingTaxConditionValues,
 } from './condition-values'
+import { HoldingTaxChangeReasons } from './HoldingTaxChangeReasons'
 import { HoldingTaxComparisonTable } from './HoldingTaxComparisonTable'
 import { HoldingTaxConditions } from './HoldingTaxConditions'
 import { HoldingTaxResultSummary } from './HoldingTaxResultSummary'
@@ -46,6 +46,8 @@ export function HoldingTaxOverlay({
   const [conditionsOpen, setConditionsOpen] = useState(
     () => !(taxedItems.length > 0 && missingConditions.length === 0),
   )
+  const [reasonsOpen, setReasonsOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const comparison = useMemo<HoldingTaxComparison>(() =>
     calculatePortfolioHoldingTax(controller.items, conditions), [
     conditions,
@@ -104,14 +106,7 @@ export function HoldingTaxOverlay({
     >
       <header className="holding-overlay__header">
         <div className="holding-overlay__title-row">
-          <div>
-            <h1 id="holding-overlay-title">{HOLDING_TAX_MESSAGES.title}</h1>
-            <p className="holding-overlay__bill-note">
-              {HOLDING_TAX_MESSAGES.governmentBillNotice(
-                HOLDING_TAX_COMPARISON_YEARS.slice(1),
-              )}
-            </p>
-          </div>
+          <h1 id="holding-overlay-title">{HOLDING_TAX_MESSAGES.title}</h1>
           <button type="button" autoFocus onClick={onClose}>
             {HOLDING_TAX_MESSAGES.close}
           </button>
@@ -185,68 +180,67 @@ export function HoldingTaxOverlay({
           <>
             <HoldingTaxResultSummary
               calculations={comparison.calculations}
+              detailsOpen={detailsOpen}
+              onDetailsToggle={() => setDetailsOpen((current) => !current)}
+              onReasonsToggle={() => setReasonsOpen((current) => !current)}
+              reasonsOpen={reasonsOpen}
               taxedItems={comparison.taxedItems}
             />
-            <div className="holding-overlay__model-note" role="note">
-              <span>{HOLDING_TAX_MESSAGES.householdCount(
-                comparison.householdHomeCount,
-              )}</span>
-              <span>{HOLDING_TAX_MESSAGES.taxedCount(
-                comparison.taxedItems.length,
-              )}</span>
-              <p>{HOLDING_TAX_MESSAGES.samePriceModelNotice(
-                HOLDING_TAX_COMPARISON_YEARS.slice(1),
-              )}</p>
-            </div>
-            <div className="holding-overlay__cap-warning" role="note">
-              <p>{HOLDING_TAX_MESSAGES.currentYearCapUnavailable(
-                HOLDING_TAX_PRIOR_PRICE_YEAR,
-              )}</p>
-              {comparison.missingPriorPriceItems.length > 0 && (
-                <p>{HOLDING_TAX_MESSAGES.currentYearPriceMissing(
-                  HOLDING_TAX_PRIOR_PRICE_YEAR,
-                  comparison.missingPriorPriceItems.map(
-                    ({ complexName }) => complexName,
-                  ),
-                )}</p>
-              )}
-            </div>
-            <section className="holding-overlay__prose-assumptions">
-              <h2>{HOLDING_TAX_MESSAGES.assumptionsProseTitle}</h2>
-              <p>{HOLDING_TAX_MESSAGES.priceDateAssumption(
-                priceAssumptions,
-              )}</p>
-              {continuingResidenceItems.length > 0 && (
-                <p>{HOLDING_TAX_MESSAGES.continuingResidenceAssumption(
-                  continuingResidenceItems.map(({ complexName }) =>
-                    complexName),
-                )}</p>
-              )}
-              {frozenResidenceItems.length > 0 && (
-                <p>{HOLDING_TAX_MESSAGES.frozenResidenceAssumption(
-                  frozenResidenceItems.map(({ complexName }) => complexName),
-                )}</p>
-              )}
-              {recognitionItems.length > 0 && (
-                <p>{HOLDING_TAX_MESSAGES.recognitionAssumption(
-                  recognitionItems.map(({ complexName }) => complexName),
-                )}</p>
-              )}
-              <p>{HOLDING_TAX_MESSAGES.modeledCapAssumption}</p>
-              <p>{HOLDING_TAX_MESSAGES.unavailableCapAssumption}</p>
-            </section>
-            <HoldingTaxComparisonTable
-              calculations={comparison.calculations}
-              taxedItems={comparison.taxedItems}
-            />
+            {reasonsOpen && (
+              <HoldingTaxChangeReasons calculations={comparison.calculations} />
+            )}
+            {detailsOpen && (
+              <section className="holding-tax-details" id="holding-tax-details">
+                <HoldingTaxComparisonTable
+                  calculations={comparison.calculations}
+                  taxedItems={comparison.taxedItems}
+                />
+                <section className="holding-tax-details__assumptions">
+                  <h2>{HOLDING_TAX_MESSAGES.assumptionsProseTitle}</h2>
+                  <p>{HOLDING_TAX_MESSAGES.portfolioAssumption(
+                    comparison.householdHomeCount,
+                    comparison.taxedItems.length,
+                  )}</p>
+                  <p>{HOLDING_TAX_MESSAGES.priceDateAssumption(
+                    priceAssumptions,
+                  )}</p>
+                  {continuingResidenceItems.length > 0 && (
+                    <p>{HOLDING_TAX_MESSAGES.continuingResidenceAssumption(
+                      continuingResidenceItems.map(({ complexName }) =>
+                        complexName),
+                    )}</p>
+                  )}
+                  {frozenResidenceItems.length > 0 && (
+                    <p>{HOLDING_TAX_MESSAGES.frozenResidenceAssumption(
+                      frozenResidenceItems.map(({ complexName }) =>
+                        complexName),
+                    )}</p>
+                  )}
+                  {recognitionItems.length > 0 && (
+                    <p>{HOLDING_TAX_MESSAGES.recognitionAssumption(
+                      recognitionItems.map(({ complexName }) => complexName),
+                    )}</p>
+                  )}
+                  <p>{HOLDING_TAX_MESSAGES.modeledCapAssumption}</p>
+                  {comparison.missingPriorPriceItems.length > 0 && (
+                    <p>{HOLDING_TAX_MESSAGES.unavailableCapAssumption(
+                      HOLDING_TAX_PRIOR_PRICE_YEAR,
+                      comparison.missingPriorPriceItems.map(
+                        ({ complexName }) => complexName,
+                      ),
+                    )}</p>
+                  )}
+                </section>
+                <section className="holding-overlay__cautions">
+                  <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
+                  {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
+                    <p key={caution}>{caution}</p>
+                  ))}
+                </section>
+              </section>
+            )}
           </>
         )}
-        <section className="holding-overlay__cautions">
-          <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
-          {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
-            <p key={caution}>{caution}</p>
-          ))}
-        </section>
       </main>
     </div>
   )

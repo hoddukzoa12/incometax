@@ -12,7 +12,7 @@ import {
 import {
   COMPREHENSIVE_TAX_CREDIT_RULES_FROM_2028,
 } from './comprehensive-tax-credit'
-import { PROPERTY_TAX_RULES } from './property-tax'
+import { PROPERTY_TAX_RULES_2028 } from './property-tax'
 import {
   TRANSFER_BASIC_DEDUCTIONS_FROM_2027,
   TRANSFER_DEDUCTION_CAPS_2028,
@@ -22,7 +22,7 @@ import { TRANSFER_TAX_COMMON_RULES } from './transfer-tax-common'
 
 export const TAX_RULES_2028 = {
   year: 2028,
-  propertyTax: PROPERTY_TAX_RULES,
+  propertyTax: PROPERTY_TAX_RULES_2028,
   comprehensiveTax: {
     ...COMPREHENSIVE_TAX_COMMON_RULES,
     taxableThresholds: COMPREHENSIVE_TAXABLE_THRESHOLDS_FROM_2027,

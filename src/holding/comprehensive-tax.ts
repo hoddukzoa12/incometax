@@ -239,7 +239,7 @@ export const calculateComprehensiveTax = (
     rules.comprehensiveTax.taxBurdenCap,
   )
   const unroundedPayableTax =
-    taxCredit.amount === null || taxBurdenCap.excessAmount === null
+    taxCredit.amount === null
       ? null
       : Math.max(
           ZERO_AMOUNT,

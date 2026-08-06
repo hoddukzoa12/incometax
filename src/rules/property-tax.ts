@@ -8,10 +8,11 @@ import { RATE_DENOMINATOR } from './rate'
 export const PROPERTY_TAX_ONE_HOUSE_HOME_COUNT = 1
 
 /**
- * 재산세 공정시장가액비율 — tax-rules-spec.md §2.1.
- * 개편안 개정 대상이 아니어서 개편안 페이지는 없으며, 현행 지방세법 수치다.
+ * 재산세 공정시장가액비율 — 지방세법 시행령 §109①2.
+ * 2025년 값은 2025.5.27. 개정 대통령령 제35544호에서, 2026년 값은
+ * 2026.5.29. 개정본에서 각각 1세대1주택 43%/44%/45%, 그 외 60%로 정했다.
  */
-export const PROPERTY_TAX_FAIR_MARKET_VALUE_RATIOS = {
+const PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS = {
   oneHouse: [
     { upTo: 300_000_000, rate: 4_300 / RATE_DENOMINATOR },
     { upTo: 600_000_000, rate: 4_400 / RATE_DENOMINATOR },
@@ -93,9 +94,11 @@ export const PROPERTY_TAX_SURTAXES = {
   },
 } as const
 
-export const PROPERTY_TAX_RULES = {
+const createPropertyTaxRules = (
+  fairMarketValueRatios: PropertyTaxRules['fairMarketValueRatios'],
+): PropertyTaxRules => ({
   oneHouseHomeCount: PROPERTY_TAX_ONE_HOUSE_HOME_COUNT,
-  fairMarketValueRatios: PROPERTY_TAX_FAIR_MARKET_VALUE_RATIOS,
+  fairMarketValueRatios,
   preferentialRateMaximumOfficialPrice:
     PROPERTY_TAX_PREFERENTIAL_RATE_MAXIMUM_OFFICIAL_PRICE,
   brackets: {
@@ -103,4 +106,28 @@ export const PROPERTY_TAX_RULES = {
     oneHouse: PROPERTY_TAX_ONE_HOUSE_BRACKETS,
   },
   surtaxes: PROPERTY_TAX_SURTAXES,
-} as const satisfies PropertyTaxRules
+})
+
+/** 2025년 확정 시행값 — 지방세법 시행령 §109①2, 대통령령 제35544호(2025.5.27.). */
+export const PROPERTY_TAX_RULES_2025 = createPropertyTaxRules(
+  PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
+)
+
+/** 2026년 확정 시행값 — 지방세법 시행령 §109①2, 2026.5.29. 개정본. */
+export const PROPERTY_TAX_RULES_2026 = createPropertyTaxRules(
+  PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
+)
+
+/**
+ * 2027~2029년은 시행령이 아직 해당 연도를 규정하지 않아 2026년 특례가
+ * 연장된다고 가정한다. 향후 시행령 확정 시 연도별 상수만 교체한다.
+ */
+export const PROPERTY_TAX_RULES_2027 = createPropertyTaxRules(
+  PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
+)
+export const PROPERTY_TAX_RULES_2028 = createPropertyTaxRules(
+  PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
+)
+export const PROPERTY_TAX_RULES_2029 = createPropertyTaxRules(
+  PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
+)

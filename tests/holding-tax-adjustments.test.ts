@@ -8,6 +8,13 @@ import { TAX_RULES_BY_YEAR } from '../src/rules'
 
 const CALCULATED_TAX = 10_000_000
 const NO_PERIOD = { holdingYears: 0, residenceYears: 0 } as const
+const SUPPORTED_TAX_YEARS = [
+  2025,
+  2026,
+  2027,
+  2028,
+  2029,
+] as const satisfies readonly TaxYear[]
 
 const calculateCredit = (
   year: TaxYear,
@@ -29,6 +36,36 @@ const calculateCredit = (
     calculatedTax,
     TAX_RULES_BY_YEAR[year].comprehensiveTax.taxCredit,
   )
+
+describe('yearly holding-tax rules', () => {
+  it('uses the confirmed 2025 property ratios and current comprehensive rules', () => {
+    const rules2025 = TAX_RULES_BY_YEAR[2025]
+
+    expect(rules2025.propertyTax.fairMarketValueRatios).toEqual({
+      oneHouse: [
+        { upTo: 300_000_000, rate: 0.43 },
+        { upTo: 600_000_000, rate: 0.44 },
+        { upTo: Number.POSITIVE_INFINITY, rate: 0.45 },
+      ],
+      other: 0.6,
+    })
+    expect(rules2025.comprehensiveTax).toBe(
+      TAX_RULES_BY_YEAR[2026].comprehensiveTax,
+    )
+  })
+
+  it('selects property-tax rules explicitly for every supported year', () => {
+    const propertyRules = SUPPORTED_TAX_YEARS.map(
+      (year) => TAX_RULES_BY_YEAR[year].propertyTax,
+    )
+
+    expect(new Set(propertyRules).size).toBe(propertyRules.length)
+    for (const rules of propertyRules) {
+      expect(rules.fairMarketValueRatios.oneHouse.map(({ rate }) => rate))
+        .toEqual([0.43, 0.44, 0.45])
+    }
+  })
+})
 
 describe('calculateComprehensiveTaxCredit boundaries', () => {
   it.each([
@@ -246,7 +283,7 @@ describe('calculateComprehensiveTaxBurdenCap', () => {
       status: 'notComputed',
       rate: 2,
       missingInputs: ['priorYearComprehensiveCalculatedTax'],
-      excessAmount: null,
+      excessAmount: 0,
     })
   })
 })

@@ -78,7 +78,7 @@ export const calculateComprehensiveTaxBurdenCap = (
       status: 'notComputed',
       rate: rules.rate,
       missingInputs: priorYearTaxResolution.missingInputs,
-      excessAmount: null,
+      excessAmount: ZERO_AMOUNT,
     }
   }
 
