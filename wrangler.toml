@@ -15,4 +15,10 @@ crons = ["0 19 * * *"]
 
 [[d1_databases]]
 binding = "COMPLEX_DB"
+database_name = "incometax"
+database_id = "3a7736e2-13fc-4e8e-96e6-109d3954b9d4"
 migrations_dir = "migrations"
+
+[[routes]]
+pattern = "tax.rich-group.kr"
+custom_domain = true
