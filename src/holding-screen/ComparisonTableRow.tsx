@@ -1,4 +1,5 @@
 import type { TableRow } from './comparison-table-values'
+import { TaxTermHelp } from './TaxTermHelp'
 
 export function ComparisonTableRow({ row }: { readonly row: TableRow }) {
   const classNames = [
@@ -8,10 +9,14 @@ export function ComparisonTableRow({ row }: { readonly row: TableRow }) {
 
   return (
     <tr className={classNames || undefined}>
-      <th scope="row">{row.label}</th>
+      <th scope="row">
+        {row.label}
+        {row.helpTerm !== undefined && <TaxTermHelp term={row.helpTerm} />}
+      </th>
       {row.values.map((value, valueIndex) => (
         <td key={valueIndex}>{value}</td>
       ))}
+      <td className="holding-tax-table__basis">{row.basis}</td>
     </tr>
   )
 }

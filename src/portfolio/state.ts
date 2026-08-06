@@ -39,6 +39,8 @@ export const updatePortfolioItem = (
     | 'acquisitionDate'
     | 'areaKind'
     | 'isSoleHouseholdOwner'
+    | 'officialPrice'
+    | 'officialPriceBaseDate'
     | 'ownershipShare'
     | 'residenceYears'
     | 'residency'

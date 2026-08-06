@@ -18,7 +18,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <main className="app-shell__body">
+      <main
+        className="app-shell__body"
+        aria-hidden={holdingTaxOverlay.open || undefined}
+        inert={holdingTaxOverlay.open || undefined}
+      >
         <div className="app-shell__map">
           <ComplexMap onComplexSelect={setSelectedComplexId} />
           <div className="app-shell__search">

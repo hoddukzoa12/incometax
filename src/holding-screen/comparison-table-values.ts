@@ -3,11 +3,14 @@ import type {
   ComprehensiveTaxCreditResult,
 } from '../../shared/holding-tax'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
+import type { HoldingTaxHelpTerm } from '../messages/holding-tax'
 import type { HoldingTaxYearCalculation } from './calculation'
 
 export type TableRow = {
   readonly label: string
   readonly values: readonly string[]
+  readonly basis: string
+  readonly helpTerm?: HoldingTaxHelpTerm
   readonly strong?: boolean
   readonly subRow?: boolean
 }

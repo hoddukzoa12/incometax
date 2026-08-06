@@ -9,6 +9,7 @@ import {
 } from './comparison-table-values'
 import { formatNullableWon, formatRate, formatWon } from './format'
 import { propertyRows } from './property-table-rows'
+import { TaxTermHelp } from './TaxTermHelp'
 
 export function HoldingTaxComparisonTable({
   calculations,
@@ -20,6 +21,7 @@ export function HoldingTaxComparisonTable({
   const totals: readonly TableRow[] = [
     {
       label: HOLDING_TAX_MESSAGES.propertyTaxTotalAll,
+      basis: HOLDING_TAX_MESSAGES.basisSum,
       values: comparisonValues(
         calculations,
         ({ result }) => result.propertyTaxTotal,
@@ -28,6 +30,7 @@ export function HoldingTaxComparisonTable({
     },
     {
       label: HOLDING_TAX_MESSAGES.comprehensiveTaxTotal,
+      basis: HOLDING_TAX_MESSAGES.basisSum,
       values: comparisonValues(
         calculations,
         ({ result }) => result.comprehensiveTax.totalTax,
@@ -36,6 +39,7 @@ export function HoldingTaxComparisonTable({
     },
     {
       label: HOLDING_TAX_MESSAGES.holdingTaxTotal,
+      basis: HOLDING_TAX_MESSAGES.basisSum,
       values: comparisonValues(
         calculations,
         ({ result }) => result.totalTax,
@@ -59,16 +63,18 @@ export function HoldingTaxComparisonTable({
                 {HOLDING_TAX_MESSAGES.yearLabel(year, yearIndex === 0)}
               </th>
             ))}
+            <th scope="col">{HOLDING_TAX_MESSAGES.comparisonBasis}</th>
           </tr>
         </thead>
         {taxedItems.map((item, itemIndex) => (
           <tbody key={item.id}>
             <tr className="holding-tax-table__section">
-              <th scope="rowgroup" colSpan={calculations.length + 1}>
+              <th scope="rowgroup" colSpan={calculations.length + 2}>
                 {HOLDING_TAX_MESSAGES.propertySection(
                   item.complexName,
                   formatRate(item.ownershipShare),
                 )}
+                <TaxTermHelp term="propertyTax" />
               </th>
             </tr>
             {propertyRows(calculations, itemIndex).map((row) => (
@@ -78,8 +84,9 @@ export function HoldingTaxComparisonTable({
         ))}
         <tbody>
           <tr className="holding-tax-table__section">
-            <th scope="rowgroup" colSpan={calculations.length + 1}>
+            <th scope="rowgroup" colSpan={calculations.length + 2}>
               {HOLDING_TAX_MESSAGES.comprehensiveSection}
+              <TaxTermHelp term="comprehensiveTax" />
             </th>
           </tr>
           {comprehensiveRows(calculations).map((row) => (
@@ -88,7 +95,7 @@ export function HoldingTaxComparisonTable({
         </tbody>
         <tbody>
           <tr className="holding-tax-table__section">
-            <th scope="rowgroup" colSpan={calculations.length + 1}>
+            <th scope="rowgroup" colSpan={calculations.length + 2}>
               {HOLDING_TAX_MESSAGES.totalSection}
             </th>
           </tr>

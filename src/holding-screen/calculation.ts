@@ -5,30 +5,28 @@ import type {
   PriorYearHoldingTax,
 } from '../../shared/holding-tax'
 import type { StoredPortfolioItem } from '../../shared/portfolio'
-import type { TaxYear } from '../../shared/tax-rules'
 import { calculateHoldingTax } from '../holding/calc'
+import type {
+  ComprehensiveResidenceRecognitionInput,
+} from '../../shared/comprehensive-residence-recognition'
+import {
+  HOLDING_TAX_COMPARISON_YEARS,
+  HOLDING_TAX_PRIOR_PRICE_YEAR,
+  holdingTaxAssessmentDate,
+  type HoldingTaxComparisonYear,
+} from './assessment-calendar'
+import type {
+  HoldingTaxConditionValues,
+  HoldingTaxItemConditionValues,
+} from './condition-values'
 
-export const HOLDING_TAX_COMPARISON_YEARS = [
-  2026,
-  2027,
-  2028,
-] as const satisfies readonly TaxYear[]
-
-export const HOLDING_TAX_PRIOR_PRICE_YEAR = 2025
-// Both holding taxes use June 1 as the annual assessment date.
-const HOLDING_TAX_ASSESSMENT_MONTH = 6
-const HOLDING_TAX_ASSESSMENT_DAY = 1
-
-export const holdingTaxAssessmentDate = (
-  year: HoldingTaxComparisonYear,
-): string => `${year}-${String(HOLDING_TAX_ASSESSMENT_MONTH).padStart(2, '0')}-${String(HOLDING_TAX_ASSESSMENT_DAY).padStart(2, '0')}`
-
-export const HOLDING_TAX_FIRST_ASSESSMENT_DATE = holdingTaxAssessmentDate(
-  HOLDING_TAX_COMPARISON_YEARS[0],
-)
-
-type HoldingTaxComparisonYear =
-  (typeof HOLDING_TAX_COMPARISON_YEARS)[number]
+export {
+  completedCalendarYears,
+  HOLDING_TAX_COMPARISON_YEARS,
+  HOLDING_TAX_FIRST_ASSESSMENT_DATE,
+  HOLDING_TAX_PRIOR_PRICE_YEAR,
+  holdingTaxAssessmentDate,
+} from './assessment-calendar'
 
 const ZERO_SHARE = 0
 const ZERO_AMOUNT = 0
@@ -42,16 +40,13 @@ export type HoldingTaxYearCalculation = {
   readonly result: HoldingTaxResult
 }
 
-export type HoldingTaxMissingCondition =
-  | { readonly kind: 'birthDate' }
-  | {
-      readonly kind:
-        | 'acquisitionDate'
-        | 'coOwnerHousehold'
-        | 'residenceYears'
-        | 'residency'
-      readonly item: StoredPortfolioItem
-    }
+export type HoldingTaxMissingCondition = {
+  readonly kind:
+    | 'continuesResidence'
+    | 'qualifyingRelocation'
+    | 'residency'
+  readonly item: StoredPortfolioItem
+}
 
 export type HoldingTaxComparison =
   | {
@@ -80,101 +75,91 @@ export type HoldingTaxComparison =
       readonly missingPriorPriceItems: readonly StoredPortfolioItem[]
     }
 
-const parseDateParts = (
-  value: string,
-): { readonly year: number; readonly month: number; readonly day: number } | null => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (match === null) return null
-  const year = Number(match[1])
-  const month = Number(match[2])
-  const day = Number(match[3])
-  const date = new Date(Date.UTC(year, month - 1, day))
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) return null
-  return { year, month, day }
-}
-
-export const completedCalendarYears = (
-  startDate: string,
-  endDate: string,
-): number | null => {
-  const start = parseDateParts(startDate)
-  const end = parseDateParts(endDate)
-  if (start === null || end === null) return null
-  const anniversaryReached =
-    end.month > start.month ||
-    (end.month === start.month && end.day >= start.day)
-  const years = end.year - start.year - (anniversaryReached ? 0 : 1)
-  return years >= ZERO_AMOUNT ? years : null
-}
-
 export const getHoldingTaxMissingConditions = (
   items: readonly StoredPortfolioItem[],
-  birthDate: string | null,
+  conditions: HoldingTaxConditionValues,
 ): readonly HoldingTaxMissingCondition[] => {
   const missing: HoldingTaxMissingCondition[] = []
   if (items.length === 0) return missing
-  if (
-    birthDate === null ||
-    completedCalendarYears(
-      birthDate,
-      HOLDING_TAX_FIRST_ASSESSMENT_DATE,
-    ) === null
-  ) missing.push({ kind: 'birthDate' })
 
   for (const item of items) {
-    if (
-      item.acquisitionDate === null ||
-      completedCalendarYears(
-        item.acquisitionDate,
-        HOLDING_TAX_FIRST_ASSESSMENT_DATE,
-      ) === null
-    ) missing.push({ kind: 'acquisitionDate', item })
-    if (item.residenceYears === null) {
-      missing.push({ kind: 'residenceYears', item })
-    }
     if (item.residency === null) missing.push({ kind: 'residency', item })
+    const itemConditions = conditions.items[item.id]
+    const continuesResidence = itemConditions?.continuesResidence ?? null
+    const qualifyingRelocation = itemConditions?.qualifyingRelocation ?? null
     if (
-      item.ownershipShare < FULL_OWNERSHIP_SHARE &&
-      item.isSoleHouseholdOwner === null
-    ) missing.push({ kind: 'coOwnerHousehold', item })
+      item.residency === 'residing' &&
+      continuesResidence === null
+    ) missing.push({ kind: 'continuesResidence', item })
+    const residenceWillNotContinue =
+      item.residency === 'nonResiding' ||
+      continuesResidence === false
+    if (
+      residenceWillNotContinue &&
+      qualifyingRelocation === null
+    ) missing.push({ kind: 'qualifyingRelocation', item })
   }
   return missing
 }
 
 const toEngineItem = (
   item: StoredPortfolioItem,
-  referenceDate: string,
+  conditions: HoldingTaxItemConditionValues,
+  elapsedComparisonYears: number,
 ): PortfolioItem => {
-  const holdingYears = item.acquisitionDate === null
-    ? null
-    : completedCalendarYears(item.acquisitionDate, referenceDate)
   if (
     item.officialPrice === null ||
-    item.residency === null ||
-    item.residenceYears === null ||
-    holdingYears === null
+    item.residency === null
   ) throw new TypeError('Portfolio item has incomplete tax conditions')
-
-  const isSoleHouseholdOwner = item.ownershipShare === FULL_OWNERSHIP_SHARE
-    ? true
-    : item.isSoleHouseholdOwner
-  if (isSoleHouseholdOwner === null) {
-    throw new TypeError('Portfolio item has no co-owner household answer')
-  }
 
   return {
     assetKind: item.assetKind,
     officialPrice: item.officialPrice,
     ownershipShare: item.ownershipShare,
-    isSoleHouseholdOwner,
+    isSoleHouseholdOwner:
+      item.ownershipShare === FULL_OWNERSHIP_SHARE,
     residency: item.residency,
     areaKind: item.areaKind,
-    holdingYears,
-    residenceYears: item.residenceYears,
+    holdingYears: conditions.holdingYears + elapsedComparisonYears,
+    residenceYears: conditions.residenceYears +
+      (conditions.continuesResidence === true
+        ? elapsedComparisonYears
+        : ZERO_AMOUNT),
+  }
+}
+
+const createRecognitionInput = (
+  item: StoredPortfolioItem,
+  conditions: HoldingTaxItemConditionValues,
+  year: HoldingTaxComparisonYear,
+): ComprehensiveResidenceRecognitionInput | undefined => {
+  if (
+    item.residency === 'residing' &&
+    conditions.continuesResidence !== false
+  ) return undefined
+  if (conditions.qualifyingRelocation !== true) return undefined
+
+  const firstComparisonYear = HOLDING_TAX_COMPARISON_YEARS[0]
+  const yearsSinceRelocation = Math.max(
+    conditions.holdingYears - conditions.residenceYears,
+    ZERO_AMOUNT,
+  )
+  const relocationYear = item.residency === 'residing'
+    ? firstComparisonYear
+    : firstComparisonYear - yearsSinceRelocation
+  const continuousResidenceStartYear =
+    relocationYear - conditions.residenceYears
+  return {
+    kind: 'unavoidableRelocation',
+    continuousResidenceStartDate: holdingTaxAssessmentDate(
+      continuousResidenceStartYear as HoldingTaxComparisonYear,
+    ),
+    relocationDate: holdingTaxAssessmentDate(
+      relocationYear as HoldingTaxComparisonYear,
+    ),
+    recognitionEndDate: holdingTaxAssessmentDate(year),
+    reason: { kind: 'similarUnavoidableReason' },
+    destination: 'otherCityOrCounty',
   }
 }
 
@@ -196,7 +181,7 @@ const hasPriorOfficialPrice = (item: StoredPortfolioItem): boolean =>
 
 export const calculatePortfolioHoldingTax = (
   storedItems: readonly StoredPortfolioItem[],
-  birthDate: string | null,
+  conditions: HoldingTaxConditionValues,
   calculator: HoldingTaxCalculator = calculateHoldingTax,
 ): HoldingTaxComparison => {
   if (storedItems.length === 0) return { status: 'empty' }
@@ -215,7 +200,7 @@ export const calculatePortfolioHoldingTax = (
 
   const missingConditions = getHoldingTaxMissingConditions(
     taxedItems,
-    birthDate,
+    conditions,
   )
   if (missingConditions.length > 0) {
     return { status: 'missingConditions', missingConditions }
@@ -229,9 +214,14 @@ export const calculatePortfolioHoldingTax = (
     Readonly<Record<string, number>>,
   ][] = []
   for (const year of HOLDING_TAX_COMPARISON_YEARS) {
-    const referenceDate = holdingTaxAssessmentDate(year)
-    const ownerAge = completedCalendarYears(birthDate!, referenceDate)!
-    const items = taxedItems.map((item) => toEngineItem(item, referenceDate))
+    const elapsedComparisonYears =
+      year - HOLDING_TAX_COMPARISON_YEARS[0]
+    const ownerAge = conditions.ownerAge + elapsedComparisonYears
+    const items = taxedItems.map((item) => toEngineItem(
+      item,
+      conditions.items[item.id],
+      elapsedComparisonYears,
+    ))
     const priorYearTax = year === HOLDING_TAX_COMPARISON_YEARS[0]
       ? undefined
       : toPriorYearTax(calculations.at(-1)!.result)
@@ -241,8 +231,25 @@ export const calculatePortfolioHoldingTax = (
       items,
       ownerAge,
       priorYearTax,
+      comprehensiveResidenceRecognition:
+        taxedItems.length === 1
+          ? createRecognitionInput(
+              taxedItems[0],
+              conditions.items[taxedItems[0].id],
+              year,
+            )
+          : undefined,
     }
-    calculations.push({ year, input, result: calculator(input) })
+    const result = year === HOLDING_TAX_COMPARISON_YEARS[0]
+      ? (() => {
+          const withoutCap = calculator(input)
+          return calculator({
+            ...input,
+            priorYearTax: toPriorYearTax(withoutCap),
+          })
+        })()
+      : calculator(input)
+    calculations.push({ year, input, result })
     ownerAgeEntries.push([year, ownerAge])
     holdingYearEntries.push([
       year,

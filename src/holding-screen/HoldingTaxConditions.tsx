@@ -1,65 +1,73 @@
-import type { FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 
 import type { Residency } from '../../shared/tax-rules'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
-import { PORTFOLIO_MESSAGES } from '../messages/portfolio'
-import {
-  MAX_OWNERSHIP_PERCENT,
-  MIN_OWNERSHIP_PERCENT,
-  OWNERSHIP_PERCENT_INPUT_STEP,
-  ownershipPercentFromNumber,
-  ownershipShareFromPercent,
-  ownershipShareToPercent,
-  type PortfolioController,
-} from '../portfolio'
+import type { PortfolioController } from '../portfolio'
+import { AutoFilledPropertyFacts } from './AutoFilledPropertyFacts'
 import type { HoldingTaxMissingCondition } from './calculation'
-
+import { ConditionChoiceButtons } from './ConditionChoiceButtons'
+import {
+  MINIMUM_AGE_CREDIT_YEARS,
+  MINIMUM_HOLDING_CREDIT_YEARS,
+  MINIMUM_RESIDENCE_CREDIT_YEARS,
+  type HoldingTaxConditionValues,
+  type HoldingTaxItemConditionValues,
+} from './condition-values'
+const ZERO_VALUE = 0
 const ZERO_SHARE = 0
-const FULL_OWNERSHIP_PERCENT = 100
 
-const toNonNegativeInteger = (value: string): number | null => {
-  if (value === '') return null
+const toNonNegativeInteger = (value: string): number => {
   const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0
+  return Number.isFinite(parsed) && parsed >= ZERO_VALUE
     ? Math.trunc(parsed)
-    : null
+    : ZERO_VALUE
 }
 
 const missingConditionMessage = (
   condition: HoldingTaxMissingCondition,
 ): string => {
-  if (condition.kind === 'birthDate') {
-    return HOLDING_TAX_MESSAGES.birthDateMissing
-  }
   const messageByKind = {
-    acquisitionDate: HOLDING_TAX_MESSAGES.acquisitionDateMissing,
-    coOwnerHousehold: HOLDING_TAX_MESSAGES.coOwnerHouseholdMissing,
-    residenceYears: HOLDING_TAX_MESSAGES.residenceYearsMissing,
+    continuesResidence: HOLDING_TAX_MESSAGES.continuesResidenceMissing,
+    qualifyingRelocation: HOLDING_TAX_MESSAGES.qualifyingRelocationMissing,
     residency: HOLDING_TAX_MESSAGES.residencyMissing,
   } as const
   return messageByKind[condition.kind](condition.item.complexName)
 }
 
 export function HoldingTaxConditions({
-  birthDate,
+  conditions,
   controller,
   missingConditions,
-  referenceDate,
-  onBirthDateChange,
-  onDirty,
+  onChange,
   onSubmit,
 }: {
-  readonly birthDate: string
+  readonly conditions: HoldingTaxConditionValues
   readonly controller: PortfolioController
   readonly missingConditions: readonly HoldingTaxMissingCondition[]
-  readonly referenceDate: string
-  readonly onBirthDateChange: (value: string) => void
-  readonly onDirty: () => void
+  readonly onChange: (conditions: HoldingTaxConditionValues) => void
   readonly onSubmit: () => void
 }) {
+  const [exactPeriodsOpen, setExactPeriodsOpen] = useState(false)
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     onSubmit()
+  }
+
+  const changeConditions = (next: HoldingTaxConditionValues) => {
+    onChange(next)
+  }
+
+  const updateItemConditions = (
+    itemId: string,
+    update: Partial<HoldingTaxItemConditionValues>,
+  ) => {
+    changeConditions({
+      ...conditions,
+      items: {
+        ...conditions.items,
+        [itemId]: { ...conditions.items[itemId], ...update },
+      },
+    })
   }
 
   return (
@@ -72,9 +80,7 @@ export function HoldingTaxConditions({
           <strong>{HOLDING_TAX_MESSAGES.conditionsRequired}</strong>
           <ul>
             {missingConditions.map((condition) => (
-              <li key={condition.kind === 'birthDate'
-                ? condition.kind
-                : `${condition.item.id}:${condition.kind}`}>
+              <li key={`${condition.item.id}:${condition.kind}`}>
                 {missingConditionMessage(condition)}
               </li>
             ))}
@@ -82,188 +88,204 @@ export function HoldingTaxConditions({
         </section>
       )}
 
-      <label className="holding-conditions__person">
-        <span>{HOLDING_TAX_MESSAGES.birthDateLabel}</span>
-        <input
-          type="date"
-          max={referenceDate}
-          required
-          value={birthDate}
-          onChange={(event) => {
-            onBirthDateChange(event.target.value)
-            onDirty()
-          }}
-        />
-      </label>
+      <section className="holding-conditions__owner">
+        <h2>{HOLDING_TAX_MESSAGES.ownerConditionsTitle}</h2>
+        <label className="holding-conditions__checkbox">
+          <input
+            type="checkbox"
+            checked={conditions.ownerAge >= MINIMUM_AGE_CREDIT_YEARS}
+            onChange={(event) => changeConditions({
+              ...conditions,
+              ownerAge: event.target.checked
+                ? MINIMUM_AGE_CREDIT_YEARS
+                : ZERO_VALUE,
+            })}
+          />
+          <span>{HOLDING_TAX_MESSAGES.ageThresholdLabel(
+            MINIMUM_AGE_CREDIT_YEARS,
+          )}</span>
+        </label>
+        <button
+          className="holding-conditions__disclosure"
+          type="button"
+          aria-expanded={exactPeriodsOpen}
+          onClick={() => setExactPeriodsOpen((current) => !current)}
+        >
+          {exactPeriodsOpen
+            ? HOLDING_TAX_MESSAGES.exactPeriodsClose
+            : HOLDING_TAX_MESSAGES.exactPeriodsOpen}
+        </button>
+        {exactPeriodsOpen && (
+          <label className="holding-conditions__number-field">
+            <span>{HOLDING_TAX_MESSAGES.ownerAgeLabel}</span>
+            <span>
+              <input
+                type="number"
+                min={ZERO_VALUE}
+                step="1"
+                value={conditions.ownerAge}
+                onChange={(event) => changeConditions({
+                  ...conditions,
+                  ownerAge: toNonNegativeInteger(event.target.value),
+                })}
+              />
+              {HOLDING_TAX_MESSAGES.yearsUnit}
+            </span>
+          </label>
+        )}
+      </section>
 
       <div className="holding-conditions__properties">
         {controller.items.map((item) => {
-          const sharePercent = ownershipShareToPercent(item.ownershipShare)
-          const isTaxed = item.ownershipShare > ZERO_SHARE
-          const hasRemainder = sharePercent < FULL_OWNERSHIP_PERCENT
+          const itemConditions = conditions.items[item.id]
 
           return (
             <fieldset key={item.id}>
               <legend>
                 {HOLDING_TAX_MESSAGES.propertyConditions(item.complexName)}
               </legend>
-              <div className="holding-conditions__fields">
-                <label>
-                  <span>{PORTFOLIO_MESSAGES.ownershipShareLabel}</span>
-                  <span className="holding-conditions__share">
-                    <input
-                      type="number"
-                      min={MIN_OWNERSHIP_PERCENT}
-                      max={MAX_OWNERSHIP_PERCENT}
-                      step={OWNERSHIP_PERCENT_INPUT_STEP}
-                      required
-                      value={sharePercent}
-                      onChange={(event) => {
-                        try {
-                          const percent = ownershipPercentFromNumber(
-                            Number(event.target.value),
-                          )
-                          const ownershipShare = ownershipShareFromPercent(
-                            percent,
-                          )
-                          controller.setOwnershipShare(item.id, ownershipShare)
-                          controller.update(item.id, {
-                            isSoleHouseholdOwner:
-                              percent === FULL_OWNERSHIP_PERCENT
-                                ? true
-                                : sharePercent === FULL_OWNERSHIP_PERCENT
-                                  ? null
-                                  : item.isSoleHouseholdOwner,
-                          })
-                          onDirty()
-                        } catch {
-                          return
-                        }
-                      }}
-                    />
-                    <span>{PORTFOLIO_MESSAGES.ownershipShareUnit}</span>
-                  </span>
-                </label>
 
-                {isTaxed && (
-                  <>
-                    <label>
-                      <span>{HOLDING_TAX_MESSAGES.acquisitionDateLabel}</span>
-                      <input
-                        type="date"
-                        max={referenceDate}
-                        required
-                        value={item.acquisitionDate ?? ''}
-                        onChange={(event) => {
-                          controller.update(item.id, {
-                            acquisitionDate: event.target.value || null,
-                          })
-                          onDirty()
-                        }}
-                      />
-                    </label>
-                    <label>
-                      <span>{HOLDING_TAX_MESSAGES.residenceYearsLabel}</span>
+              <AutoFilledPropertyFacts
+                controller={controller}
+                item={item}
+              />
+
+              {item.ownershipShare > ZERO_SHARE && <>
+                <div className="holding-conditions__thresholds">
+                <label className="holding-conditions__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={itemConditions.holdingYears >=
+                      MINIMUM_HOLDING_CREDIT_YEARS}
+                    onChange={(event) => updateItemConditions(item.id, {
+                      holdingYears: event.target.checked
+                        ? MINIMUM_HOLDING_CREDIT_YEARS
+                        : ZERO_VALUE,
+                      residenceYears: event.target.checked
+                        ? itemConditions.residenceYears
+                        : ZERO_VALUE,
+                    })}
+                  />
+                  <span>{HOLDING_TAX_MESSAGES.holdingThresholdLabel(
+                    MINIMUM_HOLDING_CREDIT_YEARS,
+                  )}</span>
+                </label>
+                <label className="holding-conditions__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={itemConditions.residenceYears >=
+                      MINIMUM_RESIDENCE_CREDIT_YEARS}
+                    onChange={(event) => updateItemConditions(item.id, {
+                      holdingYears: event.target.checked
+                        ? Math.max(
+                            itemConditions.holdingYears,
+                            MINIMUM_HOLDING_CREDIT_YEARS,
+                          )
+                        : itemConditions.holdingYears,
+                      residenceYears: event.target.checked
+                        ? MINIMUM_RESIDENCE_CREDIT_YEARS
+                        : ZERO_VALUE,
+                    })}
+                  />
+                  <span>{HOLDING_TAX_MESSAGES.residenceThresholdLabel(
+                    MINIMUM_RESIDENCE_CREDIT_YEARS,
+                  )}</span>
+                </label>
+                </div>
+
+                {exactPeriodsOpen && (
+                <div className="holding-conditions__periods">
+                  <label className="holding-conditions__number-field">
+                    <span>{HOLDING_TAX_MESSAGES.holdingYearsLabel}</span>
+                    <span>
                       <input
                         type="number"
-                        min="0"
+                        min={ZERO_VALUE}
                         step="1"
-                        required
-                        value={item.residenceYears ?? ''}
-                        onChange={(event) => {
-                          const value = event.target.value
-                          controller.update(item.id, {
-                            residenceYears: toNonNegativeInteger(value),
-                          })
-                          onDirty()
-                        }}
+                        value={itemConditions.holdingYears}
+                        onChange={(event) => updateItemConditions(item.id, {
+                          holdingYears: Math.max(
+                            toNonNegativeInteger(event.target.value),
+                            itemConditions.residenceYears,
+                          ),
+                        })}
                       />
-                    </label>
-                    <label>
-                      <span>{PORTFOLIO_MESSAGES.residencyLabel}</span>
-                      <select
-                        required
-                        value={item.residency ?? ''}
-                        onChange={(event) => {
-                          controller.update(item.id, {
-                            residency: event.target.value as Residency,
-                          })
-                          onDirty()
-                        }}
-                      >
-                        <option value="" disabled>
-                          {HOLDING_TAX_MESSAGES.residencyPlaceholder}
-                        </option>
-                        <option value="nonResiding">
-                          {PORTFOLIO_MESSAGES.nonResiding}
-                        </option>
-                        <option value="residing">
-                          {PORTFOLIO_MESSAGES.residing}
-                        </option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>{PORTFOLIO_MESSAGES.areaKindLabel}</span>
-                      <select
-                        value={item.areaKind}
-                        onChange={(event) => {
-                          controller.update(item.id, {
-                            areaKind: event.target.value as typeof item.areaKind,
-                          })
-                          onDirty()
-                        }}
-                      >
-                        <option value="general">
-                          {PORTFOLIO_MESSAGES.generalArea}
-                        </option>
-                        <option value="adjusted">
-                          {PORTFOLIO_MESSAGES.adjustedArea}
-                        </option>
-                      </select>
-                    </label>
-                  </>
+                      {HOLDING_TAX_MESSAGES.yearsUnit}
+                    </span>
+                  </label>
+                  <label className="holding-conditions__number-field">
+                    <span>{HOLDING_TAX_MESSAGES.residenceYearsLabel}</span>
+                    <span>
+                      <input
+                        type="number"
+                        min={ZERO_VALUE}
+                        max={itemConditions.holdingYears}
+                        step="1"
+                        value={itemConditions.residenceYears}
+                        onChange={(event) => updateItemConditions(item.id, {
+                          residenceYears: Math.min(
+                            toNonNegativeInteger(event.target.value),
+                            itemConditions.holdingYears,
+                          ),
+                        })}
+                      />
+                      {HOLDING_TAX_MESSAGES.yearsUnit}
+                    </span>
+                  </label>
+                </div>
                 )}
-              </div>
 
-              {isTaxed && hasRemainder && (
-                <fieldset className="holding-conditions__remainder">
-                  <legend>{HOLDING_TAX_MESSAGES.remainderOwnerQuestion}</legend>
-                  <label>
-                    <input
-                      type="radio"
-                      name={`remainder-owner-${item.id}`}
-                      required
-                      checked={item.isSoleHouseholdOwner === false}
-                      onChange={() => {
-                        controller.update(item.id, {
-                          isSoleHouseholdOwner: false,
-                        })
-                        onDirty()
-                      }}
-                    />
-                    <span>
-                      {HOLDING_TAX_MESSAGES.remainderOwnerSameHousehold}
-                    </span>
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name={`remainder-owner-${item.id}`}
-                      required
-                      checked={item.isSoleHouseholdOwner === true}
-                      onChange={() => {
-                        controller.update(item.id, {
-                          isSoleHouseholdOwner: true,
-                        })
-                        onDirty()
-                      }}
-                    />
-                    <span>
-                      {HOLDING_TAX_MESSAGES.remainderOwnerOtherHousehold}
-                    </span>
-                  </label>
-                </fieldset>
-              )}
+                <section className="holding-conditions__question">
+                <h3>{HOLDING_TAX_MESSAGES.residencyQuestion}</h3>
+                <ConditionChoiceButtons
+                  value={item.residency === null
+                    ? null
+                    : item.residency === 'residing'}
+                  onChange={(residing) => {
+                    const residency: Residency = residing
+                      ? 'residing'
+                      : 'nonResiding'
+                    controller.update(item.id, { residency })
+                    updateItemConditions(item.id, {
+                      continuesResidence: residing ? null : false,
+                      qualifyingRelocation: null,
+                    })
+                  }}
+                />
+                </section>
+
+                {item.residency === 'residing' && (
+                <section className="holding-conditions__question">
+                  <h3>{HOLDING_TAX_MESSAGES.continuesResidenceQuestion}</h3>
+                  <ConditionChoiceButtons
+                    value={itemConditions.continuesResidence}
+                    onChange={(continuesResidence) => updateItemConditions(
+                      item.id,
+                      {
+                        continuesResidence,
+                        qualifyingRelocation: null,
+                      },
+                    )}
+                  />
+                </section>
+                )}
+
+                {(item.residency === 'nonResiding' ||
+                itemConditions.continuesResidence === false) && (
+                <section className="holding-conditions__question">
+                  <h3>
+                    {HOLDING_TAX_MESSAGES.qualifyingRelocationQuestion}
+                  </h3>
+                  <ConditionChoiceButtons
+                    value={itemConditions.qualifyingRelocation}
+                    onChange={(qualifyingRelocation) => updateItemConditions(
+                      item.id,
+                      { qualifyingRelocation },
+                    )}
+                  />
+                </section>
+                )}
+              </>}
             </fieldset>
           )
         })}

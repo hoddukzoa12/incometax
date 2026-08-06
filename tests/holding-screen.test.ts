@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import type { PortfolioItemSeed } from '../shared/portfolio'
 import { calculateHoldingTax } from '../src/holding/calc'
 import { calculatePortfolioHoldingTax } from '../src/holding-screen/calculation'
+import type {
+  HoldingTaxConditionValues,
+} from '../src/holding-screen/condition-values'
 import { ownershipShareFromFraction } from '../src/portfolio/ownership-share'
 import { createStoredPortfolioItem } from '../src/portfolio/state'
 
@@ -23,6 +26,20 @@ const seed = (
   ...overrides,
 })
 
+const conditionsFor = (
+  items: readonly { readonly id: string }[],
+  overrides: Partial<HoldingTaxConditionValues> = {},
+): HoldingTaxConditionValues => ({
+  ownerAge: 0,
+  items: Object.fromEntries(items.map(({ id }) => [id, {
+    holdingYears: 0,
+    residenceYears: 0,
+    continuesResidence: null,
+    qualifyingRelocation: null,
+  }])),
+  ...overrides,
+})
+
 describe('holding-tax screen boundary', () => {
   it('passes the H11 50:50 ownership facts to the engine and reproduces H11', () => {
     const h11 = {
@@ -37,7 +54,17 @@ describe('holding-tax screen boundary', () => {
     const calculator = vi.fn(calculateHoldingTax)
     const comparison = calculatePortfolioHoldingTax(
       [h11],
-      '1967-06-01',
+      conditionsFor([h11], {
+        ownerAge: 59,
+        items: {
+          h11: {
+            holdingYears: 1,
+            residenceYears: 1,
+            continuesResidence: true,
+            qualifyingRelocation: null,
+          },
+        },
+      }),
       calculator,
     )
 
@@ -58,7 +85,7 @@ describe('holding-tax screen boundary', () => {
         residency: 'residing',
         areaKind: 'general',
         holdingYears: 2,
-        residenceYears: 1,
+        residenceYears: 2,
       }],
     })
     expect(calculator).toHaveBeenCalledWith(currentReform.input)
@@ -102,7 +129,17 @@ describe('holding-tax screen boundary', () => {
     const calculator = vi.fn(calculateHoldingTax)
     const comparison = calculatePortfolioHoldingTax(
       [owned, spouseOnly],
-      '1967-06-01',
+      conditionsFor([owned], {
+        ownerAge: 59,
+        items: {
+          owned: {
+            holdingYears: 1,
+            residenceYears: 1,
+            continuesResidence: true,
+            qualifyingRelocation: null,
+          },
+        },
+      }),
       calculator,
     )
 
@@ -115,6 +152,39 @@ describe('holding-tax screen boundary', () => {
     }
   })
 
+  it('routes a planned qualifying move into residence recognition', () => {
+    const item = {
+      ...createStoredPortfolioItem(seed({ complexId: 'golden-h15' }), 'h15'),
+      residency: 'residing' as const,
+    }
+    const comparison = calculatePortfolioHoldingTax(
+      [item],
+      conditionsFor([item], {
+        ownerAge: 62,
+        items: {
+          h15: {
+            holdingYears: 8,
+            residenceYears: 3,
+            continuesResidence: false,
+            qualifyingRelocation: true,
+          },
+        },
+      }),
+    )
+
+    expect(comparison.status).toBe('calculated')
+    if (comparison.status !== 'calculated') return
+    expect(comparison.calculations.map(({ result }) =>
+      result.comprehensiveTax.residenceRecognition.creditPeriod)).toEqual([
+      { basis: 'comprehensiveTaxCreditResidence', actualYears: 3,
+        recognizedYears: 0, years: 3 },
+      { basis: 'comprehensiveTaxCreditResidence', actualYears: 3,
+        recognizedYears: 1, years: 4 },
+      { basis: 'comprehensiveTaxCreditResidence', actualYears: 3,
+        recognizedYears: 2, years: 5 },
+    ])
+  })
+
   it('does not call the engine when a taxed item lacks an official price', () => {
     const incomplete = createStoredPortfolioItem(seed({
       officialPrice: null,
@@ -125,7 +195,7 @@ describe('holding-tax screen boundary', () => {
 
     const comparison = calculatePortfolioHoldingTax(
       [incomplete],
-      null,
+      conditionsFor([incomplete]),
       calculator,
     )
 
@@ -141,23 +211,20 @@ describe('holding-tax screen boundary', () => {
 
     const comparison = calculatePortfolioHoldingTax(
       [createStoredPortfolioItem(seed(), 'unanswered')],
-      null,
+      conditionsFor([{ id: 'unanswered' }]),
       calculator,
     )
 
     expect(comparison).toMatchObject({
       status: 'missingConditions',
       missingConditions: [
-        { kind: 'birthDate' },
-        { kind: 'acquisitionDate', item: { id: 'unanswered' } },
-        { kind: 'residenceYears', item: { id: 'unanswered' } },
         { kind: 'residency', item: { id: 'unanswered' } },
       ],
     })
     expect(calculator).not.toHaveBeenCalled()
   })
 
-  it('derives sole household ownership at 100% but requires a remainder answer below 100%', () => {
+  it('derives joint ownership directly from a share below 100%', () => {
     const complete = {
       ...createStoredPortfolioItem(seed(), 'ownership-derived'),
       isSoleHouseholdOwner: null,
@@ -168,7 +235,17 @@ describe('holding-tax screen boundary', () => {
     const calculator = vi.fn(calculateHoldingTax)
     const fullShare = calculatePortfolioHoldingTax(
       [complete],
-      '1967-06-01',
+      conditionsFor([complete], {
+        ownerAge: 59,
+        items: {
+          'ownership-derived': {
+            holdingYears: 1,
+            residenceYears: 0,
+            continuesResidence: false,
+            qualifyingRelocation: false,
+          },
+        },
+      }),
       calculator,
     )
 
@@ -183,13 +260,22 @@ describe('holding-tax screen boundary', () => {
         ...complete,
         ownershipShare: ownershipShareFromFraction(0.5),
       }],
-      '1967-06-01',
+      conditionsFor([complete], {
+        ownerAge: 59,
+        items: {
+          'ownership-derived': {
+            holdingYears: 1,
+            residenceYears: 0,
+            continuesResidence: false,
+            qualifyingRelocation: false,
+          },
+        },
+      }),
       calculator,
     )
-    expect(partialShare).toMatchObject({
-      status: 'missingConditions',
-      missingConditions: [{ kind: 'coOwnerHousehold' }],
-    })
-    expect(calculator).not.toHaveBeenCalled()
+    expect(partialShare.status).toBe('calculated')
+    if (partialShare.status !== 'calculated') return
+    expect(partialShare.calculations[0].input.items[0]
+      .isSoleHouseholdOwner).toBe(false)
   })
 })

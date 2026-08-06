@@ -6,32 +6,20 @@ import {
   calculatePortfolioHoldingTax,
   getHoldingTaxMissingConditions,
   HOLDING_TAX_COMPARISON_YEARS,
-  HOLDING_TAX_FIRST_ASSESSMENT_DATE,
   HOLDING_TAX_PRIOR_PRICE_YEAR,
   type HoldingTaxComparison,
 } from './calculation'
+import {
+  persistHoldingTaxConditionValues,
+  restoreHoldingTaxConditionValues,
+} from './condition-values'
 import { HoldingTaxComparisonTable } from './HoldingTaxComparisonTable'
 import { HoldingTaxConditions } from './HoldingTaxConditions'
+import { HoldingTaxResultSummary } from './HoldingTaxResultSummary'
+import { formatCompactDate } from './format'
 import './holding-tax-overlay.css'
 
-const OWNER_BIRTH_DATE_STORAGE_KEY = 'incometax.holdingTax.ownerBirthDate'
 const ZERO_SHARE = 0
-
-const restoreOwnerBirthDate = (): string => {
-  try {
-    return window.localStorage.getItem(OWNER_BIRTH_DATE_STORAGE_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-const persistOwnerBirthDate = (birthDate: string): void => {
-  try {
-    window.localStorage.setItem(OWNER_BIRTH_DATE_STORAGE_KEY, birthDate)
-  } catch {
-    // localStorage may be unavailable; the current session still works.
-  }
-}
 
 export function HoldingTaxOverlay({
   controller,
@@ -40,7 +28,8 @@ export function HoldingTaxOverlay({
   readonly controller: PortfolioController
   readonly onClose: () => void
 }) {
-  const [birthDate, setBirthDate] = useState(restoreOwnerBirthDate)
+  const [conditions, setConditions] = useState(() =>
+    restoreHoldingTaxConditionValues(controller.items))
   const taxedItems = useMemo(
     () => controller.items.filter(
       ({ ownershipShare }) => ownershipShare > ZERO_SHARE,
@@ -50,46 +39,29 @@ export function HoldingTaxOverlay({
   const missingConditions = useMemo(
     () => getHoldingTaxMissingConditions(
       taxedItems,
-      birthDate || null,
+      conditions,
     ),
-    [birthDate, taxedItems],
-  )
-  const [conditionsSubmitted, setConditionsSubmitted] = useState(
-    () => taxedItems.length > 0 && missingConditions.length === 0,
+    [conditions, taxedItems],
   )
   const [conditionsOpen, setConditionsOpen] = useState(
-    () => !conditionsSubmitted,
+    () => !(taxedItems.length > 0 && missingConditions.length === 0),
   )
-  const comparison = useMemo<HoldingTaxComparison>(() => {
-    if (
-      controller.items.length > 0 &&
-      taxedItems.length > 0 &&
-      !conditionsSubmitted
-    ) {
-      return { status: 'missingConditions', missingConditions }
-    }
-    return calculatePortfolioHoldingTax(
-      controller.items,
-      birthDate || null,
-    )
-  }, [
-    birthDate,
-    conditionsSubmitted,
+  const comparison = useMemo<HoldingTaxComparison>(() =>
+    calculatePortfolioHoldingTax(controller.items, conditions), [
+    conditions,
     controller.items,
-    missingConditions,
-    taxedItems.length,
   ])
   const assumptionSummary = comparison.status === 'calculated'
     ? HOLDING_TAX_MESSAGES.assumptionsSummary(
-        comparison.calculations.map(({ year }) =>
+        comparison.calculations.map(({ year, input }) =>
           HOLDING_TAX_MESSAGES.yearAssumption(
             year,
             comparison.ownerAgeByYear[year],
-            comparison.taxedItems.map((item) =>
+            comparison.taxedItems.map((item, itemIndex) =>
               HOLDING_TAX_MESSAGES.itemAssumption(
                 item.complexName,
                 comparison.holdingYearsByItemAndYear[year][item.id],
-                item.residenceYears!,
+                input.items[itemIndex].residenceYears,
               )),
           )),
       )
@@ -105,16 +77,29 @@ export function HoldingTaxOverlay({
 
   const submitConditions = () => {
     if (missingConditions.length > 0) return
-    persistOwnerBirthDate(birthDate)
-    setConditionsSubmitted(true)
+    try {
+      persistHoldingTaxConditionValues(conditions)
+    } catch {
+      // The calculation remains usable for the current session.
+    }
     setConditionsOpen(false)
   }
+
+  const priceAssumptions = taxedItems.map((item) =>
+    `${item.complexName} ${item.officialPriceBaseDate === null
+      ? HOLDING_TAX_MESSAGES.officialPriceBaseDateMissing
+      : formatCompactDate(item.officialPriceBaseDate)}`)
+  const continuingResidenceItems = taxedItems.filter((item) =>
+    conditions.items[item.id]?.continuesResidence === true)
+  const frozenResidenceItems = taxedItems.filter((item) =>
+    item.residency === 'nonResiding' ||
+    conditions.items[item.id]?.continuesResidence === false)
+  const recognitionItems = frozenResidenceItems.filter((item) =>
+    conditions.items[item.id]?.qualifyingRelocation === true)
 
   return (
     <div
       className="holding-overlay"
-      role="dialog"
-      aria-modal="true"
       aria-labelledby="holding-overlay-title"
     >
       <header className="holding-overlay__header">
@@ -159,15 +144,15 @@ export function HoldingTaxOverlay({
       </header>
 
       <main className="holding-overlay__content">
-        {(conditionsOpen || comparison.status === 'missingConditions') &&
+        {(conditionsOpen ||
+          comparison.status === 'missingConditions' ||
+          comparison.status === 'missingOfficialPrices') &&
           controller.items.length > 0 && (
             <HoldingTaxConditions
-              birthDate={birthDate}
+              conditions={conditions}
               controller={controller}
               missingConditions={missingConditions}
-              referenceDate={HOLDING_TAX_FIRST_ASSESSMENT_DATE}
-              onBirthDateChange={setBirthDate}
-              onDirty={() => setConditionsSubmitted(false)}
+              onChange={setConditions}
               onSubmit={submitConditions}
             />
           )}
@@ -198,6 +183,10 @@ export function HoldingTaxOverlay({
         )}
         {comparison.status === 'calculated' && !conditionsOpen && (
           <>
+            <HoldingTaxResultSummary
+              calculations={comparison.calculations}
+              taxedItems={comparison.taxedItems}
+            />
             <div className="holding-overlay__model-note" role="note">
               <span>{HOLDING_TAX_MESSAGES.householdCount(
                 comparison.householdHomeCount,
@@ -222,12 +211,42 @@ export function HoldingTaxOverlay({
                 )}</p>
               )}
             </div>
+            <section className="holding-overlay__prose-assumptions">
+              <h2>{HOLDING_TAX_MESSAGES.assumptionsProseTitle}</h2>
+              <p>{HOLDING_TAX_MESSAGES.priceDateAssumption(
+                priceAssumptions,
+              )}</p>
+              {continuingResidenceItems.length > 0 && (
+                <p>{HOLDING_TAX_MESSAGES.continuingResidenceAssumption(
+                  continuingResidenceItems.map(({ complexName }) =>
+                    complexName),
+                )}</p>
+              )}
+              {frozenResidenceItems.length > 0 && (
+                <p>{HOLDING_TAX_MESSAGES.frozenResidenceAssumption(
+                  frozenResidenceItems.map(({ complexName }) => complexName),
+                )}</p>
+              )}
+              {recognitionItems.length > 0 && (
+                <p>{HOLDING_TAX_MESSAGES.recognitionAssumption(
+                  recognitionItems.map(({ complexName }) => complexName),
+                )}</p>
+              )}
+              <p>{HOLDING_TAX_MESSAGES.modeledCapAssumption}</p>
+              <p>{HOLDING_TAX_MESSAGES.unavailableCapAssumption}</p>
+            </section>
             <HoldingTaxComparisonTable
               calculations={comparison.calculations}
               taxedItems={comparison.taxedItems}
             />
           </>
         )}
+        <section className="holding-overlay__cautions">
+          <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
+          {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
+            <p key={caution}>{caution}</p>
+          ))}
+        </section>
       </main>
     </div>
   )

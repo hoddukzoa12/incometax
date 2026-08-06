@@ -18,6 +18,8 @@ type PortfolioEditableFields = Pick<
   | 'acquisitionDate'
   | 'areaKind'
   | 'isSoleHouseholdOwner'
+  | 'officialPrice'
+  | 'officialPriceBaseDate'
   | 'residenceYears'
   | 'residency'
 >
