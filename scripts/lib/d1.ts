@@ -27,6 +27,29 @@ type D1Result = {
   readonly results: readonly Record<string, unknown>[]
 }
 
+/** 줄 첫머리의 `[` 만 JSON 배열의 시작으로 본다. */
+const JSON_ARRAY_LINE_START = /^\[/m
+
+const MISSING_JSON_PAYLOAD_MESSAGE =
+  'Wrangler D1 output contained no JSON payload'
+
+/**
+ * `--json`을 줘도 Wrangler는 JSON 앞에 사람용 출력을 붙일 수 있다.
+ * `--remote --file`은 업로드 진행 상황을 ANSI 색상이 입혀진 표로 stdout에 먼저 쓴다
+ * (`--command`나 로컬 실행에는 없어서 원격 첫 실행에서야 드러났다).
+ *
+ * 첫 `[`를 그냥 찾으면 안 된다 — ANSI 이스케이프 `ESC[90m` 자체가 `[`를 품고 있어
+ * 색이 입혀진 머리말 안에서 잘못 걸린다. Wrangler는 JSON을 항상 새 줄에서 시작하므로
+ * **줄 첫머리의 `[`** 를 기준으로 자른다.
+ */
+export const extractD1JsonPayload = (stdout: string): string => {
+  const match = JSON_ARRAY_LINE_START.exec(stdout)
+  if (match?.index === undefined) {
+    throw new TypeError(MISSING_JSON_PAYLOAD_MESSAGE)
+  }
+  return stdout.slice(match.index)
+}
+
 export const runD1 = async (
   sql: string,
   location: D1Location,
@@ -78,7 +101,7 @@ export const runD1 = async (
         `D1 command failed (${String(result.code)}): ${result.stderr || result.stdout}`,
       )
     }
-    const parsed: unknown = JSON.parse(result.stdout)
+    const parsed: unknown = JSON.parse(extractD1JsonPayload(result.stdout))
     if (!Array.isArray(parsed)) {
       throw new TypeError('Unexpected Wrangler D1 JSON output')
     }
