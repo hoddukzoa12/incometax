@@ -28,7 +28,11 @@
 
 .complex-search__input:focus {
   border-color: var(--color-accent);
-  outline: 3px solid color-mix(in srgb, var(--color-accent) 15%, transparent);
+  outline: 3px solid color-mix(
+    in srgb,
+    var(--color-accent) 15%,
+    var(--color-transparent)
+  );
 }
 
 .complex-search__results,
@@ -54,11 +58,12 @@
 .complex-search__result button {
   display: grid;
   width: 100%;
+  min-height: var(--size-touch-target-min);
   gap: var(--space-1);
   padding: var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--color-transparent);
   color: inherit;
   font: inherit;
   text-align: left;

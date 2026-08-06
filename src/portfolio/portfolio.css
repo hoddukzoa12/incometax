@@ -10,6 +10,11 @@
   font-family: var(--font-family-sans);
 }
 
+.portfolio-panel button {
+  min-width: var(--size-touch-target-min);
+  min-height: var(--size-touch-target-min);
+}
+
 .portfolio-panel__toggle {
   padding: var(--space-3) var(--space-4);
   border: 0;
@@ -41,7 +46,11 @@
   justify-content: space-between;
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-neutral-200);
-  background: color-mix(in srgb, var(--color-neutral-50) 96%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-neutral-50) 96%,
+    var(--color-transparent)
+  );
   backdrop-filter: blur(0.5rem);
 }
 
@@ -53,7 +62,7 @@
 .portfolio-panel__header button,
 .portfolio-item__remove {
   border: 0;
-  background: transparent;
+  background: var(--color-transparent);
   color: var(--color-neutral-600);
   cursor: pointer;
   font-size: var(--font-size-sm);
@@ -84,7 +93,11 @@
   bottom: 0;
   padding: var(--space-3);
   border-top: 1px solid var(--color-neutral-200);
-  background: color-mix(in srgb, var(--color-neutral-50) 96%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-neutral-50) 96%,
+    var(--color-transparent)
+  );
   backdrop-filter: blur(var(--space-2));
 }
 
@@ -153,7 +166,7 @@
   color: var(--color-warning);
 }
 
-@media (max-width: 40rem) {
+@media (max-width: 45rem) {
   .portfolio-panel {
     right: var(--space-3);
     bottom: var(--space-3);

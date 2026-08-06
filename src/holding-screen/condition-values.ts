@@ -2,15 +2,23 @@ import type { StoredPortfolioItem } from '../../shared/portfolio'
 import { TAX_RULES_BY_YEAR } from '../rules'
 import {
   completedCalendarYears,
+  HOLDING_TAX_COMPARISON_YEARS,
   HOLDING_TAX_FIRST_ASSESSMENT_DATE,
 } from './assessment-calendar'
 
 const ZERO_YEARS = 0
 const STORAGE_VERSION = 1
+const ISO_YEAR_END_INDEX = 4
 const HOLDING_TAX_CONDITIONS_STORAGE_KEY =
   'incometax.holdingTax.conditions'
 const LEGACY_OWNER_BIRTH_DATE_STORAGE_KEY =
   'incometax.holdingTax.ownerBirthDate'
+const FIRST_ASSESSMENT_YEAR = Number(
+  HOLDING_TAX_FIRST_ASSESSMENT_DATE.slice(0, ISO_YEAR_END_INDEX),
+)
+const MAXIMUM_IMPLICIT_PERIOD_YEARS =
+  HOLDING_TAX_COMPARISON_YEARS[HOLDING_TAX_COMPARISON_YEARS.length - 1] -
+  FIRST_ASSESSMENT_YEAR
 
 const currentCreditRules =
   TAX_RULES_BY_YEAR[2026].comprehensiveTax.taxCredit
@@ -23,6 +31,26 @@ export const MINIMUM_HOLDING_CREDIT_YEARS =
   currentCreditRules.holdingPeriodRates[0].minimum
 export const MINIMUM_RESIDENCE_CREDIT_YEARS =
   reformCreditRules.residencePeriodRates[0].minimum
+
+export const getOwnerAgeKnowledge = (
+  year: number,
+  ownerAge: number,
+) => {
+  const elapsedYears = year - FIRST_ASSESSMENT_YEAR
+  const initialOwnerAge = ownerAge - elapsedYears
+  const thresholdForYear = MINIMUM_AGE_CREDIT_YEARS + elapsedYears
+
+  if (initialOwnerAge === ZERO_YEARS) {
+    return { kind: 'youngerThan', years: thresholdForYear } as const
+  }
+  if (initialOwnerAge === MINIMUM_AGE_CREDIT_YEARS) {
+    return { kind: 'atLeast', years: thresholdForYear } as const
+  }
+  return { kind: 'exact', years: ownerAge } as const
+}
+
+export const getKnownPeriodMinimumYears = (years: number): number | null =>
+  years <= MAXIMUM_IMPLICIT_PERIOD_YEARS ? null : years
 
 export interface HoldingTaxItemConditionValues {
   readonly holdingYears: number

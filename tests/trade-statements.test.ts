@@ -82,7 +82,7 @@ describe('trade refresh D1 statements', () => {
       database,
       startTradeRefreshStatements(plan, '2026-08-04T00:00:00.000Z'),
     )
-    executeBatch(database, [
+    const datasetStatements = [
       ...clearTradeDatasetStatements(plan.refreshId, result),
       ...insertTradeDatasetStatements(
         plan.refreshId,
@@ -94,7 +94,9 @@ describe('trade refresh D1 statements', () => {
         result,
         '2026-08-04T00:00:00.000Z',
       ),
-    ])
+    ]
+    executeBatch(database, datasetStatements)
+    executeBatch(database, datasetStatements)
 
     expect(database.prepare(tradeValidationSql(plan.refreshId)).get()).toMatchObject({
       completed_dataset_count: 1,
@@ -102,6 +104,13 @@ describe('trade refresh D1 statements', () => {
       staged_trade_count: 1,
       orphan_trade_count: 0,
     })
+    executeBatch(
+      database,
+      activateTradeRefreshStatements(
+        plan.refreshId,
+        '2026-08-04T00:01:00.000Z',
+      ),
+    )
     executeBatch(
       database,
       activateTradeRefreshStatements(

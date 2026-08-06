@@ -45,7 +45,14 @@ const COMPLEX_LIST_CHECKPOINT_PREFIX = `INSERT INTO complex_list_checkpoint (
        page, complex_id, name, legal_dong_code,
        province, district, legal_dong, ri
      ) VALUES `
-const INSERT_SUFFIX = ';'
+const COMPLEX_LIST_CHECKPOINT_SUFFIX = `
+     ON CONFLICT(page, complex_id) DO UPDATE SET
+       name = excluded.name,
+       legal_dong_code = excluded.legal_dong_code,
+       province = excluded.province,
+       district = excluded.district,
+       legal_dong = excluded.legal_dong,
+       ri = excluded.ri;`
 
 const complexDraftSqlRow = (
   record: ComplexStagingRecord,
@@ -130,7 +137,7 @@ export const complexListCheckpointStatements = (
   chunkedStatements({
     records,
     prefix: COMPLEX_LIST_CHECKPOINT_PREFIX,
-    suffix: INSERT_SUFFIX,
+    suffix: COMPLEX_LIST_CHECKPOINT_SUFFIX,
     row: (record) =>
       `(${[
         page,

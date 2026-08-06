@@ -77,7 +77,11 @@ select {
   max-width: calc(100% - var(--space-6) - var(--space-2));
   padding: var(--space-2) var(--space-3);
   color: var(--color-neutral-900);
-  background: color-mix(in srgb, var(--color-neutral-0) 96%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-neutral-0) 96%,
+    var(--color-transparent)
+  );
   border: 1px solid var(--color-neutral-300);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -104,6 +108,7 @@ select {
 
 .complex-map__truncated button {
   flex: none;
+  min-height: var(--size-touch-target-min);
   padding: var(--space-2) var(--space-3);
   color: var(--color-neutral-0);
   background: var(--color-accent);
@@ -119,11 +124,17 @@ select {
 
 .complex-label {
   position: relative;
+  min-width: var(--size-touch-target-min);
+  min-height: var(--size-touch-target-min);
   max-width: 190px;
   padding: var(--space-1);
   overflow: visible;
   color: var(--color-neutral-900);
-  background: color-mix(in srgb, var(--color-neutral-0) 96%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--color-neutral-0) 96%,
+    var(--color-transparent)
+  );
   border: 1px solid var(--color-neutral-300);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
@@ -142,9 +153,13 @@ select {
   left: 50%;
   width: 0;
   height: 0;
-  border-top: 7px solid color-mix(in srgb, var(--color-neutral-0) 96%, transparent);
-  border-right: 6px solid transparent;
-  border-left: 6px solid transparent;
+  border-top: 7px solid color-mix(
+    in srgb,
+    var(--color-neutral-0) 96%,
+    var(--color-transparent)
+  );
+  border-right: 6px solid var(--color-transparent);
+  border-left: 6px solid var(--color-transparent);
   content: "";
   transform: translateX(-50%);
 }
@@ -163,7 +178,7 @@ select {
   border-top-color: var(--color-accent);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 45rem) {
   .app-shell__sidebar {
     position: absolute;
     z-index: 20;

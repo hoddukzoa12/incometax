@@ -124,7 +124,20 @@ export const checkpointTradeDatasetStatement = (
        WHERE singleton = 1
          AND refresh_id = ${sqlString(refreshId)}
          AND status = 'inProgress'
-    )`
+    )
+    ON CONFLICT(refresh_id, source, legal_district_code, deal_year_month)
+    DO UPDATE SET
+      raw_count = excluded.raw_count,
+      canceled_count = excluded.canceled_count,
+      duplicate_count = excluded.duplicate_count,
+      outside_window_count = excluded.outside_window_count,
+      active_count = excluded.active_count,
+      matched_count = excluded.matched_count,
+      lot_count = excluded.lot_count,
+      candidate_count = excluded.candidate_count,
+      ambiguous_count = excluded.ambiguous_count,
+      unmatched_count = excluded.unmatched_count,
+      completed_at = excluded.completed_at`
 }
 
 export const tradeValidationSql = (refreshId: string): string => `

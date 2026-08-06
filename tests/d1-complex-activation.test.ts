@@ -70,6 +70,7 @@ describe('complex activation with trade foreign keys', () => {
       .get()?.rowid
 
     database.exec(COMPLEX_ACTIVATION_SQL)
+    database.exec(COMPLEX_ACTIVATION_SQL)
 
     expect(
       database

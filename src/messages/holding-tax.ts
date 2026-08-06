@@ -1,3 +1,26 @@
+import { withKoreanParticle } from '../i18n/korean-particle'
+import {
+  getKnownPeriodMinimumYears,
+  getOwnerAgeKnowledge,
+} from '../holding-screen/condition-values'
+
+const ageAssumption = (year: number, ownerAge: number): string => {
+  const knowledge = getOwnerAgeKnowledge(year, ownerAge)
+  if (knowledge.kind === 'youngerThan') return `만 ${knowledge.years}세 미만`
+  if (knowledge.kind === 'atLeast') return `만 ${knowledge.years}세 이상`
+  return `만 ${knowledge.years}세`
+}
+
+const periodAssumption = (
+  years: number,
+  label: string,
+): string | null => {
+  const knownMinimumYears = getKnownPeriodMinimumYears(years)
+  return knownMinimumYears === null
+    ? null
+    : `${knownMinimumYears}년 이상 ${label}`
+}
+
 export const HOLDING_TAX_TERM_HELP = {
   comprehensiveTax: {
     title: '종합부동산세',
@@ -92,12 +115,21 @@ export const HOLDING_TAX_MESSAGES = {
     year: number,
     ownerAge: number,
     itemSummaries: readonly string[],
-  ) => `${year}년 6월 1일 기준 ${[`만 ${ownerAge}세`, ...itemSummaries].join(' · ')}`,
+  ) => `${year}년 6월 1일 기준 ${[
+    ageAssumption(year, ownerAge),
+    ...itemSummaries.filter((summary) => summary.length > 0),
+  ].join(' · ')}`,
   itemAssumption: (
     name: string,
     holdingYears: number,
     residenceYears: number,
-  ) => `${name} ${holdingYears}년 보유/${residenceYears}년 거주`,
+  ) => {
+    const periods = [
+      periodAssumption(holdingYears, '보유'),
+      periodAssumption(residenceYears, '거주'),
+    ].filter((period): period is string => period !== null)
+    return periods.length === 0 ? '' : `${name} ${periods.join('/')}`
+  },
   comparisonItem: '항목',
   comparisonBasis: '비고',
   propertySection: (name: string, share: string) =>
@@ -138,14 +170,22 @@ export const HOLDING_TAX_MESSAGES = {
     names: readonly string[],
   ) => `${names.join(', ')}의 ${priorYear}년 공시가격 기록도 확인할 수 없어요.`,
   assumptionsProseTitle: '계산 가정',
-  priceDateAssumption: (facts: readonly string[]) =>
-    `공시가격은 ${facts.join(', ')}을 기준으로 사용했어요.`,
-  continuingResidenceAssumption: (names: readonly string[]) =>
-    `${names.join(', ')}은 2027년과 2028년에도 계속 거주해 거주기간이 해마다 1년씩 늘어난다고 가정했어요.`,
-  frozenResidenceAssumption: (names: readonly string[]) =>
-    `${names.join(', ')}은 거주기간이 2026년 이후 늘어나지 않는다고 가정했어요.`,
-  recognitionAssumption: (names: readonly string[]) =>
-    `${names.join(', ')}은 입력한 실제 거주기간이 끝난 때 다른 시·군으로 이사한 것으로 보고 거주기간 인정 특례를 계산했어요.`,
+  priceDateAssumption: (facts: readonly string[]) => {
+    const joinedFacts = facts.join(', ')
+    return `공시가격은 ${withKoreanParticle(joinedFacts, '을/를')} 기준으로 사용했어요.`
+  },
+  continuingResidenceAssumption: (names: readonly string[]) => {
+    const joinedNames = names.join(', ')
+    return `${withKoreanParticle(joinedNames, '은/는')} 2027년과 2028년에도 계속 거주해 거주기간이 해마다 1년씩 늘어난다고 가정했어요.`
+  },
+  frozenResidenceAssumption: (names: readonly string[]) => {
+    const joinedNames = names.join(', ')
+    return `${withKoreanParticle(joinedNames, '은/는')} 거주기간이 2026년 이후 늘어나지 않는다고 가정했어요.`
+  },
+  recognitionAssumption: (names: readonly string[]) => {
+    const joinedNames = names.join(', ')
+    return `${withKoreanParticle(joinedNames, '은/는')} 입력한 실제 거주기간이 끝난 때 다른 시·군으로 이사한 것으로 보고 거주기간 인정 특례를 계산했어요.`
+  },
   modeledCapAssumption:
     '2027년과 2028년 세부담상한은 실제 전년도 고지액이 아니라 공시가격이 같다는 모형에서 계산한 전년도 세액을 사용했어요.',
   unavailableCapAssumption:
@@ -227,7 +267,7 @@ export const HOLDING_TAX_MESSAGES = {
   basisSum: '위 금액을 합산',
   basisPreferentialApplied: '공시가격과 1세대1주택 요건을 충족해 적용',
   basisPreferentialNotApplied: (maximumPrice: string) =>
-    `공시가격이 ${maximumPrice}을 초과하여 1세대1주택 재산세 감면 특례가 적용되지 않았어요.`,
+    `공시가격이 ${withKoreanParticle(maximumPrice, '을/를')} 초과하여 1세대1주택 재산세 감면 특례가 적용되지 않았어요.`,
   basisPreferentialHouseholdNotApplied:
     '세대가 1주택 요건을 충족하지 않아 1세대1주택 재산세 감면 특례가 적용되지 않았어요.',
   basisOwnedBaseTax: '물건 전체 산출세액 × 내 지분',

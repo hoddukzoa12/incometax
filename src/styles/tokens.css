@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   --font-family-sans:
     Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
@@ -26,17 +28,34 @@
   --color-neutral-900: #1f2933;
   --color-danger: #b42318;
   --color-warning: #8a5a00;
+  --color-transparent: transparent;
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-pill: 999px;
 
-  --shadow-sm: 0 1px 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
-  --shadow-lg: 0 8px 24px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --shadow-sm: 0 1px 3px color-mix(
+    in srgb,
+    var(--color-accent) 18%,
+    var(--color-transparent)
+  );
+  --shadow-lg: 0 8px 24px color-mix(
+    in srgb,
+    var(--color-accent) 14%,
+    var(--color-transparent)
+  );
 
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
+
+  --size-touch-target-min: 2.75rem;
+
+  /*
+   * Canonical compact-layout breakpoint: 45rem (720px at the 16px root).
+   * CSS custom properties cannot be evaluated in media conditions, so every
+   * component media query repeats only the canonical `45rem` spelling.
+   */
 }

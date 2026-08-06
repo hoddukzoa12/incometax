@@ -65,6 +65,7 @@ describe('complex D1 write batching', () => {
       ),
     ).toBe(true)
     database.exec(statements.join('\n'))
+    database.exec(statements.join('\n'))
     expect(
       database
         .prepare(
@@ -114,6 +115,7 @@ describe('complex D1 write batching', () => {
       [record],
       '2026-08-04T00:00:00.000Z',
     )
+    database.exec(statements.join('\n'))
     database.exec(statements.join('\n'))
     database.exec(
       complexDraftUpsertStatements(

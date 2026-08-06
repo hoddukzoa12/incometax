@@ -6,10 +6,11 @@ import type {
   OfficialPriceResolutionResult,
 } from '../../shared/official-price'
 import type { PortfolioItemSeed } from '../../shared/portfolio'
+import { formatWon } from '../holding-screen/format'
 import { PORTFOLIO_MESSAGES } from '../messages/portfolio'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 import { fetchApartmentUnitOptions } from './api'
-import { formatArea, formatWon } from './format'
+import { formatArea } from './format'
 import {
   officialPriceFailureMessage,
   officialPriceNoDataMessage,
@@ -174,7 +175,9 @@ export function UnitPicker({
   return (
     <section className="complex-sidebar__section unit-picker">
       <h3>{SIDEBAR_MESSAGES.officialPriceTitle}</h3>
-      <p className="unit-picker__guide">{SIDEBAR_MESSAGES.exactPriceGuide}</p>
+      {priceQuery === null && (
+        <p className="unit-picker__guide">{SIDEBAR_MESSAGES.exactPriceGuide}</p>
+      )}
       <UnitSelectionFields
         dongs={dongs}
         rooms={rooms}
@@ -217,9 +220,6 @@ export function UnitPicker({
       )}
       {priceResult?.status === 'loaded' && priceResult.value.status === 'found' && (
         <>
-          <p className="unit-picker__exact-status" role="status">
-            {SIDEBAR_MESSAGES.exactPriceShowing}
-          </p>
           <ol className="official-price-history">
             {priceResult.value.value.items
               .slice(0, visiblePriceCount)

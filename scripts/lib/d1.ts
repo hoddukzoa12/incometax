@@ -20,6 +20,7 @@ interface D1ExecutionOptions {
   readonly input?: 'command' | 'file'
   readonly operation?: D1ExecutionMeasurement['operation']
   readonly observer?: D1ExecutionObserver
+  readonly runner?: D1CommandRunner
 }
 
 type D1Result = {
@@ -27,11 +28,118 @@ type D1Result = {
   readonly results: readonly Record<string, unknown>[]
 }
 
+export interface D1CommandResult {
+  readonly code: number | null
+  readonly stdout: string
+  readonly stderr: string
+}
+
+export type D1CommandRunner = (
+  args: readonly string[],
+) => Promise<D1CommandResult>
+
 /** 줄 첫머리의 `[` 만 JSON 배열의 시작으로 본다. */
 const JSON_ARRAY_LINE_START = /^\[/m
 
 const MISSING_JSON_PAYLOAD_MESSAGE =
   'Wrangler D1 output contained no JSON payload'
+
+const D1_RETRY_BACKOFF_MS = [1_000, 2_000] as const
+const D1_MAX_ATTEMPTS = D1_RETRY_BACKOFF_MS.length + 1
+
+const DETERMINISTIC_D1_FAILURE_PATTERNS = [
+  /\bSQLITE_(?:AUTH|CONSTRAINT(?:_\w+)?|CORRUPT|ERROR|FORMAT|MISMATCH|MISUSE|NOTADB|PERM|RANGE|READONLY|SCHEMA|TOOBIG)\b/i,
+  /\b(?:CHECK|FOREIGN KEY|NOT NULL|UNIQUE) constraint failed\b/i,
+  /\bconstraint (?:failed|violation)\b/i,
+  /\bsyntax error\b/i,
+  /\bno such (?:column|table)\b/i,
+  /\b(?:invalid|missing|unknown) binding\b/i,
+  /\b(?:could not|couldn't) find.{0,40}\bbinding\b/is,
+  /\bbinding.{0,40}\bnot found\b/is,
+  /\b(?:authentication|authorization) failed\b/i,
+  /\b(?:forbidden|invalid (?:api )?token|invalid credentials|unauthorized)\b/i,
+  /\b(?:HTTP(?:\/\d(?:\.\d)?)?|status(?: code)?)\D*(?:401|403)\b/i,
+  /\bcode\D*10000\b/i,
+] as const
+
+const TRANSIENT_D1_FAILURE_PATTERNS = [
+  /\bfile could not be uploaded\b/i,
+  /\b(?:failed|failure|error).{0,30}\bupload/i,
+  /\bupload.{0,30}\b(?:failed|failure|error)/i,
+  /<Code>InternalError<\/Code>/i,
+  /\bInternalError\b/i,
+  /\b(?:bad gateway|gateway timeout|internal server error|service unavailable)\b/i,
+  /\b(?:HTTP(?:\/\d(?:\.\d)?)?|status(?: code)?|response status)\D*5\d{2}\b/i,
+  /\b(?:api|cloudflare).{0,40}\b5\d{2}\b/is,
+  /\b(?:EAI_AGAIN|ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH|EPIPE|ETIMEDOUT|UND_ERR_(?:BODY_TIMEOUT|CONNECT_TIMEOUT|HEADERS_TIMEOUT|SOCKET))\b/i,
+  /\b(?:connection (?:was )?reset|network error|socket hang up|timed out|timeout(?:error)?)\b/i,
+] as const
+
+const wait = async (delayMs: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, delayMs))
+
+const defaultD1CommandRunner: D1CommandRunner = async (args) =>
+  new Promise((resolve, reject) => {
+    const child = spawn('npx', args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+      stdout += chunk
+    })
+    child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+      stderr += chunk
+    })
+    child.on('error', reject)
+    child.on('close', (code) => resolve({ code, stdout, stderr }))
+  })
+
+const d1FailureMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
+
+const isTransientD1Failure = (error: unknown): boolean => {
+  const message = d1FailureMessage(error)
+  if (DETERMINISTIC_D1_FAILURE_PATTERNS.some((pattern) => pattern.test(message))) {
+    return false
+  }
+  return TRANSIENT_D1_FAILURE_PATTERNS.some((pattern) => pattern.test(message))
+}
+
+const d1CommandError = (result: D1CommandResult): Error => {
+  const upstreamOutput = [result.stderr, result.stdout]
+    .filter((output) => output.length > 0)
+    .join('\n')
+  return new Error(
+    `D1 command failed (${String(result.code)}): ${upstreamOutput}`,
+  )
+}
+
+const executeD1Command = async (
+  args: readonly string[],
+  location: D1Location,
+  runner: D1CommandRunner,
+): Promise<D1CommandResult> => {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const result = await runner(args)
+      if (result.code !== 0) throw d1CommandError(result)
+      return result
+    } catch (error) {
+      const backoffMs = D1_RETRY_BACKOFF_MS[attempt - 1]
+      if (
+        location !== 'remote' ||
+        !isTransientD1Failure(error) ||
+        backoffMs === undefined
+      ) {
+        throw error
+      }
+      console.warn(
+        `D1 transient failure on attempt ${attempt}/${D1_MAX_ATTEMPTS}; ` +
+          `retrying in ${backoffMs}ms: ${d1FailureMessage(error)}`,
+      )
+      await wait(backoffMs)
+    }
+  }
+}
 
 /**
  * `--json`을 줘도 Wrangler는 JSON 앞에 사람용 출력을 붙일 수 있다.
@@ -78,29 +186,11 @@ export const runD1 = async (
       '--yes',
       '--json',
     ]
-    const result = await new Promise<{
-      readonly code: number | null
-      readonly stdout: string
-      readonly stderr: string
-    }>((resolve, reject) => {
-      const child = spawn('npx', args, { stdio: ['ignore', 'pipe', 'pipe'] })
-      let stdout = ''
-      let stderr = ''
-      child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
-        stdout += chunk
-      })
-      child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
-        stderr += chunk
-      })
-      child.on('error', reject)
-      child.on('close', (code) => resolve({ code, stdout, stderr }))
-    })
-
-    if (result.code !== 0) {
-      throw new Error(
-        `D1 command failed (${String(result.code)}): ${result.stderr || result.stdout}`,
-      )
-    }
+    const result = await executeD1Command(
+      args,
+      location,
+      options.runner ?? defaultD1CommandRunner,
+    )
     const parsed: unknown = JSON.parse(extractD1JsonPayload(result.stdout))
     if (!Array.isArray(parsed)) {
       throw new TypeError('Unexpected Wrangler D1 JSON output')
