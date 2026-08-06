@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { HoldingTaxOverlay, useHoldingTaxOverlay } from './holding-screen'
 import ComplexMap from './map/ComplexMap'
 import { APP_MESSAGES } from './messages/app'
 import { ComplexSearch } from './search'
@@ -13,6 +14,7 @@ export default function App() {
   )
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false)
   const portfolio = usePortfolio()
+  const holdingTaxOverlay = useHoldingTaxOverlay()
 
   return (
     <div className="app-shell">
@@ -30,6 +32,7 @@ export default function App() {
             controller={portfolio}
             open={isPortfolioOpen}
             onOpenChange={setIsPortfolioOpen}
+            onCalculateHoldingTax={holdingTaxOverlay.show}
           />
         </div>
         <aside
@@ -46,6 +49,12 @@ export default function App() {
           />
         </aside>
       </main>
+      {holdingTaxOverlay.open && (
+        <HoldingTaxOverlay
+          controller={portfolio}
+          onClose={holdingTaxOverlay.hide}
+        />
+      )}
     </div>
   )
 }

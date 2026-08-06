@@ -10,6 +10,11 @@ import {
   collectResumableKaptList,
   hasCompleteSearchLocation,
 } from './lib/complex-list.ts'
+import {
+  evaluateComplexActivationReadiness,
+  MAX_KAKAO_NOT_FOUND_RATIO,
+  MAX_KAKAO_REJECTED_RATIO,
+} from './lib/complex-activation.ts'
 import { readKaptPage } from './lib/complex-source.ts'
 import { runConcurrentTasks } from './lib/concurrent-tasks.ts'
 import {
@@ -37,9 +42,6 @@ const DEFAULT_KAKAO_LOOKUP_CONCURRENCY = 4
 const PROGRESS_INTERVAL = 100
 const D1_WRITE_INVOCATION_BATCH_SIZE = 5_000
 const MAX_CONSECUTIVE_FAILURES = 3
-const MAX_SOURCE_EXCLUSION_RATIO = 0.01
-const MAX_KAKAO_NOT_FOUND_RATIO = 0.25
-const MAX_KAKAO_REJECTED_RATIO = 0.02
 const COVERAGE_GUARD_MIN_ATTEMPTS = 100
 
 interface VerificationContract {
@@ -99,17 +101,6 @@ const readVerificationContract = async (
     itemFields: kaptList.itemFields,
   }
 }
-
-const requiredRegionsPresent = (validation: {
-  readonly seoul_count: number
-  readonly busan_count: number
-  readonly gyeonggi_count: number
-  readonly jeju_count: number
-}): boolean =>
-  validation.seoul_count > 0 &&
-  validation.busan_count > 0 &&
-  validation.gyeonggi_count > 0 &&
-  validation.jeju_count > 0
 
 const main = async (): Promise<void> => {
   const { values } = parseArgs({
@@ -236,15 +227,6 @@ const main = async (): Promise<void> => {
     )
   }
 
-  const maxSourceExclusions = Math.floor(
-    verification.totalCount * MAX_SOURCE_EXCLUSION_RATIO,
-  )
-  if (refreshState.exclusions.length > maxSourceExclusions) {
-    throw new Error(
-      `K-apt basis exclusions ${refreshState.exclusions.length} exceed the ${maxSourceExclusions} record safety limit`,
-    )
-  }
-
   const failures: IngestionFailure[] = []
   let lookups = 0
   let matched = 0
@@ -356,11 +338,6 @@ const main = async (): Promise<void> => {
     location,
     metrics.recordD1Execution,
   )
-  const lookupStatusCount =
-    validation.pending_count +
-    validation.matched_count +
-    validation.not_found_count +
-    validation.rejected_count
   const cumulativeNotFoundRatio =
     validation.total_count === 0
       ? 0
@@ -377,39 +354,30 @@ const main = async (): Promise<void> => {
   const rejectedGuardRatio = cumulativeRejectedRatio
   const rejectedGuardExceeded =
     rejectedGuardRatio > MAX_KAKAO_REJECTED_RATIO
-  const complete =
-    failures.length === 0 &&
-    validation.total_count === verification.totalCount &&
-    validation.pending_count === 0 &&
-    lookupStatusCount === validation.total_count &&
-    validation.geocoded_count === validation.matched_count &&
-    !cumulativeNotFoundGuardExceeded &&
-    !coverageGuardExceeded &&
-    !rejectedGuardExceeded
-
-  let failureReason: string | null = null
-  if (coverageGuardExceeded || cumulativeNotFoundGuardExceeded) {
-    failureReason = 'Kakao not-found coverage guard was exceeded'
-  } else if (rejectedGuardExceeded) {
-    failureReason = 'Kakao rejected coverage guard was exceeded'
-  } else if (maxLookups === undefined && !complete) {
-    failureReason = 'Complex ingestion is incomplete; activation was skipped'
-  } else if (
-    maxLookups === undefined &&
-    !requiredRegionsPresent(validation)
-  ) {
-    failureReason = 'Required regional samples are missing; activation was skipped'
-  }
+  const activationReadiness = evaluateComplexActivationReadiness({
+    expectedCount: verification.totalCount,
+    validation,
+    failedLookupCount: failures.length,
+    coverageGuardExceeded,
+  })
+  const complete = activationReadiness.ready
+  const failureReason =
+    maxLookups === undefined && !activationReadiness.ready
+      ? `${activationReadiness.reason}; activation was skipped`
+      : null
 
   let activated = false
-  if (maxLookups === undefined && failureReason === null) {
-    await activateStaging(location, metrics.recordD1Execution)
+  if (maxLookups === undefined && activationReadiness.ready) {
+    await activateStaging(
+      activationReadiness,
+      location,
+      metrics.recordD1Execution,
+    )
     activated = true
   }
   const performanceSummary = metrics.summary()
   const report = {
     sourceCount: verification.totalCount,
-    basisExclusions: refreshState.exclusions,
     failures,
     validation,
     lookup: {

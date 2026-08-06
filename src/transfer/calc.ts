@@ -3,6 +3,7 @@ import type {
   LongTermDeductionRule,
   TaxRules,
 } from '../../shared/tax-rules'
+import type { ActualResidencePeriod } from '../../shared/ownership'
 import type {
   TransferBasicDeductionKind,
   TransferLongTermDeductionResult,
@@ -16,6 +17,10 @@ import {
   roundTaxAmount,
   TAX_RULES_BY_YEAR,
 } from '../rules'
+import {
+  meetsMinimumActualResidenceYears,
+  toActualResidencePeriod,
+} from '../validation/ownership-period'
 import { assertValidTransferTaxInput } from './validation'
 
 const DEFAULT_IS_TAX_RESIDENT = true
@@ -50,13 +55,17 @@ const getComponentRate = (
 
 const selectLongTermDeductionRule = (
   input: TransferTaxInput,
+  actualResidencePeriod: ActualResidencePeriod,
   rules: TaxRules['transferTax'],
 ): readonly [HouseholdKind, LongTermDeductionRule] => {
   const oneHouseRule = rules.longTermDeductions.oneHouse
   const qualifiesForOneHouseRule =
     input.householdKind === 'oneHouse' &&
     input.holdingYears >= oneHouseRule.minimumHoldingYears &&
-    input.residenceYears >= (oneHouseRule.minimumResidenceYears ?? ZERO_AMOUNT)
+    meetsMinimumActualResidenceYears(
+      actualResidencePeriod,
+      oneHouseRule.minimumResidenceYears ?? ZERO_AMOUNT,
+    )
   const ruleHouseholdKind: HouseholdKind = qualifiesForOneHouseRule
     ? 'oneHouse'
     : 'multiHouse'
@@ -115,11 +124,13 @@ const getDeductionCap = (
 
 const calculateLongTermDeduction = (
   input: TransferTaxInput,
+  actualResidencePeriod: ActualResidencePeriod,
   rules: TaxRules['transferTax'],
   taxableGain: number,
 ): readonly [TransferLongTermDeductionResult, number] => {
   const [ruleHouseholdKind, deductionRule] = selectLongTermDeductionRule(
     input,
+    actualResidencePeriod,
     rules,
   )
   const [holdingRate, residenceRate, nominalRate] =
@@ -151,6 +162,7 @@ const calculateLongTermDeduction = (
 
 const getBasicDeduction = (
   input: TransferTaxInput,
+  actualResidencePeriod: ActualResidencePeriod,
   rules: TaxRules['transferTax'],
   gainAfterLongTermDeduction: number,
 ): readonly [TransferBasicDeductionKind, number] => {
@@ -158,7 +170,10 @@ const getBasicDeduction = (
   const qualifiesForSpecial =
     specialRule !== null &&
     input.householdKind === specialRule.householdKind &&
-    input.residenceYears >= specialRule.minimumResidenceYears &&
+    meetsMinimumActualResidenceYears(
+      actualResidencePeriod,
+      specialRule.minimumResidenceYears,
+    ) &&
     input.salePrice <= specialRule.maximumSalePrice &&
     (input.isTaxResident ?? DEFAULT_IS_TAX_RESIDENT) &&
     !(
@@ -215,6 +230,7 @@ export const calculateTransferTax = (
   assertValidTransferTaxInput(input)
 
   const rules = TAX_RULES_BY_YEAR[input.year].transferTax
+  const actualResidencePeriod = toActualResidencePeriod(input)
   const grossGain =
     input.salePrice - input.acquisitionPrice - input.necessaryExpenses
 
@@ -241,13 +257,19 @@ export const calculateTransferTax = (
     : MAXIMUM_RATIO
   const taxableGain = grossGain * taxableGainRatio
   const [longTermDeduction, rawLongTermDeductionAmount] =
-    calculateLongTermDeduction(input, rules, taxableGain)
+    calculateLongTermDeduction(
+      input,
+      actualResidencePeriod,
+      rules,
+      taxableGain,
+    )
   const gainAfterLongTermDeduction = Math.max(
     ZERO_AMOUNT,
     taxableGain - rawLongTermDeductionAmount,
   )
   const [basicDeductionKind, rawBasicDeductionAmount] = getBasicDeduction(
     input,
+    actualResidencePeriod,
     rules,
     gainAfterLongTermDeduction,
   )

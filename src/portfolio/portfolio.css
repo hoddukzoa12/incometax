@@ -79,6 +79,26 @@
   list-style: none;
 }
 
+.portfolio-panel__actions {
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-neutral-200);
+  background: color-mix(in srgb, var(--color-neutral-50) 96%, transparent);
+  backdrop-filter: blur(var(--space-2));
+}
+
+.portfolio-panel__actions button {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-neutral-0);
+  cursor: pointer;
+  font-weight: var(--font-weight-bold);
+}
+
 .portfolio-item {
   padding: var(--space-4);
   border: 1px solid var(--color-neutral-200);
@@ -133,61 +153,6 @@
   color: var(--color-warning);
 }
 
-.portfolio-item__fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.portfolio-item__fields label {
-  display: grid;
-  gap: var(--space-1);
-  color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
-}
-
-.portfolio-item__fields input,
-.portfolio-item__fields select {
-  width: 100%;
-  min-width: 0;
-  padding: var(--space-2);
-  border: 1px solid var(--color-neutral-300);
-  border-radius: var(--radius-sm);
-  background: var(--color-neutral-0);
-  color: var(--color-neutral-900);
-  font-size: var(--font-size-sm);
-}
-
-.portfolio-item__share-input {
-  position: relative;
-}
-
-.portfolio-item__share-input input {
-  padding-right: var(--space-6);
-}
-
-.portfolio-item__share-input > span {
-  position: absolute;
-  top: 50%;
-  right: var(--space-2);
-  transform: translateY(-50%);
-}
-
-.portfolio-item__field-error {
-  margin: var(--space-2) 0 0;
-  color: var(--color-danger);
-  font-size: var(--font-size-sm);
-}
-
-.portfolio-item__check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-top: var(--space-3);
-  color: var(--color-neutral-700);
-  font-size: var(--font-size-sm);
-}
-
 @media (max-width: 40rem) {
   .portfolio-panel {
     right: var(--space-3);
@@ -198,9 +163,5 @@
   .portfolio-panel__body {
     width: calc(100vw - var(--space-6));
     max-height: min(34rem, calc(100vh - 8rem));
-  }
-
-  .portfolio-item__fields {
-    grid-template-columns: 1fr;
   }
 }

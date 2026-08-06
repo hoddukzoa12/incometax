@@ -1,6 +1,7 @@
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
+import { evaluateComplexActivationReadiness } from './lib/complex-activation.ts'
 import {
   activateStaging,
   type D1Location,
@@ -25,17 +26,6 @@ const delay = async (milliseconds: number): Promise<void> => {
   await new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
 }
 
-const requiredRegionsPresent = (validation: {
-  readonly seoul_count: number
-  readonly busan_count: number
-  readonly gyeonggi_count: number
-  readonly jeju_count: number
-}): boolean =>
-  validation.seoul_count > 0 &&
-  validation.busan_count > 0 &&
-  validation.gyeonggi_count > 0 &&
-  validation.jeju_count > 0
-
 const main = async (): Promise<void> => {
   const { values } = parseArgs({
     options: {
@@ -58,9 +48,6 @@ const main = async (): Promise<void> => {
   if (!refreshState) {
     throw new Error('No verified complex refresh is staged')
   }
-  const expectedStagedCount =
-    refreshState.expected_count - refreshState.exclusions.length
-
   const inputs = await readStagedAddresses(location)
   const results: GeocodingResult[] = []
   const pendingWrites: GeocodingResult[] = []
@@ -126,21 +113,18 @@ const main = async (): Promise<void> => {
   }
   await writeJsonReport(resolve(values.output), report)
 
-  if (validation.total_count !== expectedStagedCount) {
-    throw new Error(
-      `Staging count ${validation.total_count} does not match expected usable source count ${expectedStagedCount}`,
-    )
-  }
-  if (validation.geocoded_count !== expectedStagedCount) {
-    throw new Error(
-      `Only ${validation.geocoded_count}/${expectedStagedCount} records were geocoded; live data was kept`,
-    )
-  }
-  if (!requiredRegionsPresent(validation)) {
-    throw new Error('Required regional samples are missing; live data was kept')
+  const activationReadiness = evaluateComplexActivationReadiness({
+    expectedCount: refreshState.expected_count,
+    validation,
+    failedLookupCount: failures.filter((result) => result.status === 'failed')
+      .length,
+    coverageGuardExceeded: false,
+  })
+  if (!activationReadiness.ready) {
+    throw new Error(`${activationReadiness.reason}; live data was kept`)
   }
 
-  await activateStaging(location)
+  await activateStaging(activationReadiness, location)
   console.log(
     JSON.stringify(
       {

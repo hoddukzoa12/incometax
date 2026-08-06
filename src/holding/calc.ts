@@ -43,6 +43,7 @@ export const calculateHoldingTax = (
     input.householdHomeCount,
     propertyTaxes,
     input.ownerAge,
+    input.comprehensiveResidenceRecognition,
     input.priorYearTax,
     rules,
   )

@@ -15,7 +15,11 @@ import {
 
 type PortfolioEditableFields = Pick<
   StoredPortfolioItem,
-  'areaKind' | 'isSoleHouseholdOwner' | 'residency'
+  | 'acquisitionDate'
+  | 'areaKind'
+  | 'isSoleHouseholdOwner'
+  | 'residenceYears'
+  | 'residency'
 >
 
 export interface PortfolioController {

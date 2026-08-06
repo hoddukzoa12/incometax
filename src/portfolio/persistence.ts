@@ -1,6 +1,7 @@
 import { ASSET_KINDS, type AssetKind } from '../../shared/assets'
 import type {
   OwnershipShare,
+  StoredOfficialPrice,
   StoredPortfolioItem,
 } from '../../shared/portfolio'
 import {
@@ -13,9 +14,11 @@ import { isLegalDongCode } from '../../shared/legal-dong'
 import { ownershipShareFromFraction } from './ownership-share'
 
 export const PORTFOLIO_STORAGE_KEY = 'incometax.portfolio'
-export const PORTFOLIO_SCHEMA_VERSION = 3
+export const PORTFOLIO_SCHEMA_VERSION = 5
 
-const PREVIOUS_PORTFOLIO_SCHEMA_VERSION = 2
+const PERIOD_PORTFOLIO_SCHEMA_VERSION = 4
+const PRICE_HISTORY_PORTFOLIO_SCHEMA_VERSION = 3
+const LEGAL_DONG_PORTFOLIO_SCHEMA_VERSION = 2
 const LEGACY_PORTFOLIO_SCHEMA_VERSION = 1
 const LEGACY_ASSET_KIND: AssetKind = 'apartment'
 
@@ -40,6 +43,9 @@ const isNonEmptyString = (value: unknown): value is string =>
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string'
 
+const isNullableBoolean = (value: unknown): value is boolean | null =>
+  value === null || typeof value === 'boolean'
+
 const isNullableLegalDongCode = (value: unknown): value is string | null =>
   value === null || isLegalDongCode(value)
 
@@ -56,6 +62,27 @@ const isNullableOfficialPrice = (value: unknown): value is number | null =>
     Number.isSafeInteger(value) &&
     value > 0
   )
+
+const isNonNegativeNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0
+
+const isNullableNonNegativeNumber = (
+  value: unknown,
+): value is number | null => value === null || isNonNegativeNumber(value)
+
+const isStoredOfficialPrice = (
+  value: unknown,
+): value is StoredOfficialPrice =>
+  isRecord(value) &&
+  isNonEmptyString(value.baseDate) &&
+  typeof value.price === 'number' &&
+  Number.isSafeInteger(value.price) &&
+  value.price > 0
+
+const isStoredOfficialPriceList = (
+  value: unknown,
+): value is readonly StoredOfficialPrice[] =>
+  Array.isArray(value) && value.every(isStoredOfficialPrice)
 
 const isOneOf = <T extends string>(
   value: unknown,
@@ -85,10 +112,14 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
     !isNullableString(value.ho) ||
     !isNullablePositiveNumber(value.exclusiveArea) ||
     !isNullableOfficialPrice(value.officialPrice) ||
+    !isNullableString(value.officialPriceBaseDate) ||
+    !isStoredOfficialPriceList(value.priorOfficialPrices) ||
     ownershipShare === null ||
-    typeof value.isSoleHouseholdOwner !== 'boolean' ||
-    !isOneOf(value.residency, RESIDENCIES) ||
-    !isOneOf(value.areaKind, AREA_KINDS)
+    !isNullableBoolean(value.isSoleHouseholdOwner) ||
+    !(value.residency === null || isOneOf(value.residency, RESIDENCIES)) ||
+    !isOneOf(value.areaKind, AREA_KINDS) ||
+    !isNullableString(value.acquisitionDate) ||
+    !isNullableNonNegativeNumber(value.residenceYears)
   ) return null
 
   return {
@@ -102,21 +133,45 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
     ho: value.ho,
     exclusiveArea: value.exclusiveArea,
     officialPrice: value.officialPrice,
+    officialPriceBaseDate: value.officialPriceBaseDate,
+    priorOfficialPrices: value.priorOfficialPrices,
     ownershipShare,
     isSoleHouseholdOwner: value.isSoleHouseholdOwner,
-    residency: value.residency as Residency,
+    residency: value.residency as Residency | null,
     areaKind: value.areaKind as AreaKind,
+    acquisitionDate: value.acquisitionDate,
+    residenceYears: value.residenceYears,
   }
 }
 
-const migratePreviousItem = (value: unknown): StoredPortfolioItem | null => {
+const migratePeriodItem = (value: unknown): StoredPortfolioItem | null => {
   if (!isRecord(value)) return null
-  return readCurrentItem({ ...value, legalDongCode: null })
+  return readCurrentItem({
+    ...value,
+    acquisitionDate: null,
+    residenceYears: null,
+  })
+}
+
+const migratePriceHistoryItem = (
+  value: unknown,
+): StoredPortfolioItem | null => {
+  if (!isRecord(value)) return null
+  return migratePeriodItem({
+    ...value,
+    officialPriceBaseDate: null,
+    priorOfficialPrices: [],
+  })
+}
+
+const migrateLegalDongItem = (value: unknown): StoredPortfolioItem | null => {
+  if (!isRecord(value)) return null
+  return migratePriceHistoryItem({ ...value, legalDongCode: null })
 }
 
 const migrateLegacyItem = (value: unknown): StoredPortfolioItem | null => {
   if (!isRecord(value)) return null
-  return readCurrentItem({
+  return migratePriceHistoryItem({
     ...value,
     assetKind: LEGACY_ASSET_KIND,
     legalDongCode: null,
@@ -148,8 +203,14 @@ export const decodePortfolio = (
   if (parsed.version === PORTFOLIO_SCHEMA_VERSION) {
     return readItems(parsed.items, readCurrentItem) ?? []
   }
-  if (parsed.version === PREVIOUS_PORTFOLIO_SCHEMA_VERSION) {
-    return readItems(parsed.items, migratePreviousItem) ?? []
+  if (parsed.version === PERIOD_PORTFOLIO_SCHEMA_VERSION) {
+    return readItems(parsed.items, migratePeriodItem) ?? []
+  }
+  if (parsed.version === PRICE_HISTORY_PORTFOLIO_SCHEMA_VERSION) {
+    return readItems(parsed.items, migratePriceHistoryItem) ?? []
+  }
+  if (parsed.version === LEGAL_DONG_PORTFOLIO_SCHEMA_VERSION) {
+    return readItems(parsed.items, migrateLegalDongItem) ?? []
   }
   if (parsed.version === LEGACY_PORTFOLIO_SCHEMA_VERSION) {
     return readItems(parsed.items, migrateLegacyItem) ?? []

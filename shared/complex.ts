@@ -29,13 +29,6 @@ export interface CompleteComplexListRecord extends ComplexListRecord {
   readonly legalDong: string
 }
 
-export interface ComplexListExclusion {
-  readonly complexId: string
-  readonly name: string
-  readonly legalDongCode: string
-  readonly reason: string
-}
-
 export interface ComplexStagingRecord {
   readonly complexId: string
   readonly name: string

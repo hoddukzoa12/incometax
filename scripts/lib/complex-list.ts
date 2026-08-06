@@ -6,11 +6,10 @@ import {
 } from './complex-source.ts'
 import type {
   CompleteComplexListRecord,
-  ComplexListExclusion,
   ComplexListRecord,
 } from '../../shared/complex.ts'
 
-export type { ComplexListExclusion, ComplexListRecord }
+export type { ComplexListRecord }
 
 export interface ComplexListCheckpoint {
   readonly nextPage: number

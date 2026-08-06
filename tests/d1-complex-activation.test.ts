@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 
 import {
+  COMPLEX_ACTIVATION_INPUT,
   COMPLEX_ACTIVATION_SQL,
   COMPLEX_RETRY_STAGING_SQL,
 } from '../scripts/lib/d1-complex.ts'
@@ -16,6 +17,10 @@ const complexValues = (id: string, name: string): string =>
     '1168010600', NULL, 1, 1, 37.5, 127.0, '2026-08-04')`
 
 describe('complex activation with trade foreign keys', () => {
+  it('uses the rollback-safe D1 file import path in production', () => {
+    expect(COMPLEX_ACTIVATION_INPUT).toBe('file')
+  })
+
   it('preserves retained-complex trades and cascades only vanished complexes', () => {
     const database = new DatabaseSync(':memory:')
     database.exec('PRAGMA foreign_keys = ON')
@@ -64,7 +69,7 @@ describe('complex activation with trade foreign keys', () => {
       .prepare("SELECT rowid FROM complex WHERE complex_id = 'retained'")
       .get()?.rowid
 
-    database.exec(`BEGIN; ${COMPLEX_ACTIVATION_SQL} COMMIT;`)
+    database.exec(COMPLEX_ACTIVATION_SQL)
 
     expect(
       database

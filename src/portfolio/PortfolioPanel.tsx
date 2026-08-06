@@ -7,12 +7,14 @@ export interface PortfolioPanelProps {
   readonly controller: PortfolioController
   readonly open: boolean
   readonly onOpenChange: (open: boolean) => void
+  readonly onCalculateHoldingTax: () => void
 }
 
 export function PortfolioPanel({
   controller,
   open,
   onOpenChange,
+  onCalculateHoldingTax,
 }: PortfolioPanelProps) {
   return (
     <section className="portfolio-panel" aria-label={PORTFOLIO_MESSAGES.title}>
@@ -40,23 +42,22 @@ export function PortfolioPanel({
               <p>{PORTFOLIO_MESSAGES.emptyDescription}</p>
             </div>
           ) : (
-            <ol className="portfolio-panel__list">
-              {controller.items.map((item) => (
-                <PortfolioItemEditor
-                  key={item.id}
-                  item={item}
-                  onRemove={() => controller.remove(item.id)}
-                  onOwnershipShareChange={(ownershipShare) =>
-                    controller.setOwnershipShare(item.id, ownershipShare)}
-                  onResidencyChange={(residency) =>
-                    controller.update(item.id, { residency })}
-                  onSoleHouseholdOwnerChange={(isSoleHouseholdOwner) =>
-                    controller.update(item.id, { isSoleHouseholdOwner })}
-                  onAreaKindChange={(areaKind) =>
-                    controller.update(item.id, { areaKind })}
-                />
-              ))}
-            </ol>
+            <>
+              <ol className="portfolio-panel__list">
+                {controller.items.map((item) => (
+                  <PortfolioItemEditor
+                    key={item.id}
+                    item={item}
+                    onRemove={() => controller.remove(item.id)}
+                  />
+                ))}
+              </ol>
+              <div className="portfolio-panel__actions">
+                <button type="button" onClick={onCalculateHoldingTax}>
+                  {PORTFOLIO_MESSAGES.calculateHoldingTax}
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

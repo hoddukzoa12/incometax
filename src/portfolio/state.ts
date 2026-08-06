@@ -3,12 +3,10 @@ import type {
   PortfolioItemSeed,
   StoredPortfolioItem,
 } from '../../shared/portfolio'
-import type { Residency } from '../../shared/tax-rules'
 import { resolveAreaKind } from '../../data/adjusted-areas'
 import { ownershipShareFromFraction } from './ownership-share'
 
 const DEFAULT_OWNERSHIP_SHARE = ownershipShareFromFraction(1)
-const DEFAULT_RESIDENCY: Residency = 'nonResiding'
 const DEFAULT_IS_SOLE_HOUSEHOLD_OWNER = true
 
 export const createStoredPortfolioItem = (
@@ -17,10 +15,14 @@ export const createStoredPortfolioItem = (
 ): StoredPortfolioItem => ({
   id,
   ...seed,
+  officialPriceBaseDate: seed.officialPriceBaseDate ?? null,
+  priorOfficialPrices: seed.priorOfficialPrices ?? [],
   ownershipShare: DEFAULT_OWNERSHIP_SHARE,
   isSoleHouseholdOwner: DEFAULT_IS_SOLE_HOUSEHOLD_OWNER,
-  residency: DEFAULT_RESIDENCY,
+  residency: null,
   areaKind: resolveAreaKind(seed.legalDongCode),
+  acquisitionDate: null,
+  residenceYears: null,
 })
 
 export const removePortfolioItem = (
@@ -34,7 +36,12 @@ export const updatePortfolioItem = (
   itemId: string,
   update: Partial<Pick<
     StoredPortfolioItem,
-    'areaKind' | 'isSoleHouseholdOwner' | 'ownershipShare' | 'residency'
+    | 'acquisitionDate'
+    | 'areaKind'
+    | 'isSoleHouseholdOwner'
+    | 'ownershipShare'
+    | 'residenceYears'
+    | 'residency'
   >>,
 ): readonly StoredPortfolioItem[] =>
   items.map((item) => item.id === itemId ? { ...item, ...update } : item)

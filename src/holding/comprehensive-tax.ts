@@ -1,4 +1,8 @@
 import type {
+  ComprehensiveResidenceRecognitionInput,
+  ComprehensiveResidenceRecognitionResult,
+} from '../../shared/comprehensive-residence-recognition'
+import type {
   ComprehensiveTaxResult,
   PortfolioItem,
   PriorYearHoldingTax,
@@ -15,8 +19,10 @@ import {
   findApplicableTaxBracket,
   roundTaxAmount,
 } from '../rules'
+import { toActualResidencePeriod } from '../validation/ownership-period'
 import { calculateComprehensiveTaxBurdenCap } from './comprehensive-tax-burden-cap'
 import { calculateComprehensiveTaxCredit } from './comprehensive-tax-credit'
+import { calculateComprehensiveResidenceRecognition } from './comprehensive-residence-recognition'
 
 const ZERO_AMOUNT = 0
 const ZERO_RATE = 0
@@ -85,6 +91,7 @@ const createNotTaxableResult = (
   basicDeduction: number,
   fairMarketValueRatio: number,
   propertyTaxFairMarketValueRatio: number,
+  residenceRecognition: ComprehensiveResidenceRecognitionResult,
 ): ComprehensiveTaxResult => ({
   status: 'notTaxable',
   homeCount,
@@ -102,6 +109,7 @@ const createNotTaxableResult = (
   propertyTaxFairMarketValueRatio,
   propertyTaxCredit: ZERO_AMOUNT,
   netTax: ZERO_AMOUNT,
+  residenceRecognition,
   taxCredit: {
     status: 'notApplicable',
     reason: 'noComprehensiveTax',
@@ -124,6 +132,9 @@ export const calculateComprehensiveTax = (
   householdHomeCount: number,
   propertyTaxes: readonly PropertyTaxResult[],
   ownerAge: number | undefined,
+  residenceRecognitionInput:
+    | ComprehensiveResidenceRecognitionInput
+    | undefined,
   priorYearTax: PriorYearHoldingTax | undefined,
   rules: TaxRules,
 ): ComprehensiveTaxResult => {
@@ -142,6 +153,24 @@ export const calculateComprehensiveTax = (
         : total,
     ZERO_AMOUNT,
   )
+  const actualResidencePeriod = toActualResidencePeriod(items[0])
+  const residenceRecognition =
+    householdKind === 'oneHouse'
+      ? calculateComprehensiveResidenceRecognition(
+          actualResidencePeriod,
+          residenceRecognitionInput,
+          rules.comprehensiveTax.taxCredit.residenceRecognition,
+        )
+      : {
+          status: 'notApplicable',
+          reason: 'notOneHouse',
+          creditPeriod: {
+            basis: 'comprehensiveTaxCreditResidence',
+            actualYears: actualResidencePeriod.years,
+            recognizedYears: ZERO_AMOUNT,
+            years: actualResidencePeriod.years,
+          },
+        } as const satisfies ComprehensiveResidenceRecognitionResult
   const taxableThreshold =
     rules.comprehensiveTax.taxableThresholds[householdKind]
   const basicDeduction = getBasicDeduction(
@@ -171,6 +200,7 @@ export const calculateComprehensiveTax = (
       basicDeduction,
       fairMarketValueRatio,
       propertyTaxFairMarketValueRatio,
+      residenceRecognition,
     )
   }
 
@@ -194,6 +224,7 @@ export const calculateComprehensiveTax = (
     householdKind,
     ownerAge,
     items[0],
+    residenceRecognition,
     netTax,
     rules.comprehensiveTax.taxCredit,
   )
@@ -247,6 +278,7 @@ export const calculateComprehensiveTax = (
     propertyTaxFairMarketValueRatio,
     propertyTaxCredit: roundTaxAmount(propertyTaxCredit),
     netTax,
+    residenceRecognition,
     taxCredit,
     taxBurdenCap,
     payableTax,

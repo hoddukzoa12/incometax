@@ -1,4 +1,8 @@
 import type {
+  ComprehensiveResidenceRecognitionResult,
+} from '../../shared/comprehensive-residence-recognition'
+import type {
+  ComprehensiveTaxCreditMissingInput,
   ComprehensiveTaxCreditResult,
 } from '../../shared/holding-tax'
 import type { OwnershipPeriod } from '../../shared/ownership'
@@ -40,6 +44,7 @@ export const calculateComprehensiveTaxCredit = (
   householdKind: HouseholdKind,
   ownerAge: number | undefined,
   period: OwnershipPeriod,
+  residenceRecognition: ComprehensiveResidenceRecognitionResult,
   calculatedTax: number,
   rules: ComprehensiveTaxCreditRules,
 ): ComprehensiveTaxCreditResult => {
@@ -59,10 +64,20 @@ export const calculateComprehensiveTaxCredit = (
     }
   }
 
+  const missingInputs: ComprehensiveTaxCreditMissingInput[] = []
   if (ownerAge === undefined) {
+    missingInputs.push('ownerAge')
+  }
+  if (residenceRecognition.status === 'notComputed') {
+    missingInputs.push('comprehensiveResidenceRecognition')
+  }
+  if (
+    ownerAge === undefined ||
+    residenceRecognition.status === 'notComputed'
+  ) {
     return {
       status: 'notComputed',
-      missingInputs: ['ownerAge'],
+      missingInputs,
       amount: null,
     }
   }
@@ -73,7 +88,7 @@ export const calculateComprehensiveTaxCredit = (
     rules.holdingPeriodRates,
   )
   const residencePeriodRate = findMinimumBandRate(
-    period.residenceYears,
+    residenceRecognition.creditPeriod.years,
     rules.residencePeriodRates,
   )
   const periodRate = PERIOD_RATE_BY_KIND[rules.periodCreditKind](

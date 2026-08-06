@@ -31,7 +31,9 @@ const createItem = (
 
 type HoldingTaxContext = Pick<
   HoldingTaxInput,
-  'ownerAge' | 'priorYearTax'
+  | 'ownerAge'
+  | 'priorYearTax'
+  | 'comprehensiveResidenceRecognition'
 >
 
 const calculate = (
@@ -575,6 +577,70 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
     expect(comprehensiveTax.ruralSpecialTax).toBe(778_800)
     expect(comprehensiveTax.totalTax).toBe(4_672_800)
     expect(result.totalTax).toBe(10_891_800)
+  })
+
+  it('matches H15 before and after unavoidable-relocation recognition', () => {
+    const expectedBefore = {
+      2026: { periodRate: 0.2, comprehensiveTax: 1_365_120 },
+      2027: { periodRate: 0.1, comprehensiveTax: 1_330_560 },
+      2028: { periodRate: 0, comprehensiveTax: 1_520_640 },
+    } as const
+    const expectedAfter = {
+      2026: { periodRate: 0.2, comprehensiveTax: 1_365_120 },
+      2027: { periodRate: 0.2, comprehensiveTax: 1_140_480 },
+      2028: { periodRate: 0.2, comprehensiveTax: 1_140_480 },
+    } as const
+    const recognition = {
+      kind: 'unavoidableRelocation',
+      continuousResidenceStartDate: '2017-06-01',
+      relocationDate: '2020-06-01',
+      recognitionEndDate: '2028-06-01',
+      reason: { kind: 'jobChangeOrTransfer' },
+      destination: 'otherCityOrCounty',
+    } as const
+
+    for (const year of HOLDING_YEARS) {
+      const item = createItem({ holdingYears: 8, residenceYears: 3 })
+      const before = calculate(year, [item], 1, {
+        ownerAge: 62,
+        priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+      })
+      const after = calculate(year, [item], 1, {
+        ownerAge: 62,
+        priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+        comprehensiveResidenceRecognition: recognition,
+      })
+
+      expect(before.comprehensiveTax.taxCredit).toMatchObject({
+        status: 'computed',
+        periodRate: expectedBefore[year].periodRate,
+      })
+      expect(before.comprehensiveTax.totalTax).toBe(
+        expectedBefore[year].comprehensiveTax,
+      )
+      expect(after.comprehensiveTax.taxCredit).toMatchObject({
+        status: 'computed',
+        periodRate: expectedAfter[year].periodRate,
+      })
+      expect(after.comprehensiveTax.totalTax).toBe(
+        expectedAfter[year].comprehensiveTax,
+      )
+
+      if (year === 2026) {
+        expect(after.comprehensiveTax.residenceRecognition.status).toBe(
+          'notEffective',
+        )
+      } else {
+        expect(after.comprehensiveTax.residenceRecognition).toMatchObject({
+          status: 'computed',
+          creditPeriod: {
+            actualYears: 3,
+            recognizedYears: 3,
+            years: 6,
+          },
+        })
+      }
+    }
   })
 })
 

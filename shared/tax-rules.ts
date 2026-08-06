@@ -84,6 +84,15 @@ export type ComprehensivePeriodCreditKind =
   | 'maximum'
   | 'residence'
 
+export interface ComprehensiveResidenceRecognitionRules {
+  readonly minimumContinuousResidenceYears: number
+  readonly unavoidableRelocationMaximumYears: number
+  readonly medicalTreatmentMinimumYears: number
+  readonly directAncestorMinimumAge: number
+  readonly constructionRecognitionRate: number
+  readonly demolitionReferenceMonthsBefore: number
+}
+
 export interface ComprehensiveTaxCreditRules {
   readonly ageRates: readonly MinimumRateBand[]
   readonly holdingPeriodRates: readonly MinimumRateBand[]
@@ -91,6 +100,9 @@ export interface ComprehensiveTaxCreditRules {
   readonly periodCreditKind: ComprehensivePeriodCreditKind
   readonly maximumRate: number
   readonly amountCap: number | null
+  readonly residenceRecognition:
+    | ComprehensiveResidenceRecognitionRules
+    | null
 }
 
 export interface ComprehensiveTaxBurdenCapRules {

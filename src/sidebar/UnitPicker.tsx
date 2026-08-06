@@ -133,6 +133,11 @@ export function UnitPicker({
     priceResult.value.status === 'found'
     ? priceResult.value.value.items[CURRENT_PRICE_HISTORY_ITEM_INDEX] ?? null
     : null
+  const priorOfficialPrices = priceResult?.status === 'loaded' &&
+    priceResult.value.status === 'found'
+    ? priceResult.value.value.items.slice(CURRENT_PRICE_HISTORY_ITEM_INDEX + 1)
+      .map(({ baseDate, price }) => ({ baseDate, price }))
+    : []
 
   const requestPrice = (dong: string, room: string) => {
     const query = { dong: dong.trim(), room: room.trim() }
@@ -256,6 +261,8 @@ export function UnitPicker({
           ho: selectedRoom || null,
           exclusiveArea: resolvedPrice?.exclusiveArea ?? null,
           officialPrice: resolvedPrice?.price ?? null,
+          officialPriceBaseDate: resolvedPrice?.baseDate ?? null,
+          priorOfficialPrices,
         })}
       >
         {PORTFOLIO_MESSAGES.addFromSidebar}

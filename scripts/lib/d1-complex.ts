@@ -1,6 +1,5 @@
 import {
   RETRYABLE_COMPLEX_LOOKUP_STATUSES,
-  type ComplexListExclusion,
   type ComplexListRecord,
   type ComplexStagingRecord,
 } from '../../shared/complex.ts'
@@ -17,15 +16,14 @@ import {
   type D1Location,
 } from './d1.ts'
 import type { GeocodingResult } from './kakao-geocoder.ts'
-
-const REQUIRED_REGION_PREFIXES = {
-  seoul: '11',
-  busan: '26',
-  gyeonggi: '41',
-  jeju: '50',
-} as const
+import {
+  REQUIRED_COMPLEX_REGION_PREFIXES,
+  type ComplexActivationReadiness,
+  type StagingValidation,
+} from './complex-activation.ts'
 
 export type { D1ExecutionMeasurement, D1ExecutionObserver, D1Location }
+export type { StagingValidation }
 
 export interface RefreshState {
   readonly verification_observed_at: string
@@ -33,14 +31,12 @@ export interface RefreshState {
   readonly next_list_page: number
   readonly list_records: readonly ComplexListRecord[]
   readonly list_fields: readonly string[]
-  readonly exclusions: readonly ComplexListExclusion[]
 }
 
 interface RefreshStateRow {
   readonly verification_observed_at: string
   readonly expected_count: number
   readonly list_fields_json: string
-  readonly excluded_records_json: string
 }
 
 interface ListCheckpointRow {
@@ -60,42 +56,6 @@ export interface StagedAddress {
   readonly fallback_address: string | null
 }
 
-export interface StagingValidation {
-  readonly total_count: number
-  readonly geocoded_count: number
-  readonly seoul_count: number
-  readonly busan_count: number
-  readonly gyeonggi_count: number
-  readonly jeju_count: number
-  readonly pending_count: number
-  readonly matched_count: number
-  readonly not_found_count: number
-  readonly rejected_count: number
-}
-
-const parseExclusions = (
-  serialized: string,
-): readonly ComplexListExclusion[] => {
-  const parsed: unknown = JSON.parse(serialized)
-  if (
-    !Array.isArray(parsed) ||
-    !parsed.every(
-      (record) =>
-        Array.isArray(record) &&
-        record.length === 4 &&
-        record.every((field) => typeof field === 'string'),
-    )
-  ) {
-    throw new TypeError('Complex refresh state has invalid exclusions')
-  }
-  return parsed.map(([complexId, name, legalDongCode, reason]) => ({
-    complexId,
-    name,
-    legalDongCode,
-    reason,
-  }))
-}
-
 const parseListFields = (serialized: string): readonly string[] => {
   const parsed: unknown = JSON.parse(serialized)
   if (!Array.isArray(parsed) || !parsed.every((field) => typeof field === 'string')) {
@@ -110,7 +70,7 @@ export const readRefreshState = async (
 ): Promise<RefreshState | null> => {
   const rows = await queryD1Rows<RefreshStateRow>(
     `SELECT verification_observed_at, expected_count,
-            list_fields_json, excluded_records_json
+            list_fields_json
        FROM complex_refresh_state
       WHERE singleton = 1`,
     location,
@@ -144,7 +104,6 @@ export const readRefreshState = async (
       ri: record.ri,
     })),
     list_fields: parseListFields(row.list_fields_json),
-    exclusions: parseExclusions(row.excluded_records_json),
   }
 }
 
@@ -227,37 +186,6 @@ export const resetComplexListCheckpoint = async (
      UPDATE complex_refresh_state
         SET list_fields_json = '[]'
       WHERE singleton = 1;`,
-    location,
-    { operation: 'write', observer },
-  )
-}
-
-export const saveComplexExclusion = async (
-  exclusion: ComplexListExclusion,
-  location: D1Location,
-  observer?: D1ExecutionObserver,
-): Promise<void> => {
-  const serialized = sqlString(
-    JSON.stringify([
-      exclusion.complexId,
-      exclusion.name,
-      exclusion.legalDongCode,
-      exclusion.reason,
-    ]),
-  )
-  await runD1(
-    `UPDATE complex_refresh_state
-        SET excluded_records_json = json_insert(
-              excluded_records_json,
-              '$[#]',
-              json(${serialized})
-            )
-      WHERE singleton = 1
-        AND NOT EXISTS (
-          SELECT 1
-            FROM json_each(excluded_records_json)
-           WHERE json_extract(value, '$[0]') = ${sqlString(exclusion.complexId)}
-        );`,
     location,
     { operation: 'write', observer },
   )
@@ -399,18 +327,20 @@ export const readStagingValidation = async (
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<StagingValidation> => {
+  const requiredRegionCounts = Object.entries(
+    REQUIRED_COMPLEX_REGION_PREFIXES,
+  )
+    .map(
+      ([region, prefix]) =>
+        `COALESCE(SUM(CASE WHEN legal_dong_code LIKE '${prefix}%' AND lat IS NOT NULL THEN 1 ELSE 0 END), 0)
+              AS ${region}_count`,
+    )
+    .join(',\n            ')
   const rows = await queryD1Rows<StagingValidation>(
     `SELECT COUNT(*) AS total_count,
             COALESCE(SUM(CASE WHEN lat IS NOT NULL AND lng IS NOT NULL THEN 1 ELSE 0 END), 0)
               AS geocoded_count,
-            COALESCE(SUM(CASE WHEN legal_dong_code LIKE '${REQUIRED_REGION_PREFIXES.seoul}%' AND lat IS NOT NULL THEN 1 ELSE 0 END), 0)
-              AS seoul_count,
-            COALESCE(SUM(CASE WHEN legal_dong_code LIKE '${REQUIRED_REGION_PREFIXES.busan}%' AND lat IS NOT NULL THEN 1 ELSE 0 END), 0)
-              AS busan_count,
-            COALESCE(SUM(CASE WHEN legal_dong_code LIKE '${REQUIRED_REGION_PREFIXES.gyeonggi}%' AND lat IS NOT NULL THEN 1 ELSE 0 END), 0)
-              AS gyeonggi_count,
-            COALESCE(SUM(CASE WHEN legal_dong_code LIKE '${REQUIRED_REGION_PREFIXES.jeju}%' AND lat IS NOT NULL THEN 1 ELSE 0 END), 0)
-              AS jeju_count,
+            ${requiredRegionCounts},
             COALESCE(SUM(CASE WHEN lookup_status = 'pending' THEN 1 ELSE 0 END), 0)
               AS pending_count,
             COALESCE(SUM(CASE WHEN lookup_status = 'matched' THEN 1 ELSE 0 END), 0)
@@ -465,13 +395,21 @@ export const COMPLEX_ACTIVATION_SQL = `
       WHERE complex_staging.complex_id = complex.complex_id
    );`
 
+export const COMPLEX_ACTIVATION_INPUT = 'file' as const
+
 export const activateStaging = async (
+  readiness: ComplexActivationReadiness,
   location: D1Location,
   observer?: D1ExecutionObserver,
 ): Promise<void> => {
-  // Wrangler maps the semicolon-separated statements to one D1 batch. D1 batches
-  // are transactions, so the upsert and delete-missing steps commit together.
+  if (!readiness.ready) {
+    throw new Error(`Complex activation refused: ${readiness.reason}`)
+  }
+  // Remote --command sends this SQL to /query without a documented transaction.
+  // Remote --file uses D1 import, which rolls back a failed execution; staging is
+  // retained, so the same idempotent swap can be safely retried.
   await runD1(COMPLEX_ACTIVATION_SQL, location, {
+    input: COMPLEX_ACTIVATION_INPUT,
     operation: 'write',
     observer,
   })

@@ -1,4 +1,5 @@
 import type {
+  ComprehensiveResidenceRecognitionRules,
   ComprehensiveTaxCreditRules,
   MinimumRateBand,
 } from '../../shared/tax-rules'
@@ -41,6 +42,19 @@ const NO_PERIOD_CREDIT_RATES = [] as const
 const COMPREHENSIVE_TAX_CREDIT_MAXIMUM_RATE =
   8_000 / RATE_DENOMINATOR
 
+/**
+ * 종부세 거주기간 인정 특례 — tax-rules-spec.md §5.2-a,
+ * 2026 세제개편안 상세본 문서 p91–92. '27.1.1. 성립분부터 적용한다.
+ */
+const COMPREHENSIVE_TAX_RESIDENCE_RECOGNITION_RULES_FROM_2027 = {
+  minimumContinuousResidenceYears: 1,
+  unavoidableRelocationMaximumYears: 3,
+  medicalTreatmentMinimumYears: 1,
+  directAncestorMinimumAge: 60,
+  constructionRecognitionRate: 0.5,
+  demolitionReferenceMonthsBefore: 6,
+} as const satisfies ComprehensiveResidenceRecognitionRules
+
 export const COMPREHENSIVE_TAX_CREDIT_RULES_2026 = {
   ageRates: COMPREHENSIVE_TAX_AGE_CREDIT_RATES,
   holdingPeriodRates: COMPREHENSIVE_TAX_HOLDING_CREDIT_RATES_2026,
@@ -48,6 +62,7 @@ export const COMPREHENSIVE_TAX_CREDIT_RULES_2026 = {
   periodCreditKind: 'holding',
   maximumRate: COMPREHENSIVE_TAX_CREDIT_MAXIMUM_RATE,
   amountCap: null,
+  residenceRecognition: null,
 } as const satisfies ComprehensiveTaxCreditRules
 
 /**
@@ -61,6 +76,8 @@ export const COMPREHENSIVE_TAX_CREDIT_RULES_2027 = {
   periodCreditKind: 'maximum',
   maximumRate: COMPREHENSIVE_TAX_CREDIT_MAXIMUM_RATE,
   amountCap: 8_000_000,
+  residenceRecognition:
+    COMPREHENSIVE_TAX_RESIDENCE_RECOGNITION_RULES_FROM_2027,
 } as const satisfies ComprehensiveTaxCreditRules
 
 /**
@@ -74,4 +91,6 @@ export const COMPREHENSIVE_TAX_CREDIT_RULES_FROM_2028 = {
   periodCreditKind: 'residence',
   maximumRate: COMPREHENSIVE_TAX_CREDIT_MAXIMUM_RATE,
   amountCap: 6_000_000,
+  residenceRecognition:
+    COMPREHENSIVE_TAX_RESIDENCE_RECOGNITION_RULES_FROM_2027,
 } as const satisfies ComprehensiveTaxCreditRules

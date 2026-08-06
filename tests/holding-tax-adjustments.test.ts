@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { TaxYear } from '../shared/tax-rules'
 import { calculateComprehensiveTaxBurdenCap } from '../src/holding/comprehensive-tax-burden-cap'
 import { calculateComprehensiveTaxCredit } from '../src/holding/comprehensive-tax-credit'
+import { calculateComprehensiveResidenceRecognition } from '../src/holding/comprehensive-residence-recognition'
 import { TAX_RULES_BY_YEAR } from '../src/rules'
 
 const CALCULATED_TAX = 10_000_000
@@ -19,6 +20,12 @@ const calculateCredit = (
     'oneHouse',
     ownerAge,
     { holdingYears, residenceYears },
+    calculateComprehensiveResidenceRecognition(
+      { basis: 'actualResidence', years: residenceYears },
+      undefined,
+      TAX_RULES_BY_YEAR[year].comprehensiveTax.taxCredit
+        .residenceRecognition,
+    ),
     calculatedTax,
     TAX_RULES_BY_YEAR[year].comprehensiveTax.taxCredit,
   )
@@ -132,6 +139,12 @@ describe('calculateComprehensiveTaxCredit boundaries', () => {
       'multiHouse',
       70,
       { holdingYears: 15, residenceYears: 15 },
+      calculateComprehensiveResidenceRecognition(
+        { basis: 'actualResidence', years: 15 },
+        undefined,
+        TAX_RULES_BY_YEAR[2027].comprehensiveTax.taxCredit
+          .residenceRecognition,
+      ),
       CALCULATED_TAX,
       TAX_RULES_BY_YEAR[2027].comprehensiveTax.taxCredit,
     )

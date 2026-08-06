@@ -12,6 +12,11 @@ export type OwnershipPercent = number & {
   readonly [ownershipPercentBrand]: 'ownershipPercent'
 }
 
+export interface StoredOfficialPrice {
+  readonly baseDate: string
+  readonly price: number
+}
+
 // Storage permits a zero share and a missing price. The calculation-screen
 // boundary converts eligible records to shared/holding-tax PortfolioItem.
 export interface StoredPortfolioItem {
@@ -26,10 +31,14 @@ export interface StoredPortfolioItem {
   readonly ho: string | null
   readonly exclusiveArea: number | null
   readonly officialPrice: number | null
+  readonly officialPriceBaseDate: string | null
+  readonly priorOfficialPrices: readonly StoredOfficialPrice[]
   readonly ownershipShare: OwnershipShare
-  readonly isSoleHouseholdOwner: boolean
-  readonly residency: Residency
+  readonly isSoleHouseholdOwner: boolean | null
+  readonly residency: Residency | null
   readonly areaKind: AreaKind
+  readonly acquisitionDate: string | null
+  readonly residenceYears: number | null
 }
 
 export interface PortfolioItemSeed {
@@ -42,4 +51,6 @@ export interface PortfolioItemSeed {
   readonly ho: string | null
   readonly exclusiveArea: number | null
   readonly officialPrice: number | null
+  readonly officialPriceBaseDate?: string | null
+  readonly priorOfficialPrices?: readonly StoredOfficialPrice[]
 }

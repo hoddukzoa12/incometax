@@ -1,4 +1,8 @@
 import type { AssetKind } from './assets'
+import type {
+  ComprehensiveResidenceRecognitionInput,
+  ComprehensiveResidenceRecognitionResult,
+} from './comprehensive-residence-recognition'
 import type { OwnershipPeriod } from './ownership'
 import type {
   AreaKind,
@@ -27,6 +31,8 @@ export interface HoldingTaxInput {
   readonly items: readonly PortfolioItem[]
   readonly ownerAge?: number
   readonly priorYearTax?: PriorYearHoldingTax
+  readonly comprehensiveResidenceRecognition?:
+    ComprehensiveResidenceRecognitionInput
 }
 
 export interface HoldingAppliedRateResult {
@@ -53,7 +59,9 @@ export interface PropertyTaxResult {
 
 export type ComprehensiveTaxStatus = 'notTaxable' | 'taxable'
 
-export type ComprehensiveTaxCreditMissingInput = 'ownerAge'
+export type ComprehensiveTaxCreditMissingInput =
+  | 'ownerAge'
+  | 'comprehensiveResidenceRecognition'
 
 export interface ComprehensiveTaxCreditComputedResult {
   readonly status: 'computed'
@@ -133,6 +141,7 @@ export interface ComprehensiveTaxResult {
   readonly propertyTaxFairMarketValueRatio: number
   readonly propertyTaxCredit: number
   readonly netTax: number
+  readonly residenceRecognition: ComprehensiveResidenceRecognitionResult
   readonly taxCredit: ComprehensiveTaxCreditResult
   readonly taxBurdenCap: ComprehensiveTaxBurdenCapResult
   readonly payableTax: number | null

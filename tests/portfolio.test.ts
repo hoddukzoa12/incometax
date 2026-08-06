@@ -117,10 +117,14 @@ describe('portfolio persistence', () => {
       ho: null,
       exclusiveArea: null,
       officialPrice: null,
+      officialPriceBaseDate: null,
+      priorOfficialPrices: [],
       ownershipShare: 0,
       isSoleHouseholdOwner: true,
       residency: 'nonResiding',
       areaKind: 'general',
+      acquisitionDate: null,
+      residenceYears: null,
     }])
     persistPortfolio(storage, upgraded)
     expect(JSON.parse(storage.values.get(PORTFOLIO_STORAGE_KEY)!)).toMatchObject({
@@ -141,6 +145,31 @@ describe('portfolio persistence', () => {
     expect(decodePortfolio(previousVersion)).toEqual([{
       ...createStoredPortfolioItem(seed(), 'schema-two'),
       legalDongCode: null,
+    }])
+  })
+
+  it('preserves existing tax-condition facts while schema 4 dates become unset', () => {
+    const previousVersion = JSON.stringify({
+      version: 4,
+      items: [{
+        ...createStoredPortfolioItem(seed(), 'schema-four'),
+        ownershipShare: 0.5,
+        isSoleHouseholdOwner: false,
+        residency: 'residing',
+        areaKind: 'general',
+        holdingYears: 15,
+        residenceYears: 10,
+      }],
+    })
+
+    expect(decodePortfolio(previousVersion)).toEqual([{
+      ...createStoredPortfolioItem(seed(), 'schema-four'),
+      ownershipShare: 0.5,
+      isSoleHouseholdOwner: false,
+      residency: 'residing',
+      areaKind: 'general',
+      acquisitionDate: null,
+      residenceYears: null,
     }])
   })
 
