@@ -2,7 +2,6 @@
   position: relative;
   width: min(24rem, calc(100vw - 2rem));
   color: var(--color-neutral-900);
-  font-family: var(--font-family-sans);
 }
 
 .complex-search__label {

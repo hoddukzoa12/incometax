@@ -1,8 +1,9 @@
 import { useState } from 'react'
 
 import type { RecentTrade } from '../../shared/trade'
+import { formatWon } from '../format/won'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
-import { formatArea, formatFloor, formatWon } from './format'
+import { formatArea, formatFloor } from './format'
 import { availableTradeYears } from './trade-filter-data'
 import './trade.css'
 

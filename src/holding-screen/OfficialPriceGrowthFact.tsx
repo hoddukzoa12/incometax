@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { StoredPortfolioItem } from '../../shared/portfolio'
+import { formatInlineWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import { AutoFilledFactRow } from './AutoFilledFactRow'
 import {
@@ -8,7 +9,6 @@ import {
   annualOfficialPriceGrowthRateFromPercent,
 } from './condition-values'
 import {
-  formatInlineWon,
   formatRate,
   formatSignedApproximateRate,
   formatSignedHistoryRate,

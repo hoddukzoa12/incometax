@@ -6,7 +6,7 @@ import type {
   OfficialPriceResolutionResult,
 } from '../../shared/official-price'
 import type { PortfolioItemSeed } from '../../shared/portfolio'
-import { formatWon } from '../holding-screen/format'
+import { formatWon } from '../format/won'
 import { PORTFOLIO_MESSAGES } from '../messages/portfolio'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 import { fetchApartmentUnitOptions } from './api'

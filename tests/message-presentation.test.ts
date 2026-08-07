@@ -7,9 +7,11 @@ import {
 } from '../src/holding-screen/condition-values'
 import {
   formatDeductionWon,
+  formatWon,
+} from '../src/format/won'
+import {
   formatRate,
   formatSignedHistoryRate,
-  formatWon,
 } from '../src/holding-screen/format'
 import { HOLDING_TAX_MESSAGES } from '../src/messages/holding-tax'
 

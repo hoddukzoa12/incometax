@@ -8,7 +8,6 @@
   background: var(--color-neutral-50);
   box-shadow: var(--shadow-lg);
   color: var(--color-neutral-900);
-  font-family: var(--font-family-sans);
 }
 
 .complex-sidebar__content {

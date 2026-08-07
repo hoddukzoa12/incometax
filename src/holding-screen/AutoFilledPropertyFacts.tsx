@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { StoredPortfolioItem } from '../../shared/portfolio'
 import type { AreaKind } from '../../shared/tax-rules'
+import { formatWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import {
   MAX_OWNERSHIP_PERCENT,
@@ -13,7 +14,7 @@ import {
   type PortfolioController,
 } from '../portfolio'
 import { AutoFilledFactRow } from './AutoFilledFactRow'
-import { formatCompactDate, formatWon } from './format'
+import { formatCompactDate } from './format'
 import { TaxTermHelp } from './TaxTermHelp'
 
 const FULL_OWNERSHIP_PERCENT = 100

@@ -1,11 +1,10 @@
 import type { StoredPortfolioItem } from '../../shared/portfolio'
+import { formatInlineWon, formatNullableWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import { HOLDING_TAX_DEFAULT_YEAR } from './assessment-calendar'
 import type { HoldingTaxYearCalculation } from './calculation'
 import {
   formatCompactDate,
-  formatInlineWon,
-  formatNullableWon,
 } from './format'
 
 const ZERO_CHANGE = 0

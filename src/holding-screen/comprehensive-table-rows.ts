@@ -2,6 +2,11 @@ import type {
   ComprehensiveTaxBurdenCapResult,
   ComprehensiveTaxCreditResult,
 } from '../../shared/holding-tax'
+import {
+  formatDeductionWon,
+  formatInlineWon,
+  formatWon,
+} from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import { TAX_RULES_BY_YEAR } from '../rules'
 import {
@@ -15,10 +20,7 @@ import {
   type StatementValue,
 } from './comparison-table-values'
 import {
-  formatDeductionWon,
-  formatInlineWon,
   formatRate,
-  formatWon,
 } from './format'
 
 const MISSING_INDEX = -1

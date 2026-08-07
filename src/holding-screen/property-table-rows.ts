@@ -1,3 +1,4 @@
+import { formatInlineWon, formatWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import { TAX_RULES_BY_YEAR } from '../rules'
 import type { HoldingTaxComparisonYear } from './assessment-calendar'
@@ -10,9 +11,7 @@ import {
   type StatementValue,
 } from './comparison-table-values'
 import {
-  formatInlineWon,
   formatRate,
-  formatWon,
 } from './format'
 
 const MISSING_INDEX = -1

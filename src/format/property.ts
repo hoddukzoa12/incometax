@@ -1,14 +1,6 @@
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
 
-const WON_FORMATTER = new Intl.NumberFormat('ko-KR', {
-  style: 'currency',
-  currency: 'KRW',
-  maximumFractionDigits: 0,
-})
-
 const NUMBER_FORMATTER = new Intl.NumberFormat('ko-KR')
-
-export const formatWon = (value: number): string => WON_FORMATTER.format(value)
 
 export const formatCount = (value: number | null): string | null =>
   value === null ? null : NUMBER_FORMATTER.format(value)

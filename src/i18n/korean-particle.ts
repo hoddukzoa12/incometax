@@ -23,7 +23,7 @@ const DIGIT_JONGSEONG = {
 // 영문으로 끝난 값은 마지막 알파벳의 한국어 이름(에프, 엘 등)을 기준으로 읽어요.
 const LATIN_LETTER_WITH_JONGSEONG = new Set(['F', 'L', 'M', 'N', 'R'])
 const LATIN_LETTER_WITH_RIEUL = new Set(['L', 'R'])
-const SIGNIFICANT_ENDING_PATTERN = /[0-9A-Za-z가-힣]/u
+const SIGNIFICANT_ENDING_PATTERN = /[0-9A-Za-z\uAC00-\uD7A3]/u
 
 type KoreanParticlePair =
   | '은/는'

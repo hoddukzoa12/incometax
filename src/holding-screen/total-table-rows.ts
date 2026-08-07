@@ -1,3 +1,4 @@
+import { formatWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import type { HoldingTaxComparisonYear } from './assessment-calendar'
 import type { HoldingTaxYearCalculation } from './calculation'
@@ -6,7 +7,6 @@ import {
   type StatementRows,
   type StatementValue,
 } from './comparison-table-values'
-import { formatWon } from './format'
 
 const MISSING_INDEX = -1
 

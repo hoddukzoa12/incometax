@@ -1,5 +1,6 @@
 import type { StoredPortfolioItem } from '../../shared/portfolio'
-import { formatArea, formatWon } from '../format/property'
+import { formatArea } from '../format/property'
+import { formatWon } from '../format/won'
 import { PORTFOLIO_MESSAGES } from '../messages/portfolio'
 
 export interface PortfolioItemEditorProps {

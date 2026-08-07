@@ -1,8 +1,8 @@
+import { formatInlineWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import { roundTaxAmount, TAX_RULES_BY_YEAR } from '../rules'
 import { HOLDING_TAX_DEFAULT_YEAR } from './assessment-calendar'
 import type { HoldingTaxYearCalculation } from './calculation'
-import { formatInlineWon } from './format'
 
 export type HoldingTaxChangeRow = {
   readonly key: string

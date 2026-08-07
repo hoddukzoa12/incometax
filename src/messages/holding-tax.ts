@@ -184,8 +184,6 @@ export const HOLDING_TAX_MESSAGES = {
     isCurrent: boolean,
   ) => `${priceBasis} · ${isCurrent ? '현행법' : '개편안(정부안)'} 기준`,
   headlineUnavailable: '계산 불가',
-  wonStandalone: (amount: string) => `${amount} 원`,
-  wonInline: (amount: string) => `${amount}원`,
   changeUnavailable: '지금과의 차이를 계산할 수 없어요.',
   changeSame: '지금과 같아요.',
   changeDecrease: (amount: string) => `지금보다 ${amount} 줄어요.`,

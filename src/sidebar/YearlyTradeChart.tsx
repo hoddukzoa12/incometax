@@ -9,8 +9,8 @@ import {
 } from 'recharts'
 
 import type { RecentTrade } from '../../shared/trade'
+import { formatWon } from '../format/won'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
-import { formatWon } from './format'
 import { yearlyTradeAverages } from './trade-chart-data'
 
 const WON_PER_EOK = 100_000_000

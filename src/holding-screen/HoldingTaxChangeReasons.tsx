@@ -1,6 +1,6 @@
+import { formatInlineWon } from '../format/won'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import type { HoldingTaxYearCalculation } from './calculation'
-import { formatInlineWon } from './format'
 import { holdingTaxChangeRows } from './holding-tax-change-rows'
 
 export function HoldingTaxChangeReasons({

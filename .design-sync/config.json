@@ -1,0 +1,52 @@
+{
+  "projectId": "97f481c8-f277-4bc4-b2b3-495e8b5b062f",
+  "shape": "package",
+  "pkg": "incometax",
+  "globalName": "IncomeTaxDS",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "componentSrcMap": {
+    "TaxTermHelp": "src/holding-screen/TaxTermHelp.tsx",
+    "ConditionChoiceButtons": "src/holding-screen/ConditionChoiceButtons.tsx",
+    "AutoFilledFactRow": "src/holding-screen/AutoFilledFactRow.tsx",
+    "AutoFilledPropertyFacts": "src/holding-screen/AutoFilledPropertyFacts.tsx",
+    "ComparisonTableRow": "src/holding-screen/ComparisonTableRow.tsx",
+    "HoldingTaxChangeReasons": "src/holding-screen/HoldingTaxChangeReasons.tsx",
+    "HoldingTaxComparisonTable": "src/holding-screen/HoldingTaxComparisonTable.tsx",
+    "HoldingTaxConditions": "src/holding-screen/HoldingTaxConditions.tsx",
+    "HoldingTaxOverlay": "src/holding-screen/HoldingTaxOverlay.tsx",
+    "HoldingTaxResultSummary": "src/holding-screen/HoldingTaxResultSummary.tsx",
+    "OfficialPriceGrowthFact": "src/holding-screen/OfficialPriceGrowthFact.tsx",
+    "PortfolioItemEditor": "src/portfolio/PortfolioItemEditor.tsx",
+    "ComplexBasics": "src/sidebar/ComplexBasics.tsx",
+    "ComplexSidebar": "src/sidebar/ComplexSidebar.tsx",
+    "TradeAreaSelect": "src/sidebar/TradeAreaSelect.tsx",
+    "TradeHistory": "src/sidebar/TradeHistory.tsx",
+    "YearlyTradeChart": "src/sidebar/YearlyTradeChart.tsx",
+    "App": null,
+    "ComplexMap": null,
+    "ComplexSearch": null,
+    "UnitPicker": null,
+    "UnitSelectionFields": null,
+    "PortfolioPanel": null
+  },
+  "entry": "./.design-sync/entry.ts",
+  "extraFonts": [
+    ".design-sync/font-face.css"
+  ],
+  "buildCmd": "rm -rf .ds-types && npx tsc .design-sync/entry.ts --ignoreConfig --declaration --emitDeclarationOnly --outDir .ds-types --jsx react-jsx --module esnext --moduleResolution bundler --target es2020 --skipLibCheck --strict ; true",
+  "dtsPropsFor": {
+    "ConditionChoiceButtons": "value: boolean | null;\n  onChange: (value: boolean) => void;",
+    "ComplexSidebar": "complexId: string | null;\n  onClose: () => void;\n  onAddToPortfolio: (seed: PortfolioItemSeed) => void;"
+  },
+  "overrides": {
+    "HoldingTaxComparisonTable": {
+      "cardMode": "single",
+      "viewport": "1000x1100"
+    },
+    "YearlyTradeChart": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

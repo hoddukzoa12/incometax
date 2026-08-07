@@ -8,3 +8,10 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+.ds-types/
+index.d.ts
