@@ -9,6 +9,7 @@ import {
   type HttpMetricsObserver,
   HttpResponseError,
 } from './http.ts'
+import { isKakaoComplexPlaceCandidate } from './kakao-place-match.ts'
 
 const KAKAO_AUTH_SCHEME = 'KakaoAK'
 const PARENTHETICAL_NAME_SUFFIX_PATTERN = /\s*\([^()]*\)\s*$/u
@@ -18,10 +19,15 @@ const KAKAO_BAD_COORDINATE_STATUS = 400
 const KAKAO_QUOTA_EXCEEDED_CODE = -10
 const KAKAO_BAD_COORDINATE_REASON =
   'Kakao coordinate lookup rejected the coordinates with HTTP 400'
+const KAKAO_KEYWORD_MAX_PAGE_SIZE = 15
 
 type JsonRecord = Record<string, unknown>
 
 export interface KakaoKeywordDocument {
+  readonly placeId: string
+  readonly placeName: string
+  readonly categoryName: string
+  readonly placeUrl: string
   readonly legalAddress: string
   readonly roadAddress: string | null
   readonly lat: number
@@ -45,6 +51,13 @@ const requiredString = (value: unknown, path: string): string => {
     throw new TypeError(`Expected non-empty string at ${path}`)
   }
   return value.trim()
+}
+
+const requiredRawString = (value: unknown, path: string): string => {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new TypeError(`Expected non-empty string at ${path}`)
+  }
+  return value
 }
 
 const optionalString = (value: unknown): string | null =>
@@ -105,6 +118,7 @@ const pendingBackfillRecord = (
   lng: null,
   lookupStatus: status,
   backfillReason: reason,
+  placeUrl: null,
 })
 
 const parseDocument = (
@@ -115,6 +129,19 @@ const parseDocument = (
     throw new TypeError(`Expected object at documents[${index}]`)
   }
   return {
+    placeId: requiredString(value.id, `documents[${index}].id`),
+    placeName: requiredString(
+      value.place_name,
+      `documents[${index}].place_name`,
+    ),
+    categoryName: requiredString(
+      value.category_name,
+      `documents[${index}].category_name`,
+    ),
+    placeUrl: requiredRawString(
+      value.place_url,
+      `documents[${index}].place_url`,
+    ),
     legalAddress: requiredString(
       value.address_name,
       `documents[${index}].address_name`,
@@ -125,14 +152,49 @@ const parseDocument = (
   }
 }
 
-export const parseKakaoKeywordSearchResponse = (
+export const parseKakaoKeywordSearchDocuments = (
   payload: unknown,
-): KakaoKeywordDocument | null => {
+): readonly KakaoKeywordDocument[] => {
   if (!isRecord(payload) || !Array.isArray(payload.documents)) {
     throw new TypeError('Kakao keyword response is missing documents')
   }
-  const firstDocument = payload.documents.at(0)
-  return firstDocument === undefined ? null : parseDocument(firstDocument, 0)
+  return payload.documents.map(parseDocument)
+}
+
+export const parseKakaoKeywordSearchResponse = (
+  payload: unknown,
+): KakaoKeywordDocument | null => {
+  return parseKakaoKeywordSearchDocuments(payload).at(0) ?? null
+}
+
+export const isKakaoQuotaExceededError = (error: unknown): boolean => {
+  let current = error
+  while (current instanceof Error) {
+    if (
+      current instanceof HttpResponseError &&
+      isKakaoQuotaExceeded(current)
+    ) {
+      return true
+    }
+    current = current.cause
+  }
+  return false
+}
+
+export const searchKakaoKeywordDocuments = async (
+  query: string,
+  restApiKey: string,
+  observer?: HttpMetricsObserver,
+): Promise<readonly KakaoKeywordDocument[]> => {
+  const url = new URL(EXTERNAL_API_URLS.kakaoKeywordSearch)
+  url.searchParams.set('query', query)
+  url.searchParams.set('size', String(KAKAO_KEYWORD_MAX_PAGE_SIZE))
+  return fetchParsedJson(
+    url,
+    parseKakaoKeywordSearchDocuments,
+    { headers: { authorization: `${KAKAO_AUTH_SCHEME} ${restApiKey}` } },
+    { observer },
+  )
 }
 
 export const parseKakaoLegalDongCodeResponse = (
@@ -186,6 +248,9 @@ export const classifyKakaoComplexResult = (
     householdCount: null,
     lat: document.lat,
     lng: document.lng,
+    placeUrl: isKakaoComplexPlaceCandidate(input.name, document)
+      ? document.placeUrl
+      : null,
     lookupStatus: 'matched',
     backfillReason: null,
   }
@@ -196,17 +261,16 @@ export const searchKakaoComplex = async (
   restApiKey: string,
   observer?: HttpMetricsObserver,
 ): Promise<ComplexStagingRecord> => {
-  const url = new URL(EXTERNAL_API_URLS.kakaoKeywordSearch)
-  url.searchParams.set('query', buildKakaoComplexQuery(input))
   const requestOptions = {
     headers: { authorization: `${KAKAO_AUTH_SCHEME} ${restApiKey}` },
   }
-  const document = await fetchParsedJson(
-    url,
-    parseKakaoKeywordSearchResponse,
-    requestOptions,
-    { observer },
-  )
+  const document = (
+    await searchKakaoKeywordDocuments(
+      buildKakaoComplexQuery(input),
+      restApiKey,
+      observer,
+    )
+  ).at(0) ?? null
   if (document === null) {
     return classifyKakaoComplexResult(input, null, null)
   }

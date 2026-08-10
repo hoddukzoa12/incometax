@@ -23,8 +23,10 @@ const input: CompleteComplexListRecord = {
 const document = (
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> => ({
+  id: '11335658',
   place_name: '은마아파트',
   category_name: '부동산 > 주거시설 > 아파트',
+  place_url: 'http://place.map.kakao.com/11335658',
   address_name: '서울 강남구 대치동 316',
   road_address_name: '서울 강남구 삼성로 212',
   x: '127.06532',
@@ -73,6 +75,7 @@ describe('Kakao complex keyword search', () => {
       roadAddress: '서울 강남구 삼성로 212',
       lat: 37.49741,
       lng: 127.06532,
+      placeUrl: 'http://place.map.kakao.com/11335658',
     })
   })
 

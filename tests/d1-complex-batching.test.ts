@@ -24,6 +24,7 @@ const draft = (index: number): ComplexStagingRecord => ({
   householdCount: 700,
   lat: 37.5,
   lng: 127,
+  placeUrl: `http://place.map.kakao.com/${index}`,
   lookupStatus: 'matched',
   backfillReason: null,
 })
@@ -106,6 +107,7 @@ describe('complex D1 write batching', () => {
       household_count INTEGER NOT NULL,
       lat REAL,
       lng REAL,
+      place_url TEXT,
       lookup_status TEXT NOT NULL,
       backfill_reason TEXT,
       updated_at TEXT NOT NULL

@@ -18,7 +18,7 @@ const D1_SQL_STATEMENT_CHUNK_MAX_BYTES =
 const COMPLEX_UPSERT_PREFIX = `INSERT INTO complex_staging (
        complex_id, name, legal_address, road_address, legal_dong_code,
        approval_date, building_count, household_count, lat, lng,
-       lookup_status, backfill_reason, updated_at
+       place_url, lookup_status, backfill_reason, updated_at
      ) VALUES `
 const COMPLEX_UPSERT_SUFFIX = `
      ON CONFLICT(complex_id) DO UPDATE SET
@@ -37,6 +37,7 @@ const COMPLEX_UPSERT_SUFFIX = `
        household_count = COALESCE(excluded.household_count, complex_staging.household_count),
        lat = excluded.lat,
        lng = excluded.lng,
+       place_url = COALESCE(excluded.place_url, complex_staging.place_url),
        lookup_status = excluded.lookup_status,
        backfill_reason = excluded.backfill_reason,
        updated_at = excluded.updated_at;`
@@ -69,6 +70,7 @@ const complexDraftSqlRow = (
     sqlNullableNumber(record.householdCount),
     sqlNullableNumber(record.lat),
     sqlNullableNumber(record.lng),
+    sqlNullableString(record.placeUrl),
     sqlString(record.lookupStatus),
     sqlNullableString(record.backfillReason),
     sqlString(updatedAt),

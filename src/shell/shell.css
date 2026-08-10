@@ -304,6 +304,23 @@
   padding-top: calc(var(--size-touch-target-min) + var(--space-4));
 }
 
+/* 주요 행동 아래의 참고 링크 — 버튼보다 작고 본문 흐름에 둔다. */
+.sidehead__place-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--size-touch-target-min);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  text-underline-offset: var(--space-1);
+}
+
+.sidehead__place-link:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 /* ── 결과가 지도를 덮는다 ── */
 .resultlayer {
   position: absolute;

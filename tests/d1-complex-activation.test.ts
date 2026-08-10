@@ -27,6 +27,7 @@ describe('complex activation with trade foreign keys', () => {
     database.exec(migration('0001_complex.sql'))
     database.exec(migration('0003_trade.sql'))
     database.exec(migration('0005_complex_lookup.sql'))
+    database.exec(migration('0009_complex_place_url.sql'))
     database.exec(
       `INSERT INTO complex (
          complex_id, name, legal_address, road_address, legal_dong_code,
@@ -100,6 +101,7 @@ describe('complex failed-lookup retry staging', () => {
     const database = new DatabaseSync(':memory:')
     database.exec(migration('0001_complex.sql'))
     database.exec(migration('0005_complex_lookup.sql'))
+    database.exec(migration('0009_complex_place_url.sql'))
     database.exec(
       `INSERT INTO complex (
          complex_id, name, legal_address, road_address, legal_dong_code,

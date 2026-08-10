@@ -24,13 +24,14 @@ interface ComplexCatalogRow {
   readonly household_count: number | null
   readonly lat: number | null
   readonly lng: number | null
+  readonly place_url: string | null
   readonly lookup_status: Exclude<ComplexLookupStatus, 'pending'>
   readonly backfill_reason: string | null
 }
 
 const SELECT_COMPLEX_FIELDS = `complex_id, name, legal_address, road_address,
   legal_dong_code, approval_date, building_count, household_count, lat, lng,
-  lookup_status, backfill_reason`
+  place_url, lookup_status, backfill_reason`
 
 const toComplexRecord = (row: ComplexCatalogRow): ComplexStagingRecord => ({
   complexId: row.complex_id,
@@ -43,6 +44,7 @@ const toComplexRecord = (row: ComplexCatalogRow): ComplexStagingRecord => ({
   householdCount: row.household_count,
   lat: row.lat,
   lng: row.lng,
+  placeUrl: row.place_url,
   lookupStatus: row.lookup_status,
   backfillReason: row.backfill_reason,
 })

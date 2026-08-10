@@ -18,6 +18,7 @@ const EUNMA_ROW = {
   household_count: 4_424,
   lat: 37.4974,
   lng: 127.0653,
+  place_url: 'http://place.map.kakao.com/11335658',
   lookup_status: 'matched',
   backfill_reason: null,
 }
@@ -74,6 +75,7 @@ describe('complex catalog API', () => {
       approvalDate: '1979-08-30',
       buildingCount: 28,
       householdCount: 4_424,
+      placeUrl: 'http://place.map.kakao.com/11335658',
     })
 
     const response = await handleComplexDetail(fake.database, 'A13583507')

@@ -82,7 +82,18 @@ export function ComplexPanel({
 
         {data.detail && (
           <div className="sidehead">
-            <ComplexBasics complex={data.detail} />
+            <ComplexBasics complex={data.detail}>
+              {data.detail.placeUrl && (
+                <a
+                  className="sidehead__place-link"
+                  href={data.detail.placeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {SHELL_MESSAGES.kakaoComplexDetails}
+                </a>
+              )}
+            </ComplexBasics>
             <div className="sidehead__acts">
               {/*
                 계산은 담은 것 전체를 합산한다. 아직 아무것도 안 담았으면

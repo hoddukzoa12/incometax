@@ -8,6 +8,7 @@ export const SHELL_MESSAGES = {
   calculateHousehold: '세대 합산해서 보유세 보기',
   calculateFromComplex: '보유세 계산',
   addFromComplex: '내 부동산에 담기',
+  kakaoComplexDetails: '카카오맵에서 단지 상세 보기 ↗',
   collapsePanel: '사이드바 접기',
   added: (name: string) => `내 부동산에 담았어요 · ${name}`,
   ctaChevron: '›',

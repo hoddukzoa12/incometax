@@ -1,4 +1,4 @@
-import { isLegalDongCode } from '../../shared/legal-dong'
+import { isLegalDongCode } from '../../shared/legal-dong.ts'
 
 const HYPHEN_VARIANTS_PATTERN = /[‐‑‒–—−]/g
 const LOT_TOKEN_PATTERN = /^산$|^산?\d/

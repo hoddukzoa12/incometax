@@ -40,6 +40,7 @@ export interface ComplexStagingRecord {
   readonly householdCount: number | null
   readonly lat: number | null
   readonly lng: number | null
+  readonly placeUrl: string | null
   readonly lookupStatus: Exclude<ComplexLookupStatus, 'pending'>
   readonly backfillReason: string | null
 }

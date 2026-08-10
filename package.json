@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently --kill-others-on-fail \"vite\" \"wrangler dev\"",
     "backfill:complex-details": "node --env-file-if-exists=.dev.vars scripts/backfill-complex-details.ts",
+    "backfill:complex-place-urls": "node --env-file-if-exists=.dev.vars scripts/backfill-complex-place-urls.ts",
     "geocode:complexes": "node --env-file-if-exists=.dev.vars scripts/geocode.ts",
     "ingest:complexes": "node --env-file-if-exists=.dev.vars scripts/ingest-complexes.ts",
     "verify:complex-api": "node --env-file-if-exists=.dev.vars scripts/verify-complex-api.ts",

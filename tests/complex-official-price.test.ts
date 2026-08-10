@@ -16,6 +16,7 @@ const ABBREVIATED_COMPLEX: ComplexStagingRecord = {
   householdCount: 4_424,
   lat: 37.4974,
   lng: 127.0653,
+  placeUrl: 'http://place.map.kakao.com/11335658',
   lookupStatus: 'matched',
   backfillReason: null,
 }
@@ -34,6 +35,7 @@ const fakeDatabase = (complex: ComplexStagingRecord): D1Database => ({
         household_count: complex.householdCount,
         lat: complex.lat,
         lng: complex.lng,
+        place_url: complex.placeUrl,
         lookup_status: complex.lookupStatus,
         backfill_reason: complex.backfillReason,
       }),
