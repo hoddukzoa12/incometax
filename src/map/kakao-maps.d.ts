@@ -42,14 +42,33 @@ declare namespace kakao.maps {
   }
 
   class CustomOverlay {
+    setZIndex(zIndex: number): void
     constructor(options: CustomOverlayOptions)
     setMap(map: Map | null): void
+  }
+
+  class Size {
+    constructor(width: number, height: number)
+  }
+
+  class Point {
+    constructor(x: number, y: number)
+  }
+
+  interface MarkerImageOptions {
+    readonly offset?: Point
+  }
+
+  class MarkerImage {
+    constructor(src: string, size: Size, options?: MarkerImageOptions)
   }
 
   interface MarkerOptions {
     readonly map?: Map
     readonly position: LatLng
     readonly title?: string
+    /** 주지 않으면 SDK 기본 아이콘(파란 물방울)이 그려진다. */
+    readonly image?: MarkerImage
   }
 
   class Marker {

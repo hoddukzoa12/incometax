@@ -1,0 +1,69 @@
+/* 제안 스킨 — 현행 incometax DS 위에 얹는 변경안. 실제 반영은 코드 저장소에서 /design-sync 로.
+   v3: 로고 색으로 액센트 교체 + 카드-속-카드 제거 */
+:root{
+  --color-accent:#70161a;      /* 로고 색 */
+  --color-action:#101418;      /* 한 화면에 하나뿐인 주요 행동 */
+  --radius-sm:10px;--radius-md:14px;
+  --shadow-sm:0 1px 3px rgba(31,41,51,.10);
+  --shadow-lg:0 12px 32px rgba(31,41,51,.14);
+}
+/* 1. 액센트 헤더 — 색 블록이 화면을 열고, 흰 시트가 그 위로 올라온다 */
+.holding-overlay__header{padding:var(--space-6) var(--space-4) calc(var(--space-6) + 28px);border-bottom:0;background:var(--color-accent);color:var(--color-neutral-0);backdrop-filter:none}
+.holding-overlay__title-row h1{color:var(--color-neutral-0);font-size:var(--font-size-xl);letter-spacing:-.02em}
+.holding-overlay__header button{border-color:rgba(255,255,255,.34);background:rgba(255,255,255,.14);color:var(--color-neutral-0)}
+.holding-overlay__header .stepbar button[aria-pressed=true]{border-color:var(--color-neutral-0);background:var(--color-neutral-0);color:var(--color-accent)}
+.holding-assumptions{border-radius:var(--radius-md);background:rgba(255,255,255,.12)}
+.holding-assumptions strong,.holding-assumptions p{color:var(--color-neutral-0)}
+.holding-assumptions p{opacity:.86}
+
+/* 2. 카드 속의 카드를 없앤다 — 흰 시트 하나 위에 헤어라인으로만 나눈다 */
+.holding-overlay{background:var(--color-neutral-0)}
+.holding-overlay__content{position:relative;z-index:3;margin-top:-28px;padding:0 var(--space-4) 96px;border-radius:24px 24px 0 0;background:var(--color-neutral-0)}
+.holding-result-summary,.holding-tax-changes,.holding-tax-details,.holding-overlay__status{padding:var(--space-6) 0;border:0;border-radius:0;background:none;box-shadow:none}
+.holding-tax-changes,.holding-tax-details{border-top:1px solid var(--color-neutral-100)}
+.cols .holding-tax-changes{border-top:0}
+
+/* 사이드바 — 카드를 안 쓴다. 패널이 흰 면이고 섹션은 가로선으로만 나눈다 */
+.complex-sidebar{height:auto;overflow:visible;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+.complex-sidebar__header,.complex-sidebar__section{margin:0;padding:var(--space-4);border:0;border-radius:0;background:none;box-shadow:none}
+.complex-sidebar__content>.sidehead{border-bottom:1.5px solid var(--color-neutral-900)}
+.complex-sidebar__content>.complex-sidebar__section+.complex-sidebar__section{border-top:1.5px solid var(--color-neutral-900)}
+/* 단지 헤더는 계산기 헤더와 같은 면으로, 단 각진 모서리로 패널 끝까지 */
+.complex-sidebar__header{margin:0;padding:var(--space-6) var(--space-4) var(--space-4);border-radius:0;background:var(--color-accent);color:var(--color-neutral-0)}
+.complex-sidebar__header .complex-sidebar__eyebrow{color:rgba(255,255,255,.72)}
+.complex-sidebar__header h2{color:var(--color-neutral-0)}
+.complex-sidebar__header address,.complex-sidebar__header .complex-sidebar__legal-address{color:rgba(255,255,255,.86)}
+.complex-sidebar__header .complex-sidebar__details{border-top-color:rgba(255,255,255,.24)}
+.complex-sidebar__header .complex-sidebar__details summary{color:var(--color-neutral-0)}
+.complex-sidebar__header .complex-sidebar__facts div{background:rgba(255,255,255,.12)}
+.complex-sidebar__header .complex-sidebar__facts dt{color:rgba(255,255,255,.7)}
+.complex-sidebar__header .complex-sidebar__facts dd{color:var(--color-neutral-0)}
+.complex-sidebar__facts div{background:var(--color-neutral-50)}
+.complex-sidebar__content{padding-top:0}
+
+/* 3. 버튼은 pill. 주요 행동만 검정 */
+.holding-overlay button,.complex-sidebar__more,.complex-sidebar__close{border-radius:var(--radius-pill)}
+.cta{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);min-height:56px;padding:0 var(--space-2) 0 var(--space-4);border-color:var(--color-action);border-radius:var(--radius-pill);background:var(--color-action)}
+.cta .cta__badge{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--color-neutral-0);color:var(--color-action);font-size:var(--font-size-md)}
+.ghost{border-radius:var(--radius-pill)}
+
+/* ── quiet: 브랜드색을 면으로 덮지 않고 작은 요소에만 쓴다 (호갱노노식) ── */
+.quiet .holding-overlay__header{padding:var(--space-4);border-bottom:1px solid var(--color-neutral-200);background:var(--color-neutral-0);color:var(--color-neutral-900)}
+.quiet .holding-overlay__title-row h1{color:var(--color-neutral-900)}
+.quiet .holding-overlay__header button{border-color:var(--color-neutral-300);background:var(--color-neutral-0);color:var(--color-neutral-700)}
+.quiet .holding-overlay__header .stepbar button[aria-pressed=true]{border-color:var(--color-accent);background:var(--color-accent);color:var(--color-neutral-0)}
+.quiet .holding-assumptions{background:var(--color-neutral-50)}
+.quiet .holding-assumptions strong{color:var(--color-neutral-900)}
+.quiet .holding-assumptions p{color:var(--color-neutral-600);opacity:1}
+.quiet .holding-overlay__content{margin-top:0;padding-top:var(--space-6);border-radius:0}
+.quiet .cta{border-color:var(--color-accent);background:var(--color-accent)}
+.quiet .cta .cta__badge{color:var(--color-accent)}
+
+/* 5. 지도 타일 채도를 낮추고 라벨은 그대로 둔다 — 카카오맵 타일에 그대로 먹는다 */
+.app-shell__map>.map__grain,.app-shell__map>.root_daum_roughmap,.app-shell__map>[class*=map_tile]{filter:saturate(.5) contrast(.95) brightness(1.02)}
+.map__grain{opacity:.72}
+
+/* 4. 패널은 지도 옆의 흰 면, 카드 없이 가로선으로만 나눈다 */
+.panel{border-left:1.5px solid var(--color-neutral-900);background:var(--color-neutral-0);box-shadow:none}
+.panel__scroll{padding:0 0 var(--space-6)}
+.sheet .panel__close{top:calc(var(--space-6) + var(--space-1));border:0;background:none;color:#fff}

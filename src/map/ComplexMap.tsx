@@ -17,12 +17,24 @@ import {
 } from './constants'
 import { fetchComplexes } from './fetchComplexes'
 import { loadKakaoMapsSdk } from './loadKakaoMapsSdk'
+import { groupComplexesByPosition } from './group-by-position'
+import { createComplexMarkerImage } from './marker-image'
 import './map.css'
 
 type MapDisplayMode = 'labels' | 'clusters'
 
 export interface ComplexMapProps {
   readonly onComplexSelect: (complexId: string) => void
+  /** 이미 담은 단지. 라벨이 담기/빼기 중 무엇을 보일지 정한다. */
+  readonly ownedComplexIds: readonly string[]
+  readonly selectedComplexId: string | null
+  readonly onAddComplex: (complexId: string) => void
+  readonly onRemoveComplex: (complexId: string) => void
+  /**
+   * 검색으로 고른 단지. 그 자리로 지도를 옮기고 라벨이 보이는 축척까지 당긴다.
+   * 같은 단지를 다시 고를 수 있으므로 seq 로 요청을 구분한다.
+   */
+  readonly focus: { readonly lat: number; readonly lng: number; readonly seq: number } | null
 }
 
 const displayModeForLevel = (level: number): MapDisplayMode =>
@@ -34,10 +46,25 @@ const clusterText = (count: number): string =>
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
 
-export default function ComplexMap({ onComplexSelect }: ComplexMapProps) {
+export default function ComplexMap({
+  onComplexSelect,
+  ownedComplexIds,
+  selectedComplexId,
+  onAddComplex,
+  onRemoveComplex,
+  focus,
+}: ComplexMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<kakao.maps.Map | null>(null)
   const onComplexSelectRef = useRef(onComplexSelect)
+  // 라벨은 kakao 오버레이라 React 밖에서 만들어진다. 최신 상태를 ref 로 건넨다.
+  const labelsRef = useRef<ComplexLabel[]>([])
+  const labelStateRef = useRef({
+    ownedComplexIds,
+    selectedComplexId,
+    onAddComplex,
+    onRemoveComplex,
+  })
   const [displayMode, setDisplayMode] = useState<MapDisplayMode>(
     displayModeForLevel(INITIAL_MAP_LEVEL),
   )
@@ -47,8 +74,34 @@ export default function ComplexMap({ onComplexSelect }: ComplexMapProps) {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
+    const map = mapRef.current
+    if (!map || focus === null) return
+    map.setCenter(new kakao.maps.LatLng(focus.lat, focus.lng))
+    // 라벨이 보이는 축척까지 당긴다 — 검색해서 왔는데 점만 보이면 확인이 안 된다.
+    if (map.getLevel() > MAXIMUM_LABEL_DISPLAY_LEVEL) {
+      map.setLevel(MAXIMUM_LABEL_DISPLAY_LEVEL, {
+        animate: { duration: MAP_LEVEL_CHANGE_ANIMATION_DURATION_MS },
+      })
+    }
+  }, [focus])
+
+  useEffect(() => {
     onComplexSelectRef.current = onComplexSelect
-  }, [onComplexSelect])
+    labelStateRef.current = {
+      ownedComplexIds,
+      selectedComplexId,
+      onAddComplex,
+      onRemoveComplex,
+    }
+    // ref 를 갱신한 뒤 살아 있는 라벨에 알린다 — 담기/빼기가 바로 보여야 한다.
+    for (const label of labelsRef.current) label.refresh()
+  }, [
+    onComplexSelect,
+    ownedComplexIds,
+    selectedComplexId,
+    onAddComplex,
+    onRemoveComplex,
+  ])
 
   useEffect(() => {
     const container = containerRef.current
@@ -66,6 +119,7 @@ export default function ComplexMap({ onComplexSelect }: ComplexMapProps) {
     let map: kakao.maps.Map | undefined
 
     const clearLabels = (): void => {
+      labelsRef.current = []
       labels.forEach((label) => label.dispose())
       labels = []
     }
@@ -85,24 +139,42 @@ export default function ComplexMap({ onComplexSelect }: ComplexMapProps) {
       if (nextDisplayMode === 'labels') {
         clearMarkers()
         clearLabels()
-        labels = complexes.map(
-          (complex) =>
-            new ComplexLabel(map!, complex, (complexId) => {
-              onComplexSelectRef.current(complexId)
+        labels = groupComplexesByPosition(complexes).map((group) =>
+          new ComplexLabel(
+            map!,
+            group,
+            () => ({
+              ownedComplexIds: labelStateRef.current.ownedComplexIds,
+              selectedComplexId: labelStateRef.current.selectedComplexId,
             }),
+            {
+              onSelect: (id) => onComplexSelectRef.current(id),
+              onAdd: (id) => labelStateRef.current.onAddComplex(id),
+              onRemove: (id) => labelStateRef.current.onRemoveComplex(id),
+            },
+          ),
         )
+        labelsRef.current = labels
         return
       }
 
       clearLabels()
       clearMarkers()
-      markers = complexes.map(
-        (complex) =>
-          new kakao.maps.Marker({
-            position: new kakao.maps.LatLng(complex.lat, complex.lng),
-            title: complex.name,
-          }),
-      )
+      // 마커 이미지는 한 번만 만들어 모든 마커가 공유한다.
+      const markerImage = createComplexMarkerImage()
+      markers = complexes.map((complex) => {
+        const marker = new kakao.maps.Marker({
+          position: new kakao.maps.LatLng(complex.lat, complex.lng),
+          // 마우스를 올리면 어느 단지인지 뜬다. 점만으로는 알 수 없다.
+          title: complex.name,
+          image: markerImage,
+        })
+        // 눌러서 사이드바를 여는 것이 이 축척에서 단지를 확인하는 유일한 길이다.
+        kakao.maps.event.addListener(marker, 'click', () => {
+          onComplexSelectRef.current(complex.complexId)
+        })
+        return marker
+      })
       clusterer.addMarkers(markers)
     }
 

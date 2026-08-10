@@ -57,7 +57,16 @@ export const HOLDING_TAX_TERM_HELP = {
 export type HoldingTaxHelpTerm = keyof typeof HOLDING_TAX_TERM_HELP
 
 export const HOLDING_TAX_MESSAGES = {
-  title: '보유세 비교',
+  title: '보유세는 얼마일까요',
+  stepAcquire: '취득',
+  stepHold: '보유',
+  stepDispose: '처분',
+  stepAcquireTitle: '사면 세금이 얼마일까요',
+  stepDisposeTitle: '팔면 세금이 얼마일까요',
+  stepAcquirePending: '취득세는 아직 준비 중이에요',
+  stepDisposePending: '양도소득세는 아직 준비 중이에요',
+  stepPendingBody:
+    '같은 물건을 고른 채 단계만 바꿔 보는 구조예요. 지금은 보유 단계만 계산됩니다.',
   close: '닫기',
   helpSymbol: '?',
   helpOpen: (title: string) => `${title} 설명 열기`,

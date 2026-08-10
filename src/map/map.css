@@ -90,66 +90,6 @@
   font-weight: var(--font-weight-bold);
 }
 
-.complex-label-anchor {
-  padding-bottom: var(--space-2);
-}
-
-.complex-label {
-  position: relative;
-  min-width: var(--size-touch-target-min);
-  min-height: var(--size-touch-target-min);
-  max-width: 190px;
-  padding: var(--space-1);
-  overflow: visible;
-  color: var(--color-neutral-900);
-  background: color-mix(
-    in srgb,
-    var(--color-neutral-0) 96%,
-    var(--color-transparent)
-  );
-  border: 1px solid var(--color-neutral-300);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: -0.04em;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.complex-label::after {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-top: 7px solid color-mix(
-    in srgb,
-    var(--color-neutral-0) 96%,
-    var(--color-transparent)
-  );
-  border-right: 6px solid var(--color-transparent);
-  border-left: 6px solid var(--color-transparent);
-  content: "";
-  transform: translateX(-50%);
-}
-
-.complex-label:hover,
-.complex-label:focus-visible {
-  color: var(--color-neutral-0);
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  outline: none;
-  transform: translateY(-2px);
-}
-
-.complex-label:hover::after,
-.complex-label:focus-visible::after {
-  border-top-color: var(--color-accent);
-}
-
 @media (max-width: 45rem) {
   .app-shell__sidebar {
     position: absolute;
@@ -165,4 +105,106 @@
     flex-direction: column;
     width: max-content;
   }
+}
+
+/*
+ * 지도 핀 — claude.ai/design 시안(shell-v2.html, `.pin`).
+ * 단지명 위, 세대 수 아래. 오른쪽 반쪽 탭이 담기/빼기다.
+ */
+.pin {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  /*
+   * 시안의 .pin 은 position:absolute 목업이라 translate(-50%,-100%) 로 앵커를 잡았다.
+   * 여기서는 카카오 CustomOverlay 의 xAnchor/yAnchor 가 그 일을 하므로
+   * transform 을 걸면 좌표에서 라벨 크기만큼 밀린다 — 걸지 않는다.
+   */
+}
+
+.pin__row {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.pin__label {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  overflow: hidden;
+  padding: 0;
+  border: 1.5px solid var(--color-neutral-900);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-0);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-neutral-900);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pin__name {
+  padding: var(--space-1) var(--space-3);
+}
+
+.pin__units {
+  padding: 2px var(--space-3);
+  border-top: 1.5px solid var(--color-neutral-900);
+  background: var(--color-accent);
+  color: var(--color-neutral-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.pin__add {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  margin-left: -8px;
+  padding: 0 0 0 8px;
+  border: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--color-accent);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-neutral-0);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pin__add--owned {
+  background: var(--color-neutral-700);
+}
+
+.pin--owned .pin__row {
+  border-radius: var(--radius-md);
+  outline: 2px dashed var(--color-neutral-900);
+  outline-offset: 3px;
+}
+
+.pin--active .pin__name {
+  background: var(--color-accent);
+  color: var(--color-neutral-0);
+}
+
+.pin--active .pin__units {
+  background: #4a0e11;
+}
+
+.pin__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-neutral-700);
+  box-shadow: 0 0 0 3px var(--color-neutral-0);
+}
+
+.pin--active .pin__dot {
+  background: var(--color-accent);
 }

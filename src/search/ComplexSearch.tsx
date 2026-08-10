@@ -12,7 +12,7 @@ type SearchStatus = 'idle' | 'loading' | 'success' | 'failed'
 export function ComplexSearch({
   onSelectComplex,
 }: {
-  readonly onSelectComplex: (complexId: string) => void
+  readonly onSelectComplex: (complex: ComplexStagingRecord) => void
 }) {
   const listId = useId()
   const [query, setQuery] = useState('')
@@ -59,7 +59,7 @@ export function ComplexSearch({
     setItems([])
     setStatus('idle')
     setActiveIndex(-1)
-    onSelectComplex(item.complexId)
+    onSelectComplex(item)
   }
 
   const moveSelection = (direction: 1 | -1) => {

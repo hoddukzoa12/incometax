@@ -16,7 +16,10 @@
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --color-accent: #173f5f;
+  /* 로고 색. 브랜드 면과 선택 상태를 이 색으로 연다. */
+  --color-accent: #70161a;
+  /* 한 화면에 하나뿐인 주요 행동. 액센트와 구분되어야 눌러야 할 것이 드러난다. */
+  --color-action: #101418;
   --color-neutral-0: #ffffff;
   --color-neutral-50: #f7f8fa;
   --color-neutral-100: #eef1f4;
@@ -30,18 +33,23 @@
   --color-warning: #8a5a00;
   --color-transparent: transparent;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
   --radius-pill: 999px;
 
+  /*
+   * 그림자는 중립 먹색에서 파생시킨다. 액센트에서 파생시키면 브랜드색이 바뀔 때
+   * 그림자에 그 색조가 따라 들어간다 — 자주색 액센트에서는 붉은 기가 돌아
+   * 종이 위에 얹힌 면이 아니라 물든 면으로 보인다.
+   */
   --shadow-sm: 0 1px 3px color-mix(
     in srgb,
-    var(--color-accent) 18%,
+    var(--color-neutral-900) 10%,
     var(--color-transparent)
   );
-  --shadow-lg: 0 8px 24px color-mix(
+  --shadow-lg: 0 12px 32px color-mix(
     in srgb,
-    var(--color-accent) 14%,
+    var(--color-neutral-900) 14%,
     var(--color-transparent)
   );
 

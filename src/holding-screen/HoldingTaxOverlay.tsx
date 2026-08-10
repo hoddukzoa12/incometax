@@ -22,6 +22,21 @@ import './holding-tax-overlay.css'
 
 const ZERO_SHARE = 0
 
+/**
+ * 3단계 — 취득·보유·처분. 엑셀 실무 시트의 구성이 그대로 제품 구조다
+ * (docs/product-vision.md §3). 취득세(P9)·양도소득세(P5)는 아직 없다.
+ */
+type HoldingTaxStep = 'acquire' | 'hold' | 'dispose'
+
+const HOLDING_TAX_STEPS = [
+  { id: 'acquire', label: HOLDING_TAX_MESSAGES.stepAcquire },
+  { id: 'hold', label: HOLDING_TAX_MESSAGES.stepHold },
+  { id: 'dispose', label: HOLDING_TAX_MESSAGES.stepDispose },
+] as const satisfies readonly {
+  readonly id: HoldingTaxStep
+  readonly label: string
+}[]
+
 export function HoldingTaxOverlay({
   controller,
   onClose,
@@ -47,7 +62,9 @@ export function HoldingTaxOverlay({
   const [conditionsOpen, setConditionsOpen] = useState(
     () => !(taxedItems.length > 0 && missingConditions.length === 0),
   )
-  const [reasonsOpen, setReasonsOpen] = useState(false)
+  // 시안은 변경 이유를 기본으로 펼친다 — "왜 바뀌었나"가 이 화면의 두 번째 질문이다.
+  const [reasonsOpen, setReasonsOpen] = useState(true)
+  const [step, setStep] = useState<HoldingTaxStep>('hold')
   const [detailsOpen, setDetailsOpen] = useState(false)
   const comparison = useMemo<HoldingTaxComparison>(() =>
     calculatePortfolioHoldingTax(controller.items, conditions), [
@@ -107,6 +124,12 @@ export function HoldingTaxOverlay({
   const recognitionItems = frozenResidenceItems.filter((item) =>
     conditions.items[item.id]?.qualifyingRelocation === true)
 
+  const stepTitle = step === 'acquire'
+    ? HOLDING_TAX_MESSAGES.stepAcquireTitle
+    : step === 'dispose'
+      ? HOLDING_TAX_MESSAGES.stepDisposeTitle
+      : HOLDING_TAX_MESSAGES.title
+
   return (
     <div
       className="holding-overlay"
@@ -114,10 +137,28 @@ export function HoldingTaxOverlay({
     >
       <header className="holding-overlay__header">
         <div className="holding-overlay__title-row">
-          <h1 id="holding-overlay-title">{HOLDING_TAX_MESSAGES.title}</h1>
+          <h1 id="holding-overlay-title">{stepTitle}</h1>
           <button type="button" autoFocus onClick={onClose}>
             {HOLDING_TAX_MESSAGES.close}
           </button>
+        </div>
+
+        {/*
+          취득·보유·처분 3단계. 같은 물건을 고른 채 단계만 바꿔 본다.
+          취득세(P9)와 양도소득세(P5)는 아직 없어 안내만 보인다 —
+          단계를 감추면 이 제품이 무엇을 하려는지가 안 보인다.
+        */}
+        <div className="stepbar" role="group" aria-label={HOLDING_TAX_MESSAGES.title}>
+          {HOLDING_TAX_STEPS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={step === id}
+              onClick={() => setStep(id)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {assumptionSummary !== null && (
@@ -147,6 +188,17 @@ export function HoldingTaxOverlay({
       </header>
 
       <main className="holding-overlay__content">
+        {step !== 'hold' ? (
+          <section className="holding-overlay__status">
+            <h2>
+              {step === 'acquire'
+                ? HOLDING_TAX_MESSAGES.stepAcquirePending
+                : HOLDING_TAX_MESSAGES.stepDisposePending}
+            </h2>
+            <p>{HOLDING_TAX_MESSAGES.stepPendingBody}</p>
+          </section>
+        ) : (
+          <>
         {(conditionsOpen ||
           comparison.status === 'missingConditions' ||
           comparison.status === 'missingOfficialPrices') &&
@@ -247,6 +299,8 @@ export function HoldingTaxOverlay({
                 </section>
               </section>
             )}
+          </>
+        )}
           </>
         )}
       </main>

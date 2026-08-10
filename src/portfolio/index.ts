@@ -1,3 +1,4 @@
+export { PortfolioItemEditor } from './PortfolioItemEditor'
 export { PortfolioPanel, type PortfolioPanelProps } from './PortfolioPanel'
 export {
   MAX_OWNERSHIP_PERCENT,
