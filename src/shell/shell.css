@@ -309,7 +309,25 @@
   position: absolute;
   z-index: 20;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--color-neutral-50);
+}
+
+/*
+ * 오버레이는 이 레이어 안에서 일반 흐름으로 둔다.
+ * .holding-overlay 자체는 position: fixed 라 뷰포트를 덮는데, 그러면 이 레이어가
+ * 아무 일도 안 하고 나중에 상단 바 같은 것이 생겨도 그 위를 덮는다.
+ * 자리를 정하는 것은 셸의 몫이고 오버레이는 주어진 칸을 채운다.
+ * (시안 shell-v2.html 의 `.resultwrap .holding-overlay`)
+ */
+.resultlayer .holding-overlay {
+  position: relative;
+  z-index: auto;
+  inset: auto;
+  min-height: 0;
+  height: 100%;
 }
 
 /* ── 알림 ── */
