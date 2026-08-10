@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  KaptBasisNotFoundError,
   normalizeKaptBasisResponse,
   UnusableKaptBasisError,
 } from '../scripts/lib/complex-normalizer.ts'
@@ -101,5 +102,26 @@ describe('normalizeKaptBasisResponse', () => {
         'A10020277',
       ),
     ).toThrow(UnusableKaptBasisError)
+  })
+
+  it('classifies an explicit no-data result separately from response errors', () => {
+    expect(() =>
+      normalizeKaptBasisResponse({
+        response: {
+          header: { resultCode: '03', resultMsg: 'NO_DATA' },
+        },
+      }),
+    ).toThrow(KaptBasisNotFoundError)
+  })
+
+  it('classifies a successful response without a detail item as no detail', () => {
+    expect(() =>
+      normalizeKaptBasisResponse({
+        response: {
+          header: { resultCode: '00', resultMsg: 'NORMAL SERVICE.' },
+          body: {},
+        },
+      }),
+    ).toThrow(KaptBasisNotFoundError)
   })
 })

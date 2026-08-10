@@ -51,7 +51,7 @@ describe('IngestionMetrics', () => {
         valueDistribution: {},
       },
       timingMs: {
-        apiAttempts: 235,
+        apiAttempts: 21,
         d1Reads: 900,
         d1Writes: 1_100,
         requestPacingSleep: 100,

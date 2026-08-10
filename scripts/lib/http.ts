@@ -70,6 +70,7 @@ export interface HttpRetryMeasurement {
 }
 
 export interface HttpMetricsObserver {
+  readonly beforeAttempt?: () => void | Promise<void>
   readonly recordAttempt: (measurement: HttpAttemptMeasurement) => void
   readonly recordRetry: (measurement: HttpRetryMeasurement) => void
 }
@@ -144,6 +145,7 @@ const fetchParsedResponse = async <T>(
   let throttleRetries = 0
 
   while (true) {
+    await dependencies.observer?.beforeAttempt?.()
     attempts += 1
     const attemptStartedAt = dependencies.now()
     let attemptStatus: number | null = null

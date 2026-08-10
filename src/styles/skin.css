@@ -85,7 +85,14 @@
 }
 
 /* ── 3. 사이드바 — 카드를 안 쓴다. 패널이 흰 면이고 섹션은 가로선으로 나눈다 ── */
+/*
+ * 패널이 스크롤을 맡으므로 사이드바는 자기 높이를 주장하지 않는다.
+ * position 도 static 으로 되돌린다 — relative 로 두면 동·호 모달(.mbox, inset 0)의
+ * 기준이 콘텐츠 높이가 되어, 실거래가가 없는 단지에서는 모달이 위쪽 337px 안에 갇힌다.
+ * (시안 shell-v2.html 의 `.complex-sidebar{position:static}`)
+ */
 .complex-sidebar {
+  position: static;
   height: auto;
   overflow: visible;
   padding: 0;

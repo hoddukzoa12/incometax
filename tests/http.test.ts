@@ -12,6 +12,26 @@ import {
 const timeoutSignal = (): AbortSignal => new AbortController().signal
 
 describe('fetchJson retries', () => {
+  it('checks an asynchronous attempt gate before every transport attempt', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('{}', { status: 200 }),
+    )
+    const beforeAttempt = vi.fn(async () => undefined)
+
+    await fetchJson(new URL('https://example.test/data'), {}, {
+      fetch: fetchMock,
+      timeoutSignal,
+      observer: {
+        beforeAttempt,
+        recordAttempt: () => undefined,
+        recordRetry: () => undefined,
+      },
+    })
+
+    expect(beforeAttempt).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
   it('retries a transient timeout and returns the later successful response', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

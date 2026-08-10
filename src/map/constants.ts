@@ -1,5 +1,7 @@
 import { COMPLEX_BBOX_ITEM_LIMIT } from '../../shared/complex'
 
+export { INITIAL_MAP_CENTER } from './initial-center'
+
 export const COMPLEX_MARKER_CAP = COMPLEX_BBOX_ITEM_LIMIT
 export const BOUNDS_REQUEST_DEBOUNCE_MS = 250
 
@@ -7,10 +9,6 @@ export const BOUNDS_REQUEST_DEBOUNCE_MS = 250
 export const MAXIMUM_LABEL_DISPLAY_LEVEL = 3
 export const KAKAO_MINIMUM_MAP_LEVEL = 1
 
-export const INITIAL_MAP_CENTER = {
-  latitude: 37.5172,
-  longitude: 127.0473,
-} as const
 export const INITIAL_MAP_LEVEL = 6
 
 export const MAP_LEVEL_CHANGE_ANIMATION_DURATION_MS = 200

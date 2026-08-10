@@ -28,6 +28,19 @@ export class UnusableKaptBasisError extends NonRetryableRequestError {
   }
 }
 
+export class KaptBasisNotFoundError extends NonRetryableRequestError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'KaptBasisNotFoundError'
+  }
+}
+
+const KAPT_NO_DATA_RESULT_CODES = new Set(['03'])
+
+const isNoDataResult = (code: unknown, message: unknown): boolean =>
+  KAPT_NO_DATA_RESULT_CODES.has(String(code)) ||
+  /NO_DATA|NODATA|데이터.*없/i.test(String(message))
+
 const optionalString = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : null
 
@@ -68,12 +81,20 @@ export const normalizeKaptBasisResponse = (
   const response = requireKaptResponse(payload)
   const header = requireRecord(response.header, 'response.header')
   if (header.resultCode !== KAPT_SUCCESS_RESULT_CODE) {
+    if (isNoDataResult(header.resultCode, header.resultMsg)) {
+      throw new KaptBasisNotFoundError(
+        `K-apt basis has no detail: ${String(header.resultCode)} ${String(header.resultMsg)}`,
+      )
+    }
     throw new Error(
       `K-apt basis API failed: ${String(header.resultCode)} ${String(header.resultMsg)}`,
     )
   }
 
   const body = requireRecord(response.body, 'response.body')
+  if (body.item === null || body.item === undefined) {
+    throw new KaptBasisNotFoundError('K-apt basis has no detail item')
+  }
   const item = requireRecord(body.item, 'response.body.item')
   const responseCodeMissing =
     item.kaptCode === null ||

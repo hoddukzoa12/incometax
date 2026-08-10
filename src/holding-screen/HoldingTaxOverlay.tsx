@@ -291,14 +291,14 @@ export function HoldingTaxOverlay({
                     )}</p>
                   )}
                 </section>
-                <section className="holding-overlay__cautions">
-                  <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
-                  {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
-                    <p key={caution}>{caution}</p>
-                  ))}
-                </section>
               </section>
             )}
+            <section className="holding-overlay__cautions">
+              <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
+              {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
+                <p key={caution}>{caution}</p>
+              ))}
+            </section>
           </>
         )}
           </>

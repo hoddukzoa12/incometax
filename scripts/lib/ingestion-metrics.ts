@@ -137,10 +137,7 @@ export class IngestionMetrics {
       (total, count) => total + count,
       0,
     )
-    const apiAttempts = this.#requestLatencies.reduce(
-      (total, duration) => total + duration,
-      0,
-    )
+    const apiAttempts = this.#requestLatencies.length
     return {
       wallClockMs: this.#now() - this.#startedAtMs,
       requestLatencyMs: summarizeDurations(this.#requestLatencies),
