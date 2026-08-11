@@ -1,0 +1,10 @@
+# 보유세 계산기 — tax.rich-group.kr
+#
+# /api/ 는 막는다. 지도 영역 조회는 한 번에 D1 을 읽으므로, 크롤러가 좌표를
+# 바꿔 가며 훑으면 사용자에게 쓸 읽기 한도를 대신 태운다. 색인할 내용도 없다.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://tax.rich-group.kr/sitemap.xml
