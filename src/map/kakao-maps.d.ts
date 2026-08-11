@@ -26,6 +26,10 @@ declare namespace kakao.maps {
     getBounds(): LatLngBounds
     getCenter(): LatLng
     getLevel(): number
+    /** 지도를 담은 DOM 요소. 보이는 영역 크기를 재는 데 쓴다. */
+    getNode(): HTMLElement
+    /** 화면 픽셀만큼 밀어 옮긴다. 덮인 영역을 피해 중앙을 잡을 때 쓴다. */
+    panBy(dx: number, dy: number): void
     relayout(): void
     setCenter(position: LatLng): void
     setLevel(level: number, options?: LevelOptions): void

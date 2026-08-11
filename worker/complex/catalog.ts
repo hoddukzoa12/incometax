@@ -52,11 +52,31 @@ const toComplexRecord = (row: ComplexCatalogRow): ComplexStagingRecord => ({
 const escapeLikePattern = (value: string): string =>
   value.replace(/[\\%_]/g, '\\$&')
 
+const WHITESPACE_PATTERN = /\s+/gu
+
+/**
+ * 띄어쓰기를 지운다. 주소는 `서울 강남구 삼성동 189` 로 저장돼 있는데 사람은
+ * `삼성동189` 로도 친다. 저장된 띄어쓰기를 정확히 맞혀야만 찾히면 안 된다.
+ *
+ * 검색어와 컬럼 양쪽에 같은 정규화를 걸어야 두 표기가 **같은 순서**로 나온다.
+ * 한쪽만 걸면 결과는 나오는데 순위가 달라진다.
+ */
+const withoutWhitespace = (value: string): string =>
+  value.replace(WHITESPACE_PATTERN, '')
+
+/** SQL 안에서 같은 정규화를 하는 식. 컬럼마다 되풀이되므로 한 곳에서 만든다. */
+const squashed = (column: string): string => `REPLACE(${column}, ' ', '')`
+
+const NAME = squashed('name')
+const LEGAL_ADDRESS = squashed('legal_address')
+const ROAD_ADDRESS = squashed(`COALESCE(road_address, '')`)
+
 export const searchComplexes = async (
   database: D1Database,
   query: string,
 ): Promise<readonly ComplexStagingRecord[]> => {
-  const escaped = escapeLikePattern(query)
+  const needle = withoutWhitespace(query)
+  const escaped = escapeLikePattern(needle)
   const prefixPattern = `${escaped}%`
   const containsPattern = `%${escaped}%`
   const result = await database.prepare(
@@ -64,17 +84,17 @@ export const searchComplexes = async (
       FROM complex
       WHERE lookup_status != 'pending'
         AND (
-          name LIKE ?1 ESCAPE '\\'
-          OR legal_address LIKE ?1 ESCAPE '\\'
-          OR COALESCE(road_address, '') LIKE ?1 ESCAPE '\\'
+          ${NAME} LIKE ?1 ESCAPE '\\'
+          OR ${LEGAL_ADDRESS} LIKE ?1 ESCAPE '\\'
+          OR ${ROAD_ADDRESS} LIKE ?1 ESCAPE '\\'
         )
       ORDER BY CASE
-                 WHEN name = ?2 THEN 0
-                 WHEN legal_address = ?2 OR road_address = ?2 THEN 1
-                 WHEN name LIKE ?3 ESCAPE '\\' THEN 2
-                 WHEN name LIKE ?1 ESCAPE '\\' THEN 3
-                 WHEN legal_address LIKE ?3 ESCAPE '\\'
-                   OR road_address LIKE ?3 ESCAPE '\\' THEN 4
+                 WHEN ${NAME} = ?2 THEN 0
+                 WHEN ${LEGAL_ADDRESS} = ?2 OR ${ROAD_ADDRESS} = ?2 THEN 1
+                 WHEN ${NAME} LIKE ?3 ESCAPE '\\' THEN 2
+                 WHEN ${NAME} LIKE ?1 ESCAPE '\\' THEN 3
+                 WHEN ${LEGAL_ADDRESS} LIKE ?3 ESCAPE '\\'
+                   OR ${ROAD_ADDRESS} LIKE ?3 ESCAPE '\\' THEN 4
                  ELSE 5
                END,
                household_count IS NULL,
@@ -84,7 +104,7 @@ export const searchComplexes = async (
       LIMIT ?4`,
   ).bind(
     containsPattern,
-    query,
+    needle,
     prefixPattern,
     MAXIMUM_SEARCH_RESULTS,
   ).all<ComplexCatalogRow>()

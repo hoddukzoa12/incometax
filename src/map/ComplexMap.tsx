@@ -40,6 +40,38 @@ export interface ComplexMapProps {
 const displayModeForLevel = (level: number): MapDisplayMode =>
   level <= MAXIMUM_LABEL_DISPLAY_LEVEL ? 'labels' : 'clusters'
 
+/**
+ * 좁은 화면에서 바텀시트가 지도 아래를 덮는 비율 (AppShell 의 `.sheet` 높이).
+ * 데스크톱 패널은 지도와 flex 형제라 덮지 않으므로 보정이 필요 없다.
+ */
+const SHEET_COVER_RATIO = 0.62
+const COMPACT_LAYOUT_MAX_WIDTH_PX = 720
+const HALF = 2
+const NO_OFFSET = 0
+
+/**
+ * 고른 단지를 보이는 영역의 가운데로 옮긴다.
+ *
+ * `setCenter` 는 지도 요소의 정중앙에 놓는데, 좁은 화면에서는 그 아래를
+ * 바텀시트가 덮고 있어 라벨이 시트 뒤로 숨는다. 덮인 만큼 위로 올려 준다.
+ */
+const panToComplex = (
+  map: kakao.maps.Map,
+  position: { readonly lat: number; readonly lng: number },
+): void => {
+  map.setCenter(new kakao.maps.LatLng(position.lat, position.lng))
+  // 라벨이 보이는 축척까지 당긴다 — 골랐는데 점만 보이면 확인이 안 된다.
+  if (map.getLevel() > MAXIMUM_LABEL_DISPLAY_LEVEL) {
+    map.setLevel(MAXIMUM_LABEL_DISPLAY_LEVEL, {
+      animate: { duration: MAP_LEVEL_CHANGE_ANIMATION_DURATION_MS },
+    })
+  }
+  const compact = window.innerWidth <= COMPACT_LAYOUT_MAX_WIDTH_PX
+  if (!compact) return
+  const coveredHeight = map.getNode().clientHeight * SHEET_COVER_RATIO
+  map.panBy(NO_OFFSET, -coveredHeight / HALF)
+}
+
 const clusterText = (count: number): string =>
   `${count}${MAP_MESSAGES.clusterSuffix}`
 
@@ -76,13 +108,7 @@ export default function ComplexMap({
   useEffect(() => {
     const map = mapRef.current
     if (!map || focus === null) return
-    map.setCenter(new kakao.maps.LatLng(focus.lat, focus.lng))
-    // 라벨이 보이는 축척까지 당긴다 — 검색해서 왔는데 점만 보이면 확인이 안 된다.
-    if (map.getLevel() > MAXIMUM_LABEL_DISPLAY_LEVEL) {
-      map.setLevel(MAXIMUM_LABEL_DISPLAY_LEVEL, {
-        animate: { duration: MAP_LEVEL_CHANGE_ANIMATION_DURATION_MS },
-      })
-    }
+    panToComplex(map, focus)
   }, [focus])
 
   useEffect(() => {
@@ -148,7 +174,15 @@ export default function ComplexMap({
               selectedComplexId: labelStateRef.current.selectedComplexId,
             }),
             {
-              onSelect: (id) => onComplexSelectRef.current(id),
+              onSelect: (id) => {
+                /*
+                 * 고른 단지를 가운데로 옮긴다 — 검색으로 왔을 때와 같은 거동이다.
+                 * 좁은 화면에서는 바텀시트가 아래를 덮으므로 그만큼 위로 올려
+                 * 라벨이 시트 뒤로 숨지 않게 한다.
+                 */
+                panToComplex(map!, group[0])
+                onComplexSelectRef.current(id)
+              },
               onAdd: (id) => labelStateRef.current.onAddComplex(id),
               onRemove: (id) => labelStateRef.current.onRemoveComplex(id),
             },
@@ -171,6 +205,12 @@ export default function ComplexMap({
         })
         // 눌러서 사이드바를 여는 것이 이 축척에서 단지를 확인하는 유일한 길이다.
         kakao.maps.event.addListener(marker, 'click', () => {
+          /*
+           * 라벨·검색과 같은 거동으로 맞춘다. 마커는 라벨이 안 보이는 먼 축척에만
+           * 나오므로, 여기서는 가운데로 옮기면서 라벨이 뜨는 데까지 당겨 준다 —
+           * 점만 보고 고른 것이 어느 단지인지 그 자리에서 확인된다.
+           */
+          panToComplex(map!, complex)
           onComplexSelectRef.current(complex.complexId)
         })
         return marker

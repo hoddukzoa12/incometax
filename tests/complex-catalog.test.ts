@@ -53,8 +53,8 @@ describe('complex catalog API', () => {
       }),
     ])
     expect(fake.binds[0]).toEqual(['%은마\\%\\_%', '은마%_', '은마\\%\\_%', 20])
-    expect(fake.sql[0]).toContain('legal_address LIKE')
-    expect(fake.sql[0]).toContain("COALESCE(road_address, '') LIKE")
+    expect(fake.sql[0]).toContain('legal_address')
+    expect(fake.sql[0]).toContain('road_address')
   })
 
   it('uses the same catalog search for lot and road addresses', async () => {
@@ -65,8 +65,33 @@ describe('complex catalog API', () => {
       .toHaveLength(1)
     await expect(searchComplexes(roadAddress.database, '삼성로 212')).resolves
       .toHaveLength(1)
-    expect(lotAddress.binds[0][0]).toBe('%대치동 316%')
-    expect(roadAddress.binds[0][0]).toBe('%삼성로 212%')
+    expect(lotAddress.binds[0][0]).toBe('%대치동316%')
+    expect(roadAddress.binds[0][0]).toBe('%삼성로212%')
+  })
+
+  /*
+   * 주소는 `서울 강남구 대치동 316` 으로 저장되는데 사람은 `대치동316` 으로도 친다.
+   * 검색어와 컬럼 양쪽에서 띄어쓰기를 지우므로 두 표기가 같은 것을 찾고,
+   * 순위를 정하는 식도 같은 값을 본다.
+   */
+  it('finds the same rows whether or not the query has spaces', async () => {
+    const spaced = fakeDatabase([EUNMA_ROW])
+    const squashed = fakeDatabase([EUNMA_ROW])
+
+    await expect(searchComplexes(spaced.database, '대치동 316')).resolves
+      .toHaveLength(1)
+    await expect(searchComplexes(squashed.database, '대치동316')).resolves
+      .toHaveLength(1)
+
+    expect(spaced.binds[0]).toEqual(squashed.binds[0])
+    expect(spaced.sql[0]).toBe(squashed.sql[0])
+    expect(spaced.sql[0]).toContain("REPLACE(legal_address, ' ', '')")
+  })
+
+  it('keeps LIKE wildcards escaped after squashing whitespace', async () => {
+    const fake = fakeDatabase([EUNMA_ROW])
+    await searchComplexes(fake.database, '대치동 3_1%6')
+    expect(fake.binds[0][0]).toBe('%대치동3\\_1\\%6%')
   })
 
   it('returns complex basics by id', async () => {
