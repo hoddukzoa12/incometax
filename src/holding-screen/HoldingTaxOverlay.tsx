@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
+import {
+  CONSULT_MESSAGES,
+  CONSULT_REQUEST_URL,
+} from '../messages/consult'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import type { PortfolioController } from '../portfolio'
 import {
@@ -182,6 +186,22 @@ export function HoldingTaxOverlay({
               {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
                 <p key={caution}>{caution}</p>
               ))}
+            </section>
+            <section className="holding-overlay__consult">
+              <div>
+                <p>{CONSULT_MESSAGES.operatorName}</p>
+                <h2>{CONSULT_MESSAGES.resultTitle}</h2>
+                <p>{CONSULT_MESSAGES.resultDescription}</p>
+              </div>
+              <a
+                className="cta consult-link"
+                href={CONSULT_REQUEST_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span>{CONSULT_MESSAGES.resultCta}</span>
+                <span className="cta__badge" aria-hidden="true">→</span>
+              </a>
             </section>
           </>
         )}

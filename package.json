@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "dev": "concurrently --kill-others-on-fail \"vite\" \"wrangler dev\"",
     "backfill:complex-details": "node --env-file-if-exists=.dev.vars scripts/backfill-complex-details.ts",
     "backfill:complex-place-urls": "node --env-file-if-exists=.dev.vars scripts/backfill-complex-place-urls.ts",

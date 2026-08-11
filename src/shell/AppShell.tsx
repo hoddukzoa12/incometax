@@ -11,6 +11,11 @@ import { SHELL_MESSAGES } from '../messages/shell'
 import { usePortfolio } from '../portfolio'
 import { ComplexSearch } from '../search'
 import { ComplexPanel } from './ComplexPanel'
+import { ConsultIntroModal } from './ConsultIntroModal'
+import {
+  persistConsultIntroDismissal,
+  shouldShowConsultIntro,
+} from './consult-intro-dismissal'
 import { PortfolioMenu } from './PortfolioMenu'
 import { useCompactLayout } from './useCompactLayout'
 import '../app.css'
@@ -28,6 +33,9 @@ export default function AppShell() {
   const compact = useCompactLayout()
   const portfolio = usePortfolio()
   const holdingTaxOverlay = useHoldingTaxOverlay()
+  const [consultIntroOpen, setConsultIntroOpen] = useState(
+    shouldShowConsultIntro,
+  )
   const [selectedComplexId, setSelectedComplexId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [addRequestSeq, setAddRequestSeq] = useState(0)
@@ -53,6 +61,12 @@ export default function AppShell() {
   }, [])
 
   const panelOpen = selectedComplexId !== null
+  const backgroundInert = consultIntroOpen || holdingTaxOverlay.open
+
+  const dismissConsultIntro = (dismissToday: boolean) => {
+    if (dismissToday) persistConsultIntroDismissal()
+    setConsultIntroOpen(false)
+  }
 
   const closeButton = (
     <button
@@ -100,8 +114,8 @@ export default function AppShell() {
     <div className="frame">
       <div
         className="frame__body"
-        aria-hidden={holdingTaxOverlay.open || undefined}
-        inert={holdingTaxOverlay.open || undefined}
+        aria-hidden={backgroundInert || undefined}
+        inert={backgroundInert || undefined}
       >
         <div className="app-shell__map">
           <ComplexMap
@@ -175,6 +189,10 @@ export default function AppShell() {
           </aside>
         )}
       </div>
+
+      {consultIntroOpen && (
+        <ConsultIntroModal onDismiss={dismissConsultIntro} />
+      )}
 
       {askingConditions && portfolio.items.length > 0 && (
         <HoldingTaxConditionsModal

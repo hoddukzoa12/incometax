@@ -61,6 +61,9 @@
 
   --size-touch-target-min: 2.75rem;
 
+  /* Between the bottom sheet (12) and the result layer (20). */
+  --z-index-consult-intro: 16;
+
   /*
    * Canonical compact-layout breakpoint: 45rem (720px at the 16px root).
    * CSS custom properties cannot be evaluated in media conditions, so every
