@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import {
-  CONSULT_MESSAGES,
-  CONSULT_REQUEST_URL,
-} from '../messages/consult'
+import { CONSULT_MESSAGES, CONSULT_REQUEST_URL } from '../messages/consult'
 import { HOLDING_TAX_MESSAGES } from '../messages/holding-tax'
 import type { PortfolioController } from '../portfolio'
 import {
@@ -12,6 +9,7 @@ import {
   type HoldingTaxComparison,
 } from './calculation'
 import { restoreHoldingTaxConditionValues } from './condition-values'
+import { buildConsultRequestUrl } from './consult-link'
 import { HoldingTaxConditionsModal } from './HoldingTaxConditionsModal'
 import { TaxTrend } from './TaxTrend'
 import { buildHoldingTaxTrend } from './trend-series'
@@ -78,6 +76,17 @@ export function HoldingTaxOverlay({
         })),
         annualOfficialPriceGrowthRate: conditions.annualOfficialPriceGrowthRate,
       })
+
+  const trend = comparison.status !== 'calculated'
+    ? null
+    : buildHoldingTaxTrend(
+        comparison.calculations,
+        comparison.priorYearCalculation,
+      )
+  /* 상담 폼에는 주소만 실어 보낸다 — 내용과 동의는 본인이 적고 누를 몫이다. */
+  const consultUrl = comparison.status !== 'calculated'
+    ? CONSULT_REQUEST_URL
+    : buildConsultRequestUrl(comparison.taxedItems)
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -170,23 +179,14 @@ export function HoldingTaxOverlay({
               }
               calculations={comparison.calculations}
               focusYear={comparison.calculations[0].year}
-              series={buildHoldingTaxTrend(
-                comparison.calculations,
-                comparison.priorYearCalculation,
-              )}
+              series={trend ?? []}
               taxedItems={comparison.taxedItems}
             />
             {/*
-              시안에는 유의사항이 없다. 그건 목업이라 법적 의무가 없었기 때문이고,
-              우리는 세무서가 아니며 개편안은 아직 국회를 통과하지 않았다.
-              이 두 문장은 화면 구성 요소가 아니라 고지 의무라서 남긴다.
+              상담이 유의사항보다 앞에 온다. 숫자를 본 직후가 "그래서 나는 어떻게
+              해야 하나"가 가장 선명한 자리이고, 유의사항 뒤로 밀면 긴 고지문을
+              지나야 보인다.
             */}
-            <section className="holding-overlay__cautions">
-              <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
-              {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
-                <p key={caution}>{caution}</p>
-              ))}
-            </section>
             <section className="holding-overlay__consult">
               <div>
                 <p>{CONSULT_MESSAGES.operatorName}</p>
@@ -195,13 +195,25 @@ export function HoldingTaxOverlay({
               </div>
               <a
                 className="cta consult-link"
-                href={CONSULT_REQUEST_URL}
+                href={consultUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <span>{CONSULT_MESSAGES.resultCta}</span>
                 <span className="cta__badge" aria-hidden="true">→</span>
               </a>
+            </section>
+            {/*
+              시안에는 유의사항이 없다. 그건 목업이라 법적 의무가 없었기 때문이고,
+              우리는 세무서가 아니며 개편안은 아직 국회를 통과하지 않았다.
+              이 두 문장은 화면 구성 요소가 아니라 고지 의무라서 남긴다.
+              상담 카드 뒤로 왔지만 화면 안에 그대로 있다 — 접거나 감추지 않는다.
+            */}
+            <section className="holding-overlay__cautions">
+              <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
+              {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
+                <p key={caution}>{caution}</p>
+              ))}
             </section>
           </>
         )}
