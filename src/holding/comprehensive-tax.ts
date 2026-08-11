@@ -3,6 +3,7 @@ import type {
   ComprehensiveResidenceRecognitionResult,
 } from '../../shared/comprehensive-residence-recognition'
 import type {
+  ComprehensivePropertyTaxSubtotalResult,
   ComprehensiveTaxResult,
   PortfolioItem,
   PriorYearHoldingTax,
@@ -26,6 +27,33 @@ import { calculateComprehensiveResidenceRecognition } from './comprehensive-resi
 
 const ZERO_AMOUNT = 0
 const ZERO_RATE = 0
+
+const calculatePropertyTaxSubtotal = (
+  propertyTaxes: readonly PropertyTaxResult[],
+  rules: TaxRules,
+): ComprehensivePropertyTaxSubtotalResult => {
+  const taxableBase = propertyTaxes.reduce(
+    (total, propertyTax) => total + propertyTax.fullTaxableBase,
+    ZERO_AMOUNT,
+  )
+  const brackets = rules.propertyTax.brackets.general
+  const bracket = findApplicableTaxBracket(taxableBase, brackets)
+  const calculatedTax = evaluateBracketTax(taxableBase, brackets)
+  const propertyTax = propertyTaxes.reduce(
+    (total, item) => total + item.fullBaseTax,
+    ZERO_AMOUNT,
+  )
+
+  return {
+    taxableBase: roundTaxAmount(taxableBase),
+    appliedRate: {
+      rate: bracket.rate,
+      progressiveDeduction: bracket.progressiveDeduction,
+    },
+    calculatedTax: roundTaxAmount(calculatedTax),
+    propertyTax: roundTaxAmount(propertyTax),
+  }
+}
 
 const getBasicDeduction = (
   deductionRules: ComprehensiveBasicDeductionRules,
@@ -91,6 +119,7 @@ const createNotTaxableResult = (
   basicDeduction: number,
   fairMarketValueRatio: number,
   propertyTaxFairMarketValueRatio: number,
+  propertyTaxSubtotal: ComprehensivePropertyTaxSubtotalResult,
   residenceRecognition: ComprehensiveResidenceRecognitionResult,
 ): ComprehensiveTaxResult => ({
   status: 'notTaxable',
@@ -107,6 +136,7 @@ const createNotTaxableResult = (
   },
   baseTax: ZERO_AMOUNT,
   propertyTaxFairMarketValueRatio,
+  propertyTaxSubtotal,
   propertyTaxCredit: ZERO_AMOUNT,
   netTax: ZERO_AMOUNT,
   residenceRecognition,
@@ -128,7 +158,6 @@ const createNotTaxableResult = (
 export const calculateComprehensiveTax = (
   items: readonly PortfolioItem[],
   householdKind: HouseholdKind,
-  propertyTaxHouseholdKind: HouseholdKind,
   householdHomeCount: number,
   propertyTaxes: readonly PropertyTaxResult[],
   ownerAge: number | undefined,
@@ -187,9 +216,11 @@ export const calculateComprehensiveTax = (
     items.some(({ areaKind }) => areaKind === 'adjusted'),
   )
   const propertyTaxFairMarketValueRatio =
-    propertyTaxHouseholdKind === 'oneHouse'
-      ? propertyTaxes[0].fairMarketValueRatio
-      : rules.propertyTax.fairMarketValueRatios.other
+    rules.propertyTax.fairMarketValueRatios.other
+  const propertyTaxSubtotal = calculatePropertyTaxSubtotal(
+    propertyTaxes,
+    rules,
+  )
 
   if (ownedOfficialPriceTotal <= taxableThreshold) {
     return createNotTaxableResult(
@@ -200,6 +231,7 @@ export const calculateComprehensiveTax = (
       basicDeduction,
       fairMarketValueRatio,
       propertyTaxFairMarketValueRatio,
+      propertyTaxSubtotal,
       residenceRecognition,
     )
   }
@@ -211,14 +243,23 @@ export const calculateComprehensiveTax = (
   const brackets = getBrackets(rules.comprehensiveTax, homeCount)
   const bracket = findApplicableTaxBracket(taxableBase, brackets)
   const baseTax = evaluateBracketTax(taxableBase, brackets)
+  // 공제할재산세액 — holding-tax-v3-spec.md §3.8의 주택소계 수식을 그대로 적용한다.
   const propertyTaxCredit =
-    taxableBase *
-    propertyTaxFairMarketValueRatio *
-    rules.comprehensiveTax.propertyTaxCreditRate
-  const unroundedNetTax = Math.max(
-    ZERO_AMOUNT,
-    baseTax - propertyTaxCredit,
-  )
+    propertyTaxSubtotal.propertyTax *
+    (
+      taxableBase *
+      propertyTaxFairMarketValueRatio *
+      propertyTaxSubtotal.appliedRate.rate
+    ) /
+    propertyTaxSubtotal.calculatedTax
+  const calculatedTaxBeforeMinimum = baseTax - propertyTaxCredit
+  const unroundedNetTax =
+    rules.comprehensiveTax.calculatedTaxMinimum === null
+      ? calculatedTaxBeforeMinimum
+      : Math.max(
+          rules.comprehensiveTax.calculatedTaxMinimum,
+          calculatedTaxBeforeMinimum,
+        )
   const netTax = roundTaxAmount(unroundedNetTax)
   const taxCredit = calculateComprehensiveTaxCredit(
     householdKind,
@@ -238,12 +279,17 @@ export const calculateComprehensiveTax = (
     priorYearTax,
     rules.comprehensiveTax.taxBurdenCap,
   )
-  const unroundedPayableTax =
-    taxCredit.amount === null
-      ? null
+  const payableTaxBeforeMinimum = taxCredit.amount === null
+    ? null
+    : unroundedNetTax - taxCredit.amount - taxBurdenCap.excessAmount
+  // holding-tax-v3-spec.md §3.12 그대로 2027년 이후에는 0 하한이 없어 음수가 될 수 있다.
+  const unroundedPayableTax = payableTaxBeforeMinimum === null
+    ? null
+    : rules.comprehensiveTax.payableTaxMinimum === null
+      ? payableTaxBeforeMinimum
       : Math.max(
-          ZERO_AMOUNT,
-          unroundedNetTax - taxCredit.amount - taxBurdenCap.excessAmount,
+          rules.comprehensiveTax.payableTaxMinimum,
+          payableTaxBeforeMinimum,
         )
   const payableTax =
     unroundedPayableTax === null
@@ -276,6 +322,7 @@ export const calculateComprehensiveTax = (
     },
     baseTax: roundTaxAmount(baseTax),
     propertyTaxFairMarketValueRatio,
+    propertyTaxSubtotal,
     propertyTaxCredit: roundTaxAmount(propertyTaxCredit),
     netTax,
     residenceRecognition,

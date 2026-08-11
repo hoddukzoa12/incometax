@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { HoldingTaxOverlay, useHoldingTaxOverlay } from '../holding-screen'
+import {
+  HoldingTaxConditionsModal,
+  HoldingTaxOverlay,
+  useHoldingTaxOverlay,
+} from '../holding-screen'
 import ComplexMap from '../map/ComplexMap'
 import { APP_MESSAGES } from '../messages/app'
 import { SHELL_MESSAGES } from '../messages/shell'
@@ -27,6 +31,11 @@ export default function AppShell() {
   const [selectedComplexId, setSelectedComplexId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [addRequestSeq, setAddRequestSeq] = useState(0)
+  /*
+   * 시안은 조건을 결과보다 먼저 묻는다 — 「보유세 계산」 → 동·호 → 조건 →
+   * 결과. 조건이 세액을 가르므로 결과를 띄워 놓고 되묻는 것은 순서가 뒤집힌 것이다.
+   */
+  const [askingConditions, setAskingConditions] = useState(false)
   const [focus, setFocus] = useState<
     { readonly lat: number; readonly lng: number; readonly seq: number } | null
   >(null)
@@ -71,7 +80,7 @@ export default function AppShell() {
         flash(SHELL_MESSAGES.added(seed.complexName))
       }}
       addRequestSeq={addRequestSeq}
-      onCalculate={holdingTaxOverlay.show}
+      onCalculate={() => setAskingConditions(true)}
     />
   )
 
@@ -141,7 +150,7 @@ export default function AppShell() {
           <div className="map__corner">
             <PortfolioMenu
               controller={portfolio}
-              onCalculateHoldingTax={holdingTaxOverlay.show}
+              onCalculateHoldingTax={() => setAskingConditions(true)}
             />
           </div>
 
@@ -167,12 +176,35 @@ export default function AppShell() {
         )}
       </div>
 
+      {askingConditions && portfolio.items.length > 0 && (
+        <HoldingTaxConditionsModal
+          controller={portfolio}
+          onCancel={() => setAskingConditions(false)}
+          onSubmit={() => {
+            setAskingConditions(false)
+            holdingTaxOverlay.show()
+          }}
+          variant="beforeCalculation"
+        />
+      )}
+
       {holdingTaxOverlay.open && (
-        <div className={compact ? 'resultlayer' : 'resultlayer cols'}>
-          <HoldingTaxOverlay
-            controller={portfolio}
-            onClose={holdingTaxOverlay.hide}
-          />
+        <div
+          className="resultlayer"
+          role="dialog"
+          aria-modal="true"
+          aria-label={SHELL_MESSAGES.resultLabel}
+          onClick={(event) => {
+            // 카드 바깥(어두운 배경)을 눌렀을 때만 닫는다.
+            if (event.target === event.currentTarget) holdingTaxOverlay.hide()
+          }}
+        >
+          <div className="resultlayer__card">
+            <HoldingTaxOverlay
+              controller={portfolio}
+              onClose={holdingTaxOverlay.hide}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -318,4 +318,164 @@ export const HOLDING_TAX_MESSAGES = {
   basisComprehensiveTaxSum: '종부세 본세 + 농어촌특별세',
   basisPropertyPortfolioSum: '물건별 재산세 합계',
   basisHoldingTaxSum: '재산세 + 종합부동산세',
+
+  /* ── 연도별 추이 (시안 shell-v2.html 의 TaxTrend) ── */
+  trendApproximate: '약',
+  trendDiff: (amount: string, increased: boolean) =>
+    `지난해보다 ${amount} ${increased ? '늘어요' : '줄어요'}`,
+  trendDiffUnavailable: '지난해와 견줄 값이 없어요',
+  trendPriceTotal: (label: string, amount: string) =>
+    `${label} 공시가격 합계 ${amount}`,
+  trendPriorPrice: (year: number, amount: string) => ` · ${year}년 ${amount}`,
+  trendPropertyTax: '재산세',
+  trendComprehensiveTax: '종합부동산세',
+  trendNoComprehensiveTax: '없어요',
+  trendBurdenCapRelief: '세부담상한으로',
+  trendNextLead: (year: number) => `${year}년에는 약`,
+  trendNextDelta: (difference: string, increases: boolean) =>
+    `${difference} ${increases ? '더' : '덜'} 내요`,
+  trendStep: (difference: string, increases: boolean) =>
+    `${increases ? '▲' : '▼'} ${difference}`,
+  trendItemsLabel: (count: number) => `${count}채`,
+  trendChartLabel: '연도별 보유세',
+  trendBarLabel: (year: number, amount: string, projected: boolean) =>
+    `${year}년 ${amount}${projected ? ' (추정)' : ''}`,
+
+  trendPerPropertyHeaders: {
+    name: '주택',
+    officialPrice: '공시가격',
+    propertyTax: '재산세',
+    comprehensiveShare: '종부세 몫',
+    total: '합계',
+  },
+  trendPerPropertyNote:
+    '종부세는 세대 합산이라 물건별로 나오지 않아요 · 위 몫은 공시가격 비율로 나눠 본 값이에요',
+  trendMultiHouseNote:
+    '2주택 이상은 고령자·장기보유·거주 공제를 받을 수 없어요 · 나이나 기간을 바꿔도 세액은 달라지지 않아요',
+  trendResidenceCreditNote: (focusYear: number) =>
+    `거주 기간 공제는 2027년부터 생겨요 · 지금 강조한 ${focusYear}년 값은 거주 기간을 바꿔도 달라지지 않고, 2027년 이후 막대가 움직여요`,
+  trendPriceBasisNote: (
+    publishedYears: readonly number[],
+    rate: string,
+    unchanged: boolean,
+  ) => {
+    const firstProjected = publishedYears[publishedYears.length - 1]! + 1
+    return unchanged
+      ? `${publishedYears.join('~')}년은 고시된 공시가격이고, ${firstProjected}년부터는 공시가격이 그대로라고 본 값이에요 · 조건에서 상승률을 올리면 뒤쪽 막대가 움직여요`
+      : `${publishedYears.join('~')}년은 고시된 공시가격으로 계산한 값이고, ${firstProjected}년부터는 공시가격이 해마다 ${rate}씩 오른다고 본 추정치예요`
+  },
+  trendCoverageNote: (
+    basicDeduction: string,
+    credits: readonly string[],
+    itemCount: number,
+    burdenCapRate: string,
+  ) => [
+    `종부세 기본공제 ${basicDeduction}`,
+    credits.length > 0 ? `${credits.join(' + ')} 공제` : null,
+    itemCount > 1 ? `${itemCount}채를 합산했어요` : null,
+    `재산세와 겹치는 부분, 세부담상한(직전 해의 ${burdenCapRate}배), 농어촌특별세까지 넣었어요`,
+  ].filter((part) => part !== null).join(' · '),
+  /*
+   * 계산에 사용한 조건 — 첫 해 기준 한 줄.
+   * 연도마다 되풀이하지 않고, 그 세대가 실제로 쓰는 값만 적는다.
+   */
+  conditionSummary: ({
+    year,
+    householdHomeCount,
+    ownerAge,
+    items,
+    annualOfficialPriceGrowthRate,
+  }: {
+    readonly year: number
+    readonly householdHomeCount: number
+    readonly ownerAge: number | null
+    readonly items: readonly {
+      readonly name: string
+      readonly residing: boolean
+      readonly holdingYears: number | null
+      readonly residenceYears: number | null
+    }[]
+    readonly annualOfficialPriceGrowthRate: number
+  }): string => {
+    const growthPercent = Math.round(annualOfficialPriceGrowthRate * 1000) / 10
+    const parts: string[] = [
+      householdHomeCount === 1 ? '1세대1주택' : `${householdHomeCount}주택`,
+    ]
+    if (ownerAge !== null) parts.push(`${year}년 ${ageAssumption(year, ownerAge)}`)
+    for (const item of items) {
+      const periods = [
+        item.holdingYears === null
+          ? null
+          : periodAssumption(item.holdingYears, '보유'),
+        item.residenceYears === null || !item.residing
+          ? null
+          : periodAssumption(item.residenceYears, '거주'),
+      ].filter((period): period is string => period !== null)
+      if (householdHomeCount > 1) {
+        if (item.residing) parts.push(`${item.name}에 거주`)
+      } else if (periods.length > 0) {
+        parts.push(`${item.name} ${periods.join('/')}`)
+      } else if (item.residing) {
+        parts.push(`${item.name}에 거주`)
+      }
+    }
+    parts.push(
+      growthPercent === 0
+        ? '공시가격은 그대로라고 봄'
+        : `공시가격 해마다 ${growthPercent}%`,
+    )
+    return parts.join(' · ')
+  },
+
+  trendCreditAge: (rate: string) => `고령자 ${rate}`,
+  trendCreditHolding: (rate: string) => `장기보유 ${rate}`,
+  trendCreditResidence: (rate: string) => `거주 ${rate}`,
+
+  /* ── 조건 모달 (시안 shell-v2.html 의 「조건을 바꿔볼까요」) ── */
+  /*
+   * 시안에는 조건 모달이 두 번 나온다. 계산 전에는 "이걸 받아야 계산이 된다"이고,
+   * 결과에서는 "이미 나온 값을 바꿔 본다"다. 제목과 버튼이 그 차이를 말한다.
+   */
+  conditionsModalTitle: {
+    beforeCalculation: '세액을 가르는 조건이에요',
+    edit: '조건을 바꿔볼까요',
+  },
+  conditionsModalHomeCountLabel: '세대의 주택 수',
+  conditionsModalHomeCountHint: '내 부동산 목록에서 세어요',
+  conditionsModalHomeCountValue: (
+    householdKind: string,
+    itemCount: number,
+  ) => `${householdKind} · 담은 집 ${itemCount}채`,
+  conditionsModalOneHouse: '1세대1주택',
+  conditionsModalMultiHouse: (count: number) => `${count}주택`,
+  conditionsModalAge: '소유자 나이',
+  conditionsModalHolding: '보유 기간',
+  conditionsModalResidency: '직접 살고 있나요',
+  conditionsModalResidence: '거주 기간',
+  conditionsModalOneHouseNote:
+    '직접 사는지에 따라 종부세 기본공제가 14억과 9억으로 갈려요 · 나이와 보유·거주 기간은 공제로 쓰이고, 합해서 최대 80%까지만 받아요',
+  conditionsModalMultiHouseNote:
+    '고령자·장기보유 공제는 1세대1주택만 받을 수 있어서 묻지 않았어요 · 거주 여부는 물어요, 살고 있는 집의 공시가격 비중만큼 기본공제가 4억에서 9억까지 늘어나거든요',
+  conditionsModalSubmit: {
+    beforeCalculation: '보유세 계산하기',
+    edit: '이 조건으로 다시 계산',
+  },
+  conditionsModalCancel: {
+    beforeCalculation: '취소',
+    edit: '취소',
+  },
+  conditionsModalWhichHome: '어느 집에 살고 계신가요',
+  conditionsModalResidenceCappedByHolding: (band: string) =>
+    `보유 기간을 ${band}으로 잡아서 그보다 긴 거주 기간은 고를 수 없어요`,
+  conditionsModalItemLabel: (name: string, area: string | null) =>
+    area === null ? name : `${name} ${area}`,
+
+  ageBandUnder: (years: number) => `${years}세 미만`,
+  ageBandRange: (from: number, to: number) => `${from}—${to}세`,
+  ageBandOver: (years: number) => `${years}세 이상`,
+  periodBandUnder: (years: number) => `${years}년 미만`,
+  periodBandRange: (from: number, to: number) => `${from}—${to}년`,
+  periodBandOver: (years: number) => `${years}년 이상`,
+  residencyResiding: '살고 있어요',
+  residencyNonResiding: '안 살아요',
 } as const

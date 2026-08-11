@@ -39,7 +39,6 @@ export const calculateHoldingTax = (
   const comprehensiveTax = calculateComprehensiveTax(
     input.items,
     comprehensiveTaxHouseholdKind,
-    propertyTaxHouseholdKind,
     input.householdHomeCount,
     propertyTaxes,
     input.ownerAge,

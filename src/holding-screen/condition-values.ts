@@ -7,8 +7,14 @@ import {
 } from './assessment-calendar'
 
 const ZERO_YEARS = 0
-const LEGACY_STORAGE_VERSION = 1
-const STORAGE_VERSION = 2
+/*
+ * 버전 2 까지는 공시가격 상승률 기본값이 0% 였다. 기본값만 15% 로 바꾸면
+ * 이미 저장된 0% 가 계속 이겨서 바뀐 값이 아무에게도 닿지 않는다 —
+ * 그래서 버전을 올려 그 시절 값을 새 기본값으로 갈아 끼운다.
+ * 사용자가 직접 고른 상승률은 버전 3 부터 그대로 지킨다.
+ */
+const OFFICIAL_PRICE_GROWTH_DEFAULT_STORAGE_VERSIONS = [1, 2] as const
+const STORAGE_VERSION = 3
 const ISO_YEAR_END_INDEX = 4
 const HOLDING_TAX_CONDITIONS_STORAGE_KEY =
   'incometax.holdingTax.conditions'
@@ -22,12 +28,15 @@ const MAXIMUM_IMPLICIT_PERIOD_YEARS =
   FIRST_ASSESSMENT_YEAR
 
 /**
- * 미래 공시가격 연 상승률 기본값은 0%다.
- * (a) 이 비교의 질문인 세법 개편 효과에 공시가격 변동 효과를 섞지 않고,
- * (b) 근거 없는 공시가격 예측값을 서비스가 제시하지 않기 위해서다
- * (docs/ux-writing-guide.md §0의 근거 없는 평균 환급액 사례 참조).
+ * 미래 공시가격 연 상승률 기본값은 15%다 — 시안 shell-v2.html 의 `buildSeries`
+ * (`Math.pow(1.15, y - 2027)`) 와 같은 가정이다.
+ *
+ * 0% 는 "공시가격이 그대로다"라는 것도 하나의 예측이면서, 세부담상한이 한 번도
+ * 걸리지 않아 추이 막대가 평평해진다 — 이 화면이 보여주려는 움직임이 안 보인다.
+ * 상승률은 조건에서 바꿀 수 있고, 화면은 추정 구간을 빗금으로 구분해
+ * 이 값이 고시가 아니라 가정임을 밝힌다.
  */
-export const DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = 0
+export const DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = 0.15
 const MINIMUM_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE = -1
 const PERCENT_RATE_FACTOR = 100
 const OFFICIAL_PRICE_GROWTH_PERCENT_STEP = 0.1
@@ -153,14 +162,14 @@ const readStoredConditions = (
   if (typeof parsed !== 'object' || parsed === null) return null
   const record = parsed as Record<string, unknown>
   const version = record.version
-  if (
-    version !== LEGACY_STORAGE_VERSION &&
-    version !== STORAGE_VERSION
-  ) return null
-  const annualOfficialPriceGrowthRate =
-    version === LEGACY_STORAGE_VERSION
-      ? DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE
-      : record.annualOfficialPriceGrowthRate
+  const migratesGrowthRate =
+    OFFICIAL_PRICE_GROWTH_DEFAULT_STORAGE_VERSIONS.some(
+      (legacy) => legacy === version,
+    )
+  if (!migratesGrowthRate && version !== STORAGE_VERSION) return null
+  const annualOfficialPriceGrowthRate = migratesGrowthRate
+    ? DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE
+    : record.annualOfficialPriceGrowthRate
   if (
     !isNonNegativeInteger(record.ownerAge) ||
     !isAnnualOfficialPriceGrowthRate(annualOfficialPriceGrowthRate) ||

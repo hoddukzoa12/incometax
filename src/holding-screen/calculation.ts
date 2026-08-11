@@ -42,6 +42,13 @@ export type HoldingTaxYearCalculation = {
   readonly result: HoldingTaxResult
 }
 
+/** 고시 공시가격으로 계산한 직전 연도. 추정 연도와 구분해서 다룬다. */
+export type HoldingTaxPriorYearCalculation = {
+  readonly year: typeof HOLDING_TAX_PRIOR_PRICE_YEAR
+  readonly input: HoldingTaxInput
+  readonly result: HoldingTaxResult
+}
+
 export type HoldingTaxMissingCondition = {
   readonly kind:
     | 'continuesResidence'
@@ -74,6 +81,8 @@ export type HoldingTaxComparison =
         >
       >
       readonly calculations: readonly HoldingTaxYearCalculation[]
+      /** 고시 공시가격이 없으면 계산할 수 없다. 추이 막대에서 빠진다. */
+      readonly priorYearCalculation: HoldingTaxPriorYearCalculation | undefined
       readonly missingPriorPriceItems: readonly StoredPortfolioItem[]
     }
 
@@ -109,6 +118,7 @@ const toEngineItem = (
   conditions: HoldingTaxItemConditionValues,
   elapsedComparisonYears: number,
   officialPrice: number,
+  priorOfficialPrice?: number,
 ): PortfolioItem => {
   if (
     item.officialPrice === null ||
@@ -118,6 +128,7 @@ const toEngineItem = (
   return {
     assetKind: item.assetKind,
     officialPrice,
+    priorOfficialPrice,
     ownershipShare: item.ownershipShare,
     isSoleHouseholdOwner:
       item.ownershipShare === FULL_OWNERSHIP_SHARE,
@@ -184,6 +195,7 @@ const toPriorYearTax = (
       ZERO_AMOUNT,
     ),
     comprehensiveCalculatedTax: result.comprehensiveTax.netTax,
+    comprehensiveTax: result.comprehensiveTax.payableTax ?? undefined,
   }
 }
 
@@ -192,16 +204,21 @@ const priorOfficialPrice = (
 ): number | null => item.priorOfficialPrices.find(({ baseDate }) =>
   Number(baseDate.slice(0, 4)) === HOLDING_TAX_PRIOR_PRICE_YEAR)?.price ?? null
 
-const calculateObservedPriorYearTax = (
+/**
+ * 직전 연도는 추정이 아니라 고시된 공시가격으로 실제 계산한다.
+ * 세부담상한의 기준액이면서, 추이 막대의 맨 왼쪽 칸이기도 하다 —
+ * 그래서 요약값만 내보내지 않고 계산 결과를 통째로 돌려준다.
+ */
+const calculateObservedPriorYear = (
   taxedItems: readonly StoredPortfolioItem[],
   conditions: HoldingTaxConditionValues,
   householdHomeCount: number,
   calculator: HoldingTaxCalculator,
-): PriorYearHoldingTax | undefined => {
+): HoldingTaxPriorYearCalculation | undefined => {
   const prices = taxedItems.map(priorOfficialPrice)
   if (prices.some((price) => price === null)) return undefined
 
-  const result = calculator({
+  const input: HoldingTaxInput = {
     year: HOLDING_TAX_PRIOR_PRICE_YEAR,
     householdHomeCount,
     items: taxedItems.map((item, itemIndex) => toEngineItem(
@@ -211,8 +228,12 @@ const calculateObservedPriorYearTax = (
       prices[itemIndex]!,
     )),
     ownerAge: Math.max(ZERO_AMOUNT, conditions.ownerAge - ONE_YEAR),
-  })
-  return toPriorYearTax(result)
+  }
+  return {
+    year: HOLDING_TAX_PRIOR_PRICE_YEAR,
+    input,
+    result: calculator(input),
+  }
 }
 
 export const calculatePortfolioHoldingTax = (
@@ -246,12 +267,15 @@ export const calculatePortfolioHoldingTax = (
   const missingPriorPriceItems = taxedItems.filter(
     (item) => priorOfficialPrice(item) === null,
   )
-  const observedPriorYearTax = calculateObservedPriorYearTax(
+  const priorYearCalculation = calculateObservedPriorYear(
     taxedItems,
     conditions,
     householdHomeCount,
     calculator,
   )
+  const observedPriorYearTax = priorYearCalculation === undefined
+    ? undefined
+    : toPriorYearTax(priorYearCalculation.result)
   const calculations: HoldingTaxYearCalculation[] = []
   const ownerAgeEntries: [HoldingTaxComparisonYear, number][] = []
   const holdingYearEntries: [
@@ -268,11 +292,19 @@ export const calculatePortfolioHoldingTax = (
         elapsedComparisonYears,
         conditions.annualOfficialPriceGrowthRate,
       )
+      const previousOfficialPrice = elapsedComparisonYears === ZERO_AMOUNT
+        ? priorOfficialPrice(item) ?? undefined
+        : projectedOfficialPrice(
+            item.officialPrice!,
+            elapsedComparisonYears - ONE_YEAR,
+            conditions.annualOfficialPriceGrowthRate,
+          )
       return toEngineItem(
         item,
         conditions.items[item.id],
         elapsedComparisonYears,
         officialPrice,
+        previousOfficialPrice,
       )
     })
     const priorYearTax = year === HOLDING_TAX_COMPARISON_YEARS[0]
@@ -321,6 +353,7 @@ export const calculatePortfolioHoldingTax = (
       >
     >,
     calculations,
+    priorYearCalculation,
     missingPriorPriceItems,
   }
 }

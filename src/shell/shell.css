@@ -322,29 +322,72 @@
 }
 
 /* ── 결과가 지도를 덮는다 ── */
+/*
+ * 결과는 지도 위에 뜨는 모달이다 — 시안 shell-v2.html 의 `.resultmodal`.
+ * 화면을 흰 면으로 통째로 덮지 않고 어두운 배경 위에 카드를 세운다.
+ * 뒤에 지도가 비쳐야 "계산을 잠깐 띄웠다"로 읽히고, 덮어 버리면 다른 화면이 된다.
+ */
 .resultlayer {
   position: absolute;
   z-index: 20;
   inset: 0;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: var(--space-4);
+  background: rgb(16 20 24 / 45%);
+}
+
+.resultlayer__card {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  background: var(--color-neutral-50);
+  width: 100%;
+  max-width: 44rem;
+  max-height: 100%;
+  overflow: auto;
+  border: 1.5px solid var(--color-neutral-900);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-0);
+  box-shadow: 0 20px 48px rgb(16 20 24 / 28%);
 }
 
 /*
- * 오버레이는 이 레이어 안에서 일반 흐름으로 둔다.
- * .holding-overlay 자체는 position: fixed 라 뷰포트를 덮는데, 그러면 이 레이어가
- * 아무 일도 안 하고 나중에 상단 바 같은 것이 생겨도 그 위를 덮는다.
- * 자리를 정하는 것은 셸의 몫이고 오버레이는 주어진 칸을 채운다.
- * (시안 shell-v2.html 의 `.resultwrap .holding-overlay`)
+ * 오버레이 자체는 `position: fixed; inset: 0` 이라 뷰포트를 덮는다.
+ * 자리를 정하는 것은 셸의 몫이므로 카드 안에서는 일반 흐름으로 되돌린다.
+ *
+ * `position: relative` 는 남긴다 — 조건 모달(`.mbox`, inset: 0)이 이 상자를
+ * 기준으로 삼아야 카드 안에 갇혀 뜬다. 다만 `height` 를 주면 안 된다.
+ * 높이를 고정하면 내용이 짧을 때 모달까지 그 높이에 갇힌다.
  */
-.resultlayer .holding-overlay {
+.resultlayer__card .holding-overlay {
   position: relative;
   z-index: auto;
   inset: auto;
-  min-height: 0;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.resultlayer__card .holding-overlay__header {
+  padding-bottom: var(--space-4);
+}
+
+.resultlayer__card .holding-overlay__content {
+  position: static;
+  margin-top: 0;
+}
+
+@media (max-width: 45rem) {
+  .resultlayer {
+    padding: 0;
+  }
+
+  .resultlayer__card {
+    max-width: none;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
 }
 
 /* ── 알림 ── */
@@ -432,6 +475,15 @@
   background: rgb(16 20 24 / 45%);
 }
 
+/*
+ * 결과 카드 안에서 여는 모달은 뷰포트에 고정한다 — 시안 shell-v2.html 의 `.mbox--fixed`.
+ * 카드가 스크롤되는 상자라, absolute 로 두면 스크롤 위치에 따라 모달이 화면 밖에 뜬다.
+ */
+.mbox--fixed {
+  position: fixed;
+  z-index: 40;
+}
+
 .mbox__card {
   display: flex;
   flex-direction: column;
@@ -511,6 +563,19 @@
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: var(--color-neutral-0);
+}
+
+/*
+ * 고를 수 없는 칩 — 거주기간이 보유기간을 넘는 구간이 여기 해당한다.
+ * 지금까지 `disabled` 속성만 걸고 표시를 안 해서, 눌러도 반응이 없는
+ * 멀쩡해 보이는 버튼이 됐다. 잠겼다는 것이 보여야 한다.
+ */
+.chips button:disabled {
+  border-style: dashed;
+  border-color: var(--color-neutral-200);
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-300);
+  cursor: not-allowed;
 }
 
 .mbox__found {
@@ -607,4 +672,45 @@
   position: sticky;
   z-index: 5;
   top: 0;
+}
+
+/* ── 조건 모달의 파생값 행 — 시안 shell-v2.html 의 `.basisrow` ── */
+.basisrow {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.basisrow__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.basisrow__label strong {
+  font-size: var(--font-size-md);
+}
+
+.basisrow__label span {
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* 묻지 않고 세어서 보여주는 값. 입력 칸이 아니라는 것이 보여야 한다. */
+.basisderived {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-700);
+  font-size: var(--font-size-md);
+}
+
+/* 칩 아래 붙는 한 줄 설명 — 왜 못 고르는지 */
+.chips__note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-xs);
 }

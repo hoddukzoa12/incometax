@@ -8,6 +8,13 @@ import { RATE_DENOMINATOR } from './rate'
 export const PROPERTY_TAX_ONE_HOUSE_HOME_COUNT = 1
 
 /**
+ * 주택 재산세 과세표준상한율 — holding-tax-v3-spec.md §2.1.
+ * 전년도 시가표준액이 있을 때 전년 과표에 당해 과표의 5%를 더한 금액으로 제한한다.
+ */
+export const PROPERTY_TAX_TAXABLE_BASE_CAP_GROWTH_RATE =
+  500 / RATE_DENOMINATOR
+
+/**
  * 재산세 공정시장가액비율 — 지방세법 시행령 §109①2.
  * 2025년 값은 2025.5.27. 개정 대통령령 제35544호에서, 2026년 값은
  * 2026.5.29. 개정본에서 각각 1세대1주택 43%/44%/45%, 그 외 60%로 정했다.
@@ -98,6 +105,8 @@ const createPropertyTaxRules = (
   fairMarketValueRatios: PropertyTaxRules['fairMarketValueRatios'],
 ): PropertyTaxRules => ({
   oneHouseHomeCount: PROPERTY_TAX_ONE_HOUSE_HOME_COUNT,
+  taxableBaseCapGrowthRate:
+    PROPERTY_TAX_TAXABLE_BASE_CAP_GROWTH_RATE,
   fairMarketValueRatios,
   preferentialRateMaximumOfficialPrice:
     PROPERTY_TAX_PREFERENTIAL_RATE_MAXIMUM_OFFICIAL_PRICE,
@@ -129,5 +138,8 @@ export const PROPERTY_TAX_RULES_2028 = createPropertyTaxRules(
   PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
 )
 export const PROPERTY_TAX_RULES_2029 = createPropertyTaxRules(
+  PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
+)
+export const PROPERTY_TAX_RULES_2030 = createPropertyTaxRules(
   PROPERTY_TAX_CONFIRMED_FAIR_MARKET_VALUE_RATIOS,
 )

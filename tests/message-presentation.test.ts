@@ -32,8 +32,10 @@ describe('message presentation', () => {
     expect(hasExactOwnerAge(2026, 0)).toBe(false)
     expect(hasExactOwnerAge(2026, 60)).toBe(false)
     expect(hasExactOwnerAge(2026, 57)).toBe(true)
-    expect(getKnownPeriodMinimumYears(2)).toBeNull()
-    expect(getKnownPeriodMinimumYears(3)).toBe(3)
+    // 비교 창이 2026~2030 이라 4년까지는 창 안에서 쌓일 수 있다 —
+    // 그런 기간은 시작 시점을 말해 주지 않으므로 요약에서 뺀다.
+    expect(getKnownPeriodMinimumYears(4)).toBeNull()
+    expect(getKnownPeriodMinimumYears(5)).toBe(5)
   })
 
   it('formats standalone won amounts with a postfix unit and a space', () => {
@@ -78,9 +80,9 @@ describe('message presentation', () => {
 
   it('omits zero and implicitly elapsed periods from the summary', () => {
     expect(HOLDING_TAX_MESSAGES.itemAssumption('은마', 0, 0)).toBe('')
-    expect(HOLDING_TAX_MESSAGES.itemAssumption('은마', 2, 1)).toBe('')
-    expect(HOLDING_TAX_MESSAGES.itemAssumption('은마', 5, 3)).toBe(
-      '은마 5년 이상 보유/3년 이상 거주',
+    expect(HOLDING_TAX_MESSAGES.itemAssumption('은마', 4, 1)).toBe('')
+    expect(HOLDING_TAX_MESSAGES.itemAssumption('은마', 7, 5)).toBe(
+      '은마 7년 이상 보유/5년 이상 거주',
     )
   })
 

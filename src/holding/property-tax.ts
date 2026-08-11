@@ -38,6 +38,31 @@ const getFairMarketValueRatio = (
     ? findRateBand(item.officialPrice, rules.fairMarketValueRatios.oneHouse).rate
     : rules.fairMarketValueRatios.other
 
+const calculateFullTaxableBase = (
+  item: PortfolioItem,
+  fairMarketValueRatio: number,
+  rules: PropertyTaxRules,
+): {
+  readonly uncapped: number
+  readonly cap: number | null
+  readonly applied: boolean
+  readonly amount: number
+} => {
+  const uncapped = item.officialPrice * fairMarketValueRatio
+  const cap = item.priorOfficialPrice === undefined
+    ? null
+    : item.priorOfficialPrice * fairMarketValueRatio +
+      uncapped * rules.taxableBaseCapGrowthRate
+  const amount = cap === null ? uncapped : Math.min(uncapped, cap)
+
+  return {
+    uncapped,
+    cap,
+    applied: cap !== null && amount < uncapped,
+    amount,
+  }
+}
+
 export const calculatePropertyTax = (
   item: PortfolioItem,
   itemIndex: number,
@@ -49,7 +74,12 @@ export const calculatePropertyTax = (
     householdKind,
     rules,
   )
-  const fullTaxableBase = item.officialPrice * fairMarketValueRatio
+  const fullTaxableBaseResult = calculateFullTaxableBase(
+    item,
+    fairMarketValueRatio,
+    rules,
+  )
+  const fullTaxableBase = fullTaxableBaseResult.amount
   const preferentialRateApplied =
     householdKind === 'oneHouse' &&
     item.officialPrice <= rules.preferentialRateMaximumOfficialPrice
@@ -78,10 +108,18 @@ export const calculatePropertyTax = (
     itemIndex,
     ownershipShare: item.ownershipShare,
     fullOfficialPrice: item.officialPrice,
+    priorOfficialPrice: item.priorOfficialPrice ?? null,
     ownedOfficialPrice: roundTaxAmount(
       item.officialPrice * item.ownershipShare,
     ),
     fairMarketValueRatio,
+    uncappedFullTaxableBase: roundTaxAmount(
+      fullTaxableBaseResult.uncapped,
+    ),
+    fullTaxableBaseCap: fullTaxableBaseResult.cap === null
+      ? null
+      : roundTaxAmount(fullTaxableBaseResult.cap),
+    taxableBaseCapApplied: fullTaxableBaseResult.applied,
     fullTaxableBase: roundTaxAmount(fullTaxableBase),
     taxableBase: roundTaxAmount(fullTaxableBase * item.ownershipShare),
     preferentialRateApplied,

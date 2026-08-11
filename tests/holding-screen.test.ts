@@ -4,7 +4,6 @@ import type { PortfolioItemSeed } from '../shared/portfolio'
 import { calculateHoldingTax } from '../src/holding/calc'
 import { calculatePortfolioHoldingTax } from '../src/holding-screen/calculation'
 import {
-  DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
   type HoldingTaxConditionValues,
 } from '../src/holding-screen/condition-values'
 import { ownershipShareFromFraction } from '../src/portfolio/ownership-share'
@@ -40,13 +39,16 @@ const createEunmaItem = (id: string) => ({
   residency: 'residing' as const,
 })
 
+const NO_OFFICIAL_PRICE_GROWTH = 0
+
 const conditionsFor = (
   items: readonly { readonly id: string }[],
   overrides: Partial<HoldingTaxConditionValues> = {},
 ): HoldingTaxConditionValues => ({
   ownerAge: 0,
-  annualOfficialPriceGrowthRate:
-    DEFAULT_ANNUAL_OFFICIAL_PRICE_GROWTH_RATE,
+  // 세법 규칙을 고정하는 케이스다. 제품 기본 상승률이 바뀌어도 흔들리면 안 되므로
+  // 상승률은 0 으로 못 박는다. 상승률 자체를 보는 케이스는 따로 값을 넘긴다.
+  annualOfficialPriceGrowthRate: NO_OFFICIAL_PRICE_GROWTH,
   items: Object.fromEntries(items.map(({ id }) => [id, {
     holdingYears: 0,
     residenceYears: 0,
@@ -111,9 +113,9 @@ describe('holding-tax screen boundary', () => {
     })
     expect(currentReform.result.comprehensiveTax).toMatchObject({
       basicDeduction: 900_000_000,
-      totalTax: 268_800,
+      totalTax: 218_400,
     })
-    expect(currentReform.result.totalTax).toBe(2_680_800)
+    expect(currentReform.result.totalTax).toBe(2_630_400)
     expect(comparison.calculations.map(({ input }) => ({
       year: input.year,
       ownerAge: input.ownerAge,
@@ -122,6 +124,8 @@ describe('holding-tax screen boundary', () => {
       { year: 2026, ownerAge: 59, holdingYears: 1 },
       { year: 2027, ownerAge: 60, holdingYears: 2 },
       { year: 2028, ownerAge: 61, holdingYears: 3 },
+      { year: 2029, ownerAge: 62, holdingYears: 4 },
+      { year: 2030, ownerAge: 63, holdingYears: 5 },
     ])
   })
 
@@ -198,6 +202,11 @@ describe('holding-tax screen boundary', () => {
         recognizedYears: 1, years: 4 },
       { basis: 'comprehensiveTaxCreditResidence', actualYears: 3,
         recognizedYears: 2, years: 5 },
+      // 인정 기간은 3년에서 멈춘다 (unavoidableRelocationMaximumYears).
+      { basis: 'comprehensiveTaxCreditResidence', actualYears: 3,
+        recognizedYears: 3, years: 6 },
+      { basis: 'comprehensiveTaxCreditResidence', actualYears: 3,
+        recognizedYears: 3, years: 6 },
     ])
   })
 
@@ -317,53 +326,54 @@ describe('holding-tax screen boundary', () => {
 
     expect(current.input.priorYearTax).toEqual({
       propertyBaseTax: 2_444_400,
-      comprehensiveCalculatedTax: 984_960,
+      comprehensiveCalculatedTax: 802_080,
+      comprehensiveTax: 802_080,
     })
     expect(current.result.comprehensiveTax.taxBurdenCap).toEqual({
       status: 'computed',
       rate: 1.5,
-      priorYearBase: 3_429_360,
-      maximumTaxBurden: 5_144_040,
-      currentYearBase: 6_098_640,
-      excessAmount: 954_600,
+      priorYearBase: 3_246_480,
+      maximumTaxBurden: 4_869_720,
+      currentYearBase: 4_974_450,
+      excessAmount: 104_730,
     })
     expect(current.result).toMatchObject({
-      propertyTaxTotal: 5_485_230,
+      propertyTaxTotal: 4_321_382,
       comprehensiveTax: {
-        netTax: 2_702_040,
-        payableTax: 1_747_440,
-        ruralSpecialTax: 349_488,
-        totalTax: 2_096_928,
+        netTax: 2_328_720,
+        payableTax: 2_223_990,
+        ruralSpecialTax: 444_798,
+        totalTax: 2_668_788,
       },
-      totalTax: 7_582_158,
+      totalTax: 6_990_170,
     })
     const beforeBurdenCap = calculateHoldingTax({
       ...current.input,
       priorYearTax: undefined,
     })
-    expect(beforeBurdenCap.totalTax).toBe(8_727_678)
+    expect(beforeBurdenCap.totalTax).toBe(7_115_846)
   })
 
   it.each([
     {
       annualOfficialPriceGrowthRate: 0,
       expected: [
-        { year: 2027, officialPrice: 2_237_000_000, totalTax: 8_421_246 },
-        { year: 2028, officialPrice: 2_237_000_000, totalTax: 8_421_246 },
+        { year: 2027, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 7_999_398 },
+        { year: 2028, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 7_999_398 },
       ],
     },
     {
       annualOfficialPriceGrowthRate: 0.05,
       expected: [
-        { year: 2027, officialPrice: 2_348_850_000, totalTax: 9_684_073 },
-        { year: 2028, officialPrice: 2_466_292_500, totalTax: 11_116_636 },
+        { year: 2027, officialPrice: 2_348_850_000, priorOfficialPrice: 2_237_000_000, totalTax: 9_205_852 },
+        { year: 2028, officialPrice: 2_466_292_500, priorOfficialPrice: 2_348_850_000, totalTax: 10_579_224 },
       ],
     },
     {
       annualOfficialPriceGrowthRate: 0.1,
       expected: [
-        { year: 2027, officialPrice: 2_460_700_000, totalTax: 11_048_419 },
-        { year: 2028, officialPrice: 2_706_770_000, totalTax: 14_049_980 },
+        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_232_971 },
+        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_082_427 },
       ],
     },
   ])(
@@ -388,9 +398,13 @@ describe('holding-tax screen boundary', () => {
       expect(comparison.status).toBe('calculated')
       if (comparison.status !== 'calculated') return
       const future = comparison.calculations.slice(1)
-      expect(future.map(({ year, input, result }) => ({
+      // 이 테스트가 고정하는 것은 2027·2028 이다. 추이 화면이 연도를 더 그리더라도
+      // 그 두 해의 값은 흔들리면 안 된다.
+      const projected = future.slice(0, expected.length)
+      expect(projected.map(({ year, input, result }) => ({
         year,
         officialPrice: input.items[0].officialPrice,
+        priorOfficialPrice: input.items[0].priorOfficialPrice,
         totalTax: result.totalTax,
       }))).toEqual(expected)
       for (const { result } of future) {
@@ -421,33 +435,35 @@ describe('holding-tax screen boundary', () => {
 
     expect(comparison.status).toBe('calculated')
     if (comparison.status !== 'calculated') return
-    expect(comparison.calculations.slice(1).map(({ year, result }) => ({
+    // 상한이 걸리기 시작하는 첫 두 해를 고정한다. 추이 화면이 연도를 더 그려도
+    // 이 두 해의 값은 흔들리면 안 된다.
+    expect(comparison.calculations.slice(1, 3).map(({ year, result }) => ({
       year,
       totalTax: result.totalTax,
       taxBurdenCap: result.comprehensiveTax.taxBurdenCap,
     }))).toEqual([
       {
         year: 2027,
-        totalTax: 17_455_356,
+        totalTax: 13_237_569,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 6_098_640,
-          maximumTaxBurden: 12_197_280,
-          currentYearBase: 29_226_960,
-          excessAmount: 17_029_680,
+          priorYearBase: 4_869_720,
+          maximumTaxBurden: 9_739_440,
+          currentYearBase: 24_311_940,
+          excessAmount: 14_572_500,
         },
       },
       {
         year: 2028,
-        totalTax: 75_781_944,
+        totalTax: 26_475_138,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 29_226_960,
-          maximumTaxBurden: 58_453_920,
-          currentYearBase: 129_709_920,
-          excessAmount: 71_256_000,
+          priorYearBase: 9_739_440,
+          maximumTaxBurden: 19_478_880,
+          currentYearBase: 119_291_880,
+          excessAmount: 99_813_000,
         },
       },
     ])

@@ -8,6 +8,8 @@ const FULL_OWNERSHIP_SHARE = 1
 const EMPTY_PORTFOLIO_MESSAGE = 'At least one portfolio item is required'
 const INVALID_OFFICIAL_PRICE_MESSAGE =
   'Official prices must be non-negative integer won amounts'
+const INVALID_PRIOR_OFFICIAL_PRICE_MESSAGE =
+  'Prior official prices must be non-negative integer won amounts when provided'
 const INVALID_OWNERSHIP_SHARE_MESSAGE =
   'Ownership share must be greater than zero and at most one'
 const INVALID_HOUSEHOLD_HOME_COUNT_MESSAGE =
@@ -52,6 +54,7 @@ export const assertValidHoldingTaxInput = (
   const priorYearFigures = [
     input.priorYearTax?.propertyBaseTax,
     input.priorYearTax?.comprehensiveCalculatedTax,
+    input.priorYearTax?.comprehensiveTax,
   ].filter((amount): amount is number => amount !== undefined)
   if (
     priorYearFigures.some(
@@ -75,6 +78,15 @@ export const assertValidHoldingTaxInput = (
       !Number.isInteger(item.officialPrice)
     ) {
       throw new RangeError(INVALID_OFFICIAL_PRICE_MESSAGE)
+    }
+
+    if (
+      item.priorOfficialPrice !== undefined &&
+      (!Number.isFinite(item.priorOfficialPrice) ||
+        item.priorOfficialPrice < ZERO_AMOUNT ||
+        !Number.isInteger(item.priorOfficialPrice))
+    ) {
+      throw new RangeError(INVALID_PRIOR_OFFICIAL_PRICE_MESSAGE)
     }
 
     if (

@@ -13,6 +13,7 @@ const OWNER_BELOW_CREDIT_AGE = 59
 const NON_BINDING_PRIOR_YEAR_TAX = {
   propertyBaseTax: 10_000_000,
   comprehensiveCalculatedTax: 10_000_000,
+  comprehensiveTax: 10_000_000,
 } as const
 
 const createItem = (
@@ -56,10 +57,10 @@ describe('calculateHoldingTax single-house golden cases', () => {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 2_760_000,
-        credit: 864_000,
-        rural: 379_200,
-        comprehensive: 2_275_200,
-        total: 7_099_200,
+        credit: 1_152_000,
+        rural: 321_600,
+        comprehensive: 1_929_600,
+        total: 6_753_600,
       },
       2027: {
         deduction: 1_400_000_000,
@@ -68,10 +69,10 @@ describe('calculateHoldingTax single-house golden cases', () => {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 2_340_000,
-        credit: 756_000,
-        rural: 316_800,
-        comprehensive: 1_900_800,
-        total: 6_724_800,
+        credit: 1_008_000,
+        rural: 266_400,
+        comprehensive: 1_598_400,
+        total: 6_422_400,
       },
       2028: {
         deduction: 1_400_000_000,
@@ -80,10 +81,10 @@ describe('calculateHoldingTax single-house golden cases', () => {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 2_340_000,
-        credit: 756_000,
-        rural: 316_800,
-        comprehensive: 1_900_800,
-        total: 6_724_800,
+        credit: 1_008_000,
+        rural: 266_400,
+        comprehensive: 1_598_400,
+        total: 6_422_400,
       },
     } as const
 
@@ -128,27 +129,27 @@ describe('calculateHoldingTax single-house golden cases', () => {
         deduction: 1_200_000_000,
         taxableBase: 480_000_000,
         baseTax: 2_760_000,
-        credit: 864_000,
-        comprehensive: 2_275_200,
-        total: 7_099_200,
+        credit: 1_152_000,
+        comprehensive: 1_929_600,
+        total: 6_753_600,
       },
       2027: {
         threshold: 1_400_000_000,
         deduction: 900_000_000,
         taxableBase: 770_000_000,
         baseTax: 5_810_000,
-        credit: 1_386_000,
-        comprehensive: 5_308_800,
-        total: 10_132_800,
+        credit: 1_848_000,
+        comprehensive: 4_754_400,
+        total: 9_578_400,
       },
       2028: {
         threshold: 1_400_000_000,
         deduction: 900_000_000,
         taxableBase: 770_000_000,
         baseTax: 5_810_000,
-        credit: 1_386_000,
-        comprehensive: 5_308_800,
-        total: 10_132_800,
+        credit: 1_848_000,
+        comprehensive: 4_754_400,
+        total: 9_578_400,
       },
     } as const
 
@@ -191,12 +192,12 @@ describe('calculateHoldingTax single-house golden cases', () => {
 
   it('matches H4 immediately below the new threshold', () => {
     const expectedComprehensive = {
-      2026: 437_760,
+      2026: 355_680,
       2027: 0,
       2028: 0,
     } as const
     const expectedTotal = {
-      2026: 3_559_860,
+      2026: 3_477_780,
       2027: 3_122_100,
       2028: 3_122_100,
     } as const
@@ -224,9 +225,9 @@ describe('calculateHoldingTax single-house golden cases', () => {
           taxableBase: 114_000_000,
           appliedRate: { rate: 0.005, progressiveDeduction: 0 },
           baseTax: 570_000,
-          propertyTaxCredit: 205_200,
-          netTax: 364_800,
-          ruralSpecialTax: 72_960,
+          propertyTaxCredit: 273_600,
+          netTax: 296_400,
+          ruralSpecialTax: 59_280,
         })
       }
       expect(result.totalTax).toBe(expectedTotal[year])
@@ -239,34 +240,34 @@ describe('calculateHoldingTax single-house golden cases', () => {
         deduction: 1_200_000_000,
         taxableBase: 126_000_000,
         baseTax: 630_000,
-        credit: 226_800,
+        credit: 302_400,
         rate: 0.005,
         progressiveDeduction: 0,
-        rural: 80_640,
-        comprehensive: 483_840,
-        total: 3_661_740,
+        rural: 65_520,
+        comprehensive: 393_120,
+        total: 3_571_020,
       },
       2027: {
         deduction: 900_000_000,
         taxableBase: 357_000_000,
         baseTax: 1_899_000,
-        credit: 642_600,
+        credit: 856_800,
         rate: 0.007,
         progressiveDeduction: 600_000,
-        rural: 251_280,
-        comprehensive: 1_507_680,
-        total: 4_685_580,
+        rural: 208_440,
+        comprehensive: 1_250_640,
+        total: 4_428_540,
       },
       2028: {
         deduction: 900_000_000,
         taxableBase: 357_000_000,
         baseTax: 1_899_000,
-        credit: 642_600,
+        credit: 856_800,
         rate: 0.007,
         progressiveDeduction: 600_000,
-        rural: 251_280,
-        comprehensive: 1_507_680,
-        total: 4_685_580,
+        rural: 208_440,
+        comprehensive: 1_250_640,
+        total: 4_428_540,
       },
     } as const
 
@@ -328,30 +329,30 @@ describe('calculateHoldingTax single-house golden cases', () => {
         rate: 0.01,
         progressiveDeduction: 2_400_000,
         baseTax: 8_400_000,
-        credit: 1_944_000,
-        rural: 1_291_200,
-        comprehensive: 7_747_200,
-        total: 15_361_200,
+        credit: 2_592_000,
+        rural: 1_161_600,
+        comprehensive: 6_969_600,
+        total: 14_583_600,
       },
       2027: {
         taxableBase: 1_120_000_000,
         rate: 0.013,
         progressiveDeduction: 4_200_000,
         baseTax: 10_360_000,
-        credit: 2_016_000,
-        rural: 1_668_800,
-        comprehensive: 10_012_800,
-        total: 17_626_800,
+        credit: 2_688_000,
+        rural: 1_534_400,
+        comprehensive: 9_206_400,
+        total: 16_820_400,
       },
       2028: {
         taxableBase: 1_120_000_000,
         rate: 0.013,
         progressiveDeduction: 4_200_000,
         baseTax: 10_360_000,
-        credit: 2_016_000,
-        rural: 1_668_800,
-        comprehensive: 10_012_800,
-        total: 17_626_800,
+        credit: 2_688_000,
+        rural: 1_534_400,
+        comprehensive: 9_206_400,
+        total: 16_820_400,
       },
     } as const
 
@@ -393,28 +394,28 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
   it('matches H12 with the rate cap applied before the amount cap', () => {
     const expected = {
       2026: {
-        netTax: 1_896_000,
-        creditAmount: 1_516_800,
-        payableTax: 379_200,
-        ruralSpecialTax: 75_840,
-        comprehensiveTax: 455_040,
-        totalTax: 5_279_040,
+        netTax: 1_608_000,
+        creditAmount: 1_286_400,
+        payableTax: 321_600,
+        ruralSpecialTax: 64_320,
+        comprehensiveTax: 385_920,
+        totalTax: 5_209_920,
       },
       2027: {
-        netTax: 1_584_000,
-        creditAmount: 1_267_200,
-        payableTax: 316_800,
-        ruralSpecialTax: 63_360,
-        comprehensiveTax: 380_160,
-        totalTax: 5_204_160,
+        netTax: 1_332_000,
+        creditAmount: 1_065_600,
+        payableTax: 266_400,
+        ruralSpecialTax: 53_280,
+        comprehensiveTax: 319_680,
+        totalTax: 5_143_680,
       },
       2028: {
-        netTax: 1_584_000,
-        creditAmount: 1_267_200,
-        payableTax: 316_800,
-        ruralSpecialTax: 63_360,
-        comprehensiveTax: 380_160,
-        totalTax: 5_204_160,
+        netTax: 1_332_000,
+        creditAmount: 1_065_600,
+        payableTax: 266_400,
+        ruralSpecialTax: 53_280,
+        comprehensiveTax: 319_680,
+        totalTax: 5_143_680,
       },
     } as const
 
@@ -460,36 +461,36 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
   it('matches H13 when the annual amount cap binds', () => {
     const expected = {
       2026: {
-        netTax: 12_816_000,
-        calculatedCreditAmount: 10_252_800,
-        creditAmount: 10_252_800,
+        netTax: 11_808_000,
+        calculatedCreditAmount: 9_446_400,
+        creditAmount: 9_446_400,
         amountCap: null,
-        payableTax: 2_563_200,
-        ruralSpecialTax: 512_640,
-        comprehensiveTax: 3_075_840,
-        totalTax: 13_479_840,
+        payableTax: 2_361_600,
+        ruralSpecialTax: 472_320,
+        comprehensiveTax: 2_833_920,
+        totalTax: 13_237_920,
         isAmountCapped: false,
       },
       2027: {
-        netTax: 17_424_000,
-        calculatedCreditAmount: 13_939_200,
+        netTax: 16_332_000,
+        calculatedCreditAmount: 13_065_600,
         creditAmount: 8_000_000,
         amountCap: 8_000_000,
-        payableTax: 9_424_000,
-        ruralSpecialTax: 1_884_800,
-        comprehensiveTax: 11_308_800,
-        totalTax: 21_712_800,
+        payableTax: 8_332_000,
+        ruralSpecialTax: 1_666_400,
+        comprehensiveTax: 9_998_400,
+        totalTax: 20_402_400,
         isAmountCapped: true,
       },
       2028: {
-        netTax: 20_524_000,
-        calculatedCreditAmount: 16_419_200,
+        netTax: 19_432_000,
+        calculatedCreditAmount: 15_545_600,
         creditAmount: 6_000_000,
         amountCap: 6_000_000,
-        payableTax: 14_524_000,
-        ruralSpecialTax: 2_904_800,
-        comprehensiveTax: 17_428_800,
-        totalTax: 27_832_800,
+        payableTax: 13_432_000,
+        ruralSpecialTax: 2_686_400,
+        comprehensiveTax: 16_118_400,
+        totalTax: 26_522_400,
         isAmountCapped: true,
       },
     } as const
@@ -533,7 +534,7 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
     }
   })
 
-  it('matches H14 using only prior property base tax and comprehensive calculated tax', () => {
+  it('matches H14 using prior property base tax and final comprehensive tax', () => {
     const result = calculate(
       2027,
       [
@@ -548,7 +549,7 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
         ownerAge: OWNER_BELOW_CREDIT_AGE,
         priorYearTax: {
           propertyBaseTax: 2_610_000,
-          comprehensiveCalculatedTax: 1_272_000,
+          comprehensiveTax: 1_056_000,
         },
       },
     )
@@ -560,7 +561,7 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
       cityAreaTax: 1_575_000,
       totalTax: 6_219_000,
     })
-    expect(comprehensiveTax.netTax).toBe(4_424_000)
+    expect(comprehensiveTax.netTax).toBe(3_962_000)
     expect(comprehensiveTax.taxCredit).toMatchObject({
       status: 'computed',
       amount: 0,
@@ -568,27 +569,60 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
     expect(comprehensiveTax.taxBurdenCap).toEqual({
       status: 'computed',
       rate: 2,
-      priorYearBase: 3_882_000,
-      maximumTaxBurden: 7_764_000,
-      currentYearBase: 8_294_000,
-      excessAmount: 530_000,
+      priorYearBase: 3_666_000,
+      maximumTaxBurden: 7_332_000,
+      currentYearBase: 7_832_000,
+      excessAmount: 500_000,
     })
-    expect(comprehensiveTax.payableTax).toBe(3_894_000)
-    expect(comprehensiveTax.ruralSpecialTax).toBe(778_800)
-    expect(comprehensiveTax.totalTax).toBe(4_672_800)
-    expect(result.totalTax).toBe(10_891_800)
+    expect(comprehensiveTax.payableTax).toBe(3_462_000)
+    expect(comprehensiveTax.ruralSpecialTax).toBe(692_400)
+    expect(comprehensiveTax.totalTax).toBe(4_154_400)
+    expect(result.totalTax).toBe(10_373_400)
+  })
+
+  it('keeps the 2026 payable-tax floor but reproduces the v3 negative 2027 tax', () => {
+    const priorYearTax = {
+      propertyBaseTax: 0,
+      comprehensiveCalculatedTax: 0,
+      comprehensiveTax: 0,
+    } as const
+    const currentLaw = calculate(2026, [createItem()], 1, {
+      ownerAge: OWNER_BELOW_CREDIT_AGE,
+      priorYearTax,
+    })
+    const reform = calculate(2027, [createItem()], 1, {
+      ownerAge: OWNER_BELOW_CREDIT_AGE,
+      priorYearTax,
+    })
+
+    expect(currentLaw.comprehensiveTax).toMatchObject({
+      payableTax: 0,
+      ruralSpecialTax: 0,
+      totalTax: 0,
+    })
+    expect(reform.comprehensiveTax).toMatchObject({
+      netTax: 1_332_000,
+      taxBurdenCap: {
+        status: 'computed',
+        excessAmount: 4_302_000,
+      },
+      payableTax: -2_970_000,
+      ruralSpecialTax: -594_000,
+      totalTax: -3_564_000,
+    })
+    expect(reform.totalTax).toBe(1_260_000)
   })
 
   it('matches H15 before and after unavoidable-relocation recognition', () => {
     const expectedBefore = {
-      2026: { periodRate: 0.2, comprehensiveTax: 1_365_120 },
-      2027: { periodRate: 0.1, comprehensiveTax: 1_330_560 },
-      2028: { periodRate: 0, comprehensiveTax: 1_520_640 },
+      2026: { periodRate: 0.2, comprehensiveTax: 1_157_760 },
+      2027: { periodRate: 0.1, comprehensiveTax: 1_118_880 },
+      2028: { periodRate: 0.1, comprehensiveTax: 1_118_880 },
     } as const
     const expectedAfter = {
-      2026: { periodRate: 0.2, comprehensiveTax: 1_365_120 },
-      2027: { periodRate: 0.2, comprehensiveTax: 1_140_480 },
-      2028: { periodRate: 0.2, comprehensiveTax: 1_140_480 },
+      2026: { periodRate: 0.2, comprehensiveTax: 1_157_760 },
+      2027: { periodRate: 0.2, comprehensiveTax: 959_040 },
+      2028: { periodRate: 0.2, comprehensiveTax: 959_040 },
     } as const
     const recognition = {
       kind: 'unavoidableRelocation',
@@ -667,10 +701,10 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 1_920_000,
-        credit: 864_000,
-        rural: 211_200,
-        comprehensive: 1_267_200,
-        total: 5_335_200,
+        credit: 680_727,
+        rural: 247_855,
+        comprehensive: 1_487_128,
+        total: 5_555_128,
       },
       2027: {
         deduction: 700_000_000,
@@ -679,10 +713,10 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 3_320_000,
-        credit: 1_344_000,
-        rural: 395_200,
-        comprehensive: 2_371_200,
-        total: 6_439_200,
+        credit: 1_058_909,
+        rural: 452_218,
+        comprehensive: 2_713_309,
+        total: 6_781_309,
       },
       2028: {
         deduction: 700_000_000,
@@ -691,10 +725,10 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 3_320_000,
-        credit: 1_344_000,
-        rural: 395_200,
-        comprehensive: 2_371_200,
-        total: 6_439_200,
+        credit: 1_058_909,
+        rural: 452_218,
+        comprehensive: 2_713_309,
+        total: 6_781_309,
       },
     } as const
 
@@ -706,6 +740,12 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         1_476_000,
       ])
       expect(result.propertyTaxTotal).toBe(4_068_000)
+      expect(result.comprehensiveTax.propertyTaxSubtotal).toEqual({
+        taxableBase: 900_000_000,
+        appliedRate: { rate: 0.004, progressiveDeduction: 630_000 },
+        calculatedTax: 2_970_000,
+        propertyTax: 2_340_000,
+      })
       expect(result.comprehensiveTax.ownedOfficialPriceTotal).toBe(
         1_500_000_000,
       )
@@ -747,37 +787,37 @@ describe('calculateHoldingTax multi-house golden cases', () => {
       2028: 640_000_000,
     } as const
     const expectedComprehensive = {
-      2026: 1_267_200,
-      2027: 2_371_200,
-      2028: 3_100_800,
+      2026: 1_487_128,
+      2027: 2_713_309,
+      2028: 3_491_782,
     } as const
     const expectedIntermediate = {
       2026: {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 1_920_000,
-        credit: 864_000,
-        rural: 211_200,
+        credit: 680_727,
+        rural: 247_855,
       },
       2027: {
         rate: 0.007,
         progressiveDeduction: 600_000,
         baseTax: 3_320_000,
-        credit: 1_344_000,
-        rural: 395_200,
+        credit: 1_058_909,
+        rural: 452_218,
       },
       2028: {
         rate: 0.013,
         progressiveDeduction: 4_200_000,
         baseTax: 4_120_000,
-        credit: 1_536_000,
-        rural: 516_800,
+        credit: 1_210_182,
+        rural: 581_964,
       },
     } as const
     const expectedTotal = {
-      2026: 5_335_200,
-      2027: 6_439_200,
-      2028: 7_168_800,
+      2026: 5_555_128,
+      2027: 6_781_309,
+      2028: 7_559_782,
     } as const
 
     for (const year of HOLDING_YEARS) {
@@ -833,10 +873,10 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         rate: 0.01,
         progressiveDeduction: 2_400_000,
         baseTax: 4_200_000,
-        credit: 1_584_000,
-        rural: 523_200,
-        comprehensive: 3_139_200,
-        total: 8_311_200,
+        credit: 1_105_381,
+        rural: 618_924,
+        comprehensive: 3_713_543,
+        total: 8_885_543,
       },
       2027: {
         deduction: 600_000_000,
@@ -845,10 +885,10 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         rate: 0.013,
         progressiveDeduction: 4_200_000,
         baseTax: 8_540_000,
-        credit: 2_352_000,
-        rural: 1_237_600,
-        comprehensive: 7_425_600,
-        total: 12_597_600,
+        credit: 1_641_324,
+        rural: 1_379_735,
+        comprehensive: 8_278_411,
+        total: 13_450_411,
       },
       2028: {
         deduction: 600_000_000,
@@ -857,10 +897,10 @@ describe('calculateHoldingTax multi-house golden cases', () => {
         rate: 0.013,
         progressiveDeduction: 4_200_000,
         baseTax: 10_360_000,
-        credit: 2_688_000,
-        rural: 1_534_400,
-        comprehensive: 9_206_400,
-        total: 14_378_400,
+        credit: 1_875_799,
+        rural: 1_696_840,
+        comprehensive: 10_181_041,
+        total: 15_353_041,
       },
     } as const
 
@@ -922,7 +962,7 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
     expect(aboveThreshold.comprehensiveTax.status).toBe('taxable')
     expect(aboveThreshold.comprehensiveTax.basicDeduction).toBe(900_000_000)
     expect(aboveThreshold.comprehensiveTax.taxableBase).toBe(350_000_001)
-    expect(aboveThreshold.comprehensiveTax.totalTax).toBe(1_464_000)
+    expect(aboveThreshold.comprehensiveTax.totalTax).toBe(1_212_000)
   })
 
   it('removes the reduced property-tax rate one won above 900 million won', () => {
@@ -938,6 +978,47 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
     expect(aboveThreshold.propertyTaxes[0].preferentialRateApplied).toBe(false)
     expect(aboveThreshold.propertyTaxes[0].appliedRate.rate).toBeCloseTo(0.004)
     expect(aboveThreshold.propertyTaxTotal).toBe(1_755_000)
+  })
+
+  it('matches the v3 property-tax taxable-base cap scenario exactly', () => {
+    const result = calculate(2027, [
+      createItem({
+        officialPrice: 4_800_000_000,
+        priorOfficialPrice: 4_000_000_000,
+        holdingYears: 5,
+        residenceYears: 10,
+      }),
+    ], 1, {
+      ownerAge: 67,
+      priorYearTax: NON_BINDING_PRIOR_YEAR_TAX,
+    })
+
+    expect(result.propertyTaxes[0]).toMatchObject({
+      priorOfficialPrice: 4_000_000_000,
+      uncappedFullTaxableBase: 2_160_000_000,
+      fullTaxableBaseCap: 1_908_000_000,
+      taxableBaseCapApplied: true,
+      fullTaxableBase: 1_908_000_000,
+      fullBaseTax: 7_002_000,
+      baseTax: 7_002_000,
+      cityAreaTax: 2_671_200,
+      localEducationTax: 1_400_400,
+      totalTax: 11_073_600,
+    })
+  })
+
+  it('does not cap the property-tax base without a prior official price', () => {
+    const result = calculate(2027, [
+      createItem({ officialPrice: 4_800_000_000 }),
+    ])
+
+    expect(result.propertyTaxes[0]).toMatchObject({
+      priorOfficialPrice: null,
+      uncappedFullTaxableBase: 2_160_000_000,
+      fullTaxableBaseCap: null,
+      taxableBaseCapApplied: false,
+      fullTaxableBase: 2_160_000_000,
+    })
   })
 
   it('uses the inclusive 2.5 billion won comprehensive-tax bracket boundary', () => {
@@ -1005,28 +1086,28 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
         ratio: 0.6,
         taxableBase: 60_000_000,
         baseTax: 300_000,
-        credit: 108_000,
-        rural: 38_400,
-        comprehensive: 230_400,
-        total: 2_642_400,
+        credit: 144_000,
+        rural: 31_200,
+        comprehensive: 187_200,
+        total: 2_599_200,
       },
       2027: {
         ratio: 0.7,
         taxableBase: 70_000_000,
         baseTax: 350_000,
-        credit: 126_000,
-        rural: 44_800,
-        comprehensive: 268_800,
-        total: 2_680_800,
+        credit: 168_000,
+        rural: 36_400,
+        comprehensive: 218_400,
+        total: 2_630_400,
       },
       2028: {
         ratio: 0.7,
         taxableBase: 70_000_000,
         baseTax: 350_000,
-        credit: 126_000,
-        rural: 44_800,
-        comprehensive: 268_800,
-        total: 2_680_800,
+        credit: 168_000,
+        rural: 36_400,
+        comprehensive: 218_400,
+        total: 2_630_400,
       },
     } as const
 
@@ -1063,7 +1144,7 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
       })
       expect(comprehensiveTax.baseTax).toBe(expected[year].baseTax)
       expect(comprehensiveTax.propertyTaxFairMarketValueRatio).toBeCloseTo(
-        0.45,
+        0.6,
       )
       expect(comprehensiveTax.propertyTaxCredit).toBe(expected[year].credit)
       expect(comprehensiveTax.ruralSpecialTax).toBe(expected[year].rural)
@@ -1116,7 +1197,7 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
       rate: 2,
       missingInputs: [
         'priorYearPropertyBaseTax',
-        'priorYearComprehensiveCalculatedTax',
+        'priorYearComprehensiveTax',
       ],
       excessAmount: 0,
     })
@@ -1201,6 +1282,9 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
     ).toThrow(RangeError)
     expect(() =>
       calculate(2027, [createItem({ residenceYears: -1 })]),
+    ).toThrow(RangeError)
+    expect(() =>
+      calculate(2027, [createItem({ priorOfficialPrice: 1.5 })]),
     ).toThrow(RangeError)
   })
 })

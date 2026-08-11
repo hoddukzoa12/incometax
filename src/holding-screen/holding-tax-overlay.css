@@ -638,3 +638,230 @@
     padding: 0;
   }
 }
+
+/* ── 연도별 추이 — 시안 shell-v2.html 의 `.trend` / `.perprop` 그대로 ── */
+.trend {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.trend__eyebrow {
+  margin: 0;
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.trend__head h2 {
+  margin: var(--space-1) 0 0;
+  color: var(--color-neutral-700);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-regular);
+}
+
+.trend__head h2 strong {
+  color: var(--color-neutral-900);
+  font-size: 2.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__diff {
+  margin: var(--space-1) 0 0;
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+}
+
+.trend__price {
+  margin: var(--space-2) 0 0;
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__price span {
+  color: var(--color-neutral-500);
+}
+
+/*
+ * 내년 — 이 화면에서 두 번째로 큰 숫자다. 올해 세액 다음으로 사람들이 알고 싶은 게
+ * "그래서 내년엔 얼마나 더 내나"라서, 본문 글씨가 아니라 한 단 위의 크기를 준다.
+ */
+.trend__next {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-neutral-200);
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-md);
+}
+
+.trend__next strong {
+  color: var(--color-neutral-900);
+  font-size: var(--font-size-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__next em {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent);
+  font-size: var(--font-size-md);
+  font-style: normal;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-sm);
+}
+
+.trend__split b {
+  color: var(--color-neutral-900);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__chart {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  align-items: end;
+  gap: var(--space-2);
+  height: 9rem;
+}
+
+.trend__col {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: end;
+  gap: var(--space-1);
+  height: 100%;
+  text-align: center;
+}
+
+.trend__col b {
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+.trend__col i {
+  display: block;
+  align-self: end;
+  width: 100%;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-neutral-200);
+}
+
+.trend__col span {
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-xs);
+}
+
+/* 빗금은 추정치라는 뜻이다. 고시값과 같은 면으로 그리면 둘이 구분되지 않는다. */
+.trend__col.is-est i {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--color-neutral-200) 0 4px,
+    var(--color-neutral-100) 4px 8px
+  );
+}
+
+.trend__col.is-focus i {
+  background: var(--color-accent);
+}
+
+.trend__col.is-focus b {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.trend__col.is-focus span {
+  color: var(--color-neutral-900);
+  font-weight: var(--font-weight-bold);
+}
+
+.trend__note {
+  margin: 0;
+  color: var(--color-neutral-500);
+  font-size: var(--font-size-xs);
+}
+
+.perprop {
+  display: grid;
+  gap: var(--space-2);
+  overflow-x: auto;
+}
+
+.perprop table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.perprop th,
+.perprop td {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-neutral-100);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.perprop thead th {
+  border-bottom: 1.5px solid var(--color-neutral-900);
+  color: var(--color-neutral-600);
+  font-size: var(--font-size-xs);
+}
+
+.perprop tbody th,
+.perprop thead th:first-child {
+  text-align: left;
+  font-weight: var(--font-weight-regular);
+}
+
+/*
+ * 막대와 막대 사이의 증감. 앞 칸과의 경계에 걸쳐 세운다 —
+ * 막대 두 개를 눈으로 빼는 대신 얼마가 뛰었는지 바로 읽히게 한다.
+ */
+.trend__step {
+  position: absolute;
+  z-index: 1;
+  top: 1.35rem;
+  left: 0;
+  transform: translateX(-50%);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-neutral-0);
+  font-size: var(--font-size-xs);
+  font-style: normal;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trend__step--up {
+  color: var(--color-accent);
+}
+
+.trend__step--down {
+  color: var(--color-neutral-600);
+}
+
+/* 좁은 화면에서는 막대가 붙어 증감 표가 겹친다 */
+@media (max-width: 45rem) {
+  .trend__step {
+    display: none;
+  }
+}

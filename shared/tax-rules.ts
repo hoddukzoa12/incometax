@@ -4,7 +4,7 @@ export type Residency = (typeof RESIDENCIES)[number]
 
 export const AREA_KINDS = ['adjusted', 'general'] as const
 export type AreaKind = (typeof AREA_KINDS)[number]
-export type TaxYear = 2025 | 2026 | 2027 | 2028 | 2029
+export type TaxYear = 2025 | 2026 | 2027 | 2028 | 2029 | 2030
 
 export interface Bracket {
   readonly upTo: number
@@ -31,6 +31,7 @@ export interface PropertyTaxSurtaxRule {
 
 export interface PropertyTaxRules {
   readonly oneHouseHomeCount: number
+  readonly taxableBaseCapGrowthRate: number
   readonly fairMarketValueRatios: {
     readonly oneHouse: readonly RateBand[]
     readonly other: number
@@ -107,6 +108,7 @@ export interface ComprehensiveTaxCreditRules {
 
 export interface ComprehensiveTaxBurdenCapRules {
   readonly rate: number
+  readonly priorComprehensiveTaxKind: 'calculated' | 'final'
 }
 
 export interface ComprehensiveTaxRules {
@@ -115,7 +117,8 @@ export interface ComprehensiveTaxRules {
   readonly fairMarketValueRatios: ComprehensiveFairMarketValueRatioRules
   readonly brackets: ComprehensiveBracketRules
   readonly elevatedHomeCountMinimum: number
-  readonly propertyTaxCreditRate: number
+  readonly calculatedTaxMinimum: number | null
+  readonly payableTaxMinimum: number | null
   readonly ruralSpecialTaxRate: number
   readonly taxCredit: ComprehensiveTaxCreditRules
   readonly taxBurdenCap: ComprehensiveTaxBurdenCapRules

@@ -246,11 +246,18 @@ export const COMPREHENSIVE_TAX_REFORM_UNIFIED_BRACKETS = [
 ] as const
 
 /**
- * 종부세 재산세 중복분 공제율 — tax-rules-spec.md §3.5 및 §2.2.
- * 개편안 페이지가 별도 명시되지 않은 현행 재산세 일반세율 최고구간 수치다.
+ * 종부세 산출세액 음수 보정 — holding-tax-v3-spec.md §3.9.
+ * v3 엑셀은 2026년에 하한을 두지 않고, 2027년 이후에만 0원 하한을 둔다.
  */
-export const COMPREHENSIVE_PROPERTY_TAX_CREDIT_RATE =
-  40 / RATE_DENOMINATOR
+export const COMPREHENSIVE_CALCULATED_TAX_MINIMUM_2026 = null
+export const COMPREHENSIVE_CALCULATED_TAX_MINIMUM_FROM_2027 = 0
+
+/**
+ * 세액공제·세부담상한 반영 후 종합부동산세 하한 — holding-tax-v3-spec.md §3.12.
+ * v3 엑셀은 2026년에만 0원 하한을 두고 2027년 이후에는 하한을 두지 않는다.
+ */
+export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_2026 = 0
+export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_FROM_2027 = null
 
 /**
  * 농어촌특별세율 — tax-rules-spec.md §3.8.
@@ -267,6 +274,5 @@ export const COMPREHENSIVE_ELEVATED_HOME_COUNT_MINIMUM = 3
 
 export const COMPREHENSIVE_TAX_COMMON_RULES = {
   elevatedHomeCountMinimum: COMPREHENSIVE_ELEVATED_HOME_COUNT_MINIMUM,
-  propertyTaxCreditRate: COMPREHENSIVE_PROPERTY_TAX_CREDIT_RATE,
   ruralSpecialTaxRate: COMPREHENSIVE_RURAL_SPECIAL_TAX_RATE,
 } as const

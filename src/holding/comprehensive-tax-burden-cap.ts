@@ -10,39 +10,52 @@ import { roundTaxAmount } from '../rules'
 
 const ZERO_AMOUNT = 0
 
-/**
- * 세부담상한 기준액의 SSOT. 현재 문서화된 실무 엑셀 해석에 따라 재산세 본세와
- * 종부세 산출세액만 더한다. 세무사 확인 후 정의가 바뀌면 이 함수만 변경한다.
- */
+/** 세부담상한 기준액 — holding-tax-v3-spec.md §3.11. */
 const calculateTaxBurdenBase = (
   propertyBaseTax: number,
-  comprehensiveCalculatedTax: number,
-): number => propertyBaseTax + comprehensiveCalculatedTax
+  comprehensiveTax: number,
+): number => propertyBaseTax + comprehensiveTax
+
+const PRIOR_COMPREHENSIVE_TAX_MISSING_INPUT = {
+  calculated: 'priorYearComprehensiveCalculatedTax',
+  final: 'priorYearComprehensiveTax',
+} as const satisfies Readonly<
+  Record<
+    ComprehensiveTaxBurdenCapRules['priorComprehensiveTaxKind'],
+    ComprehensiveTaxBurdenCapMissingInput
+  >
+>
 
 const resolvePriorYearTax = (
   priorYearTax: PriorYearHoldingTax | undefined,
+  priorComprehensiveTaxKind:
+    ComprehensiveTaxBurdenCapRules['priorComprehensiveTaxKind'],
 ):
   | {
       readonly status: 'complete'
       readonly propertyBaseTax: number
-      readonly comprehensiveCalculatedTax: number
+      readonly comprehensiveTax: number
     }
   | {
       readonly status: 'missing'
       readonly missingInputs: readonly ComprehensiveTaxBurdenCapMissingInput[]
     } => {
   const propertyBaseTax = priorYearTax?.propertyBaseTax
-  const comprehensiveCalculatedTax =
-    priorYearTax?.comprehensiveCalculatedTax
+  const priorComprehensiveTaxes = {
+    calculated: priorYearTax?.comprehensiveCalculatedTax,
+    final: priorYearTax?.comprehensiveTax,
+  } as const
+  const comprehensiveTax =
+    priorComprehensiveTaxes[priorComprehensiveTaxKind]
 
   if (
     propertyBaseTax !== undefined &&
-    comprehensiveCalculatedTax !== undefined
+    comprehensiveTax !== undefined
   ) {
     return {
       status: 'complete',
       propertyBaseTax,
-      comprehensiveCalculatedTax,
+      comprehensiveTax,
     }
   }
 
@@ -51,8 +64,10 @@ const resolvePriorYearTax = (
   if (propertyBaseTax === undefined) {
     missingInputs.push('priorYearPropertyBaseTax')
   }
-  if (comprehensiveCalculatedTax === undefined) {
-    missingInputs.push('priorYearComprehensiveCalculatedTax')
+  if (comprehensiveTax === undefined) {
+    missingInputs.push(
+      PRIOR_COMPREHENSIVE_TAX_MISSING_INPUT[priorComprehensiveTaxKind],
+    )
   }
 
   return { status: 'missing', missingInputs }
@@ -72,7 +87,10 @@ export const calculateComprehensiveTaxBurdenCap = (
     }
   }
 
-  const priorYearTaxResolution = resolvePriorYearTax(priorYearTax)
+  const priorYearTaxResolution = resolvePriorYearTax(
+    priorYearTax,
+    rules.priorComprehensiveTaxKind,
+  )
   if (priorYearTaxResolution.status === 'missing') {
     return {
       status: 'notComputed',
@@ -84,7 +102,7 @@ export const calculateComprehensiveTaxBurdenCap = (
 
   const priorYearBase = calculateTaxBurdenBase(
     priorYearTaxResolution.propertyBaseTax,
-    priorYearTaxResolution.comprehensiveCalculatedTax,
+    priorYearTaxResolution.comprehensiveTax,
   )
   const currentYearBase = calculateTaxBurdenBase(
     currentPropertyBaseTax,

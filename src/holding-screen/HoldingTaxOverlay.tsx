@@ -5,37 +5,16 @@ import type { PortfolioController } from '../portfolio'
 import {
   calculatePortfolioHoldingTax,
   getHoldingTaxMissingConditions,
-  HOLDING_TAX_PRIOR_PRICE_YEAR,
   type HoldingTaxComparison,
 } from './calculation'
-import {
-  hasExactOwnerAge,
-  persistHoldingTaxConditionValues,
-  restoreHoldingTaxConditionValues,
-} from './condition-values'
-import { HoldingTaxChangeReasons } from './HoldingTaxChangeReasons'
-import { HoldingTaxComparisonTable } from './HoldingTaxComparisonTable'
-import { HoldingTaxConditions } from './HoldingTaxConditions'
-import { HoldingTaxResultSummary } from './HoldingTaxResultSummary'
-import { formatCompactDate } from './format'
+import { restoreHoldingTaxConditionValues } from './condition-values'
+import { HoldingTaxConditionsModal } from './HoldingTaxConditionsModal'
+import { TaxTrend } from './TaxTrend'
+import { buildHoldingTaxTrend } from './trend-series'
 import './holding-tax-overlay.css'
 
 const ZERO_SHARE = 0
-
-/**
- * 3단계 — 취득·보유·처분. 엑셀 실무 시트의 구성이 그대로 제품 구조다
- * (docs/product-vision.md §3). 취득세(P9)·양도소득세(P5)는 아직 없다.
- */
-type HoldingTaxStep = 'acquire' | 'hold' | 'dispose'
-
-const HOLDING_TAX_STEPS = [
-  { id: 'acquire', label: HOLDING_TAX_MESSAGES.stepAcquire },
-  { id: 'hold', label: HOLDING_TAX_MESSAGES.stepHold },
-  { id: 'dispose', label: HOLDING_TAX_MESSAGES.stepDispose },
-] as const satisfies readonly {
-  readonly id: HoldingTaxStep
-  readonly label: string
-}[]
+const ONE_HOUSE = 1
 
 export function HoldingTaxOverlay({
   controller,
@@ -62,37 +41,39 @@ export function HoldingTaxOverlay({
   const [conditionsOpen, setConditionsOpen] = useState(
     () => !(taxedItems.length > 0 && missingConditions.length === 0),
   )
-  // 시안은 변경 이유를 기본으로 펼친다 — "왜 바뀌었나"가 이 화면의 두 번째 질문이다.
-  const [reasonsOpen, setReasonsOpen] = useState(true)
-  const [step, setStep] = useState<HoldingTaxStep>('hold')
-  const [detailsOpen, setDetailsOpen] = useState(false)
   const comparison = useMemo<HoldingTaxComparison>(() =>
     calculatePortfolioHoldingTax(controller.items, conditions), [
     conditions,
     controller.items,
   ])
-  const repeatsOwnerAgeByYear = comparison.status === 'calculated' &&
-    hasExactOwnerAge(
-      comparison.calculations[0].year,
-      comparison.ownerAgeByYear[comparison.calculations[0].year],
-    )
-  const assumptionSummary = comparison.status === 'calculated'
-    ? HOLDING_TAX_MESSAGES.assumptionsSummary(
-        comparison.calculations.map(({ year, input }, yearIndex) =>
-          HOLDING_TAX_MESSAGES.yearAssumption(
-            year,
-            yearIndex === 0 || repeatsOwnerAgeByYear
-              ? comparison.ownerAgeByYear[year]
-              : null,
-            comparison.taxedItems.map((item, itemIndex) =>
-              HOLDING_TAX_MESSAGES.itemAssumption(
-                item.complexName,
-                comparison.holdingYearsByItemAndYear[year][item.id],
-                input.items[itemIndex].residenceYears,
-              )),
-          )),
-      )
-    : null
+  /*
+   * 조건은 첫 해 기준으로 한 번만 적는다. 연도마다 나이를 한 살씩 올려 적으면
+   * 여섯 해치가 줄줄이 붙어 정작 무엇을 가정했는지가 안 읽힌다.
+   *
+   * 다주택이면 나이·보유·거주기간을 아예 안 적는다 — 그 공제를 받을 수 없어
+   * 계산에 쓰이지 않는 값이다. 안 쓰는 값을 조건이라고 적으면 거짓말이 된다.
+   */
+  const assumptionSummary = comparison.status !== 'calculated'
+    ? null
+    : HOLDING_TAX_MESSAGES.conditionSummary({
+        year: comparison.calculations[0].year,
+        householdHomeCount: comparison.householdHomeCount,
+        ownerAge: comparison.householdHomeCount === ONE_HOUSE
+          ? comparison.ownerAgeByYear[comparison.calculations[0].year]
+          : null,
+        items: comparison.taxedItems.map((item, itemIndex) => ({
+          name: item.complexName,
+          residing: item.residency === 'residing',
+          holdingYears: comparison.householdHomeCount === ONE_HOUSE
+            ? comparison
+              .holdingYearsByItemAndYear[comparison.calculations[0].year][item.id]
+            : null,
+          residenceYears: comparison.householdHomeCount === ONE_HOUSE
+            ? comparison.calculations[0].input.items[itemIndex].residenceYears
+            : null,
+        })),
+        annualOfficialPriceGrowthRate: conditions.annualOfficialPriceGrowthRate,
+      })
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -102,34 +83,6 @@ export function HoldingTaxOverlay({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const submitConditions = () => {
-    if (missingConditions.length > 0) return
-    try {
-      persistHoldingTaxConditionValues(conditions)
-    } catch {
-      // The calculation remains usable for the current session.
-    }
-    setConditionsOpen(false)
-  }
-
-  const priceAssumptions = taxedItems.map((item) =>
-    `${item.complexName} ${item.officialPriceBaseDate === null
-      ? HOLDING_TAX_MESSAGES.officialPriceBaseDateMissing
-      : formatCompactDate(item.officialPriceBaseDate)}`)
-  const continuingResidenceItems = taxedItems.filter((item) =>
-    conditions.items[item.id]?.continuesResidence === true)
-  const frozenResidenceItems = taxedItems.filter((item) =>
-    item.residency === 'nonResiding' ||
-    conditions.items[item.id]?.continuesResidence === false)
-  const recognitionItems = frozenResidenceItems.filter((item) =>
-    conditions.items[item.id]?.qualifyingRelocation === true)
-
-  const stepTitle = step === 'acquire'
-    ? HOLDING_TAX_MESSAGES.stepAcquireTitle
-    : step === 'dispose'
-      ? HOLDING_TAX_MESSAGES.stepDisposeTitle
-      : HOLDING_TAX_MESSAGES.title
-
   return (
     <div
       className="holding-overlay"
@@ -137,28 +90,10 @@ export function HoldingTaxOverlay({
     >
       <header className="holding-overlay__header">
         <div className="holding-overlay__title-row">
-          <h1 id="holding-overlay-title">{stepTitle}</h1>
+          <h1 id="holding-overlay-title">{HOLDING_TAX_MESSAGES.title}</h1>
           <button type="button" autoFocus onClick={onClose}>
             {HOLDING_TAX_MESSAGES.close}
           </button>
-        </div>
-
-        {/*
-          취득·보유·처분 3단계. 같은 물건을 고른 채 단계만 바꿔 본다.
-          취득세(P9)와 양도소득세(P5)는 아직 없어 안내만 보인다 —
-          단계를 감추면 이 제품이 무엇을 하려는지가 안 보인다.
-        */}
-        <div className="stepbar" role="group" aria-label={HOLDING_TAX_MESSAGES.title}>
-          {HOLDING_TAX_STEPS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={step === id}
-              onClick={() => setStep(id)}
-            >
-              {label}
-            </button>
-          ))}
         </div>
 
         {assumptionSummary !== null && (
@@ -188,29 +123,6 @@ export function HoldingTaxOverlay({
       </header>
 
       <main className="holding-overlay__content">
-        {step !== 'hold' ? (
-          <section className="holding-overlay__status">
-            <h2>
-              {step === 'acquire'
-                ? HOLDING_TAX_MESSAGES.stepAcquirePending
-                : HOLDING_TAX_MESSAGES.stepDisposePending}
-            </h2>
-            <p>{HOLDING_TAX_MESSAGES.stepPendingBody}</p>
-          </section>
-        ) : (
-          <>
-        {(conditionsOpen ||
-          comparison.status === 'missingConditions' ||
-          comparison.status === 'missingOfficialPrices') &&
-          controller.items.length > 0 && (
-            <HoldingTaxConditions
-              conditions={conditions}
-              controller={controller}
-              missingConditions={missingConditions}
-              onChange={setConditions}
-              onSubmit={submitConditions}
-            />
-          )}
 
         {comparison.status === 'empty' && (
           <section className="holding-overlay__status">
@@ -236,63 +148,35 @@ export function HoldingTaxOverlay({
             </ul>
           </section>
         )}
-        {comparison.status === 'calculated' && !conditionsOpen && (
+        {/*
+          조건 모달이 열려도 결과는 그대로 둔다. 시안이 그렇게 한다 —
+          숨기면 카드가 헤더 높이로 쪼그라들고, 그 안에 뜬 모달까지 같이 작아진다.
+          바꾼 조건이 뒤에서 어떤 숫자를 움직이는지도 보이지 않는다.
+        */}
+        {comparison.status === 'calculated' && (
           <>
-            <HoldingTaxResultSummary
+            {/*
+              시안(shell-v2)의 결과 화면은 개편 전후 비교가 아니라 연도별 추이다.
+              "개편안이 얼마를 물리나"가 아니라 "내 보유세가 어떻게 움직이나"에
+              답한다. 그래서 변경 이유·비교표를 앞에 세우지 않는다.
+            */}
+            <TaxTrend
+              annualOfficialPriceGrowthRate={
+                conditions.annualOfficialPriceGrowthRate
+              }
               calculations={comparison.calculations}
-              detailsOpen={detailsOpen}
-              onDetailsToggle={() => setDetailsOpen((current) => !current)}
-              onReasonsToggle={() => setReasonsOpen((current) => !current)}
-              reasonsOpen={reasonsOpen}
+              focusYear={comparison.calculations[0].year}
+              series={buildHoldingTaxTrend(
+                comparison.calculations,
+                comparison.priorYearCalculation,
+              )}
               taxedItems={comparison.taxedItems}
             />
-            {reasonsOpen && (
-              <HoldingTaxChangeReasons calculations={comparison.calculations} />
-            )}
-            {detailsOpen && (
-              <section className="holding-tax-details" id="holding-tax-details">
-                <HoldingTaxComparisonTable
-                  calculations={comparison.calculations}
-                  taxedItems={comparison.taxedItems}
-                />
-                <section className="holding-tax-details__assumptions">
-                  <h2>{HOLDING_TAX_MESSAGES.assumptionsProseTitle}</h2>
-                  <p>{HOLDING_TAX_MESSAGES.portfolioAssumption(
-                    comparison.householdHomeCount,
-                    comparison.taxedItems.length,
-                  )}</p>
-                  <p>{HOLDING_TAX_MESSAGES.priceDateAssumption(
-                    priceAssumptions,
-                  )}</p>
-                  {continuingResidenceItems.length > 0 && (
-                    <p>{HOLDING_TAX_MESSAGES.continuingResidenceAssumption(
-                      continuingResidenceItems.map(({ complexName }) =>
-                        complexName),
-                    )}</p>
-                  )}
-                  {frozenResidenceItems.length > 0 && (
-                    <p>{HOLDING_TAX_MESSAGES.frozenResidenceAssumption(
-                      frozenResidenceItems.map(({ complexName }) =>
-                        complexName),
-                    )}</p>
-                  )}
-                  {recognitionItems.length > 0 && (
-                    <p>{HOLDING_TAX_MESSAGES.recognitionAssumption(
-                      recognitionItems.map(({ complexName }) => complexName),
-                    )}</p>
-                  )}
-                  <p>{HOLDING_TAX_MESSAGES.modeledCapAssumption}</p>
-                  {comparison.missingPriorPriceItems.length > 0 && (
-                    <p>{HOLDING_TAX_MESSAGES.unavailableCapAssumption(
-                      HOLDING_TAX_PRIOR_PRICE_YEAR,
-                      comparison.missingPriorPriceItems.map(
-                        ({ complexName }) => complexName,
-                      ),
-                    )}</p>
-                  )}
-                </section>
-              </section>
-            )}
+            {/*
+              시안에는 유의사항이 없다. 그건 목업이라 법적 의무가 없었기 때문이고,
+              우리는 세무서가 아니며 개편안은 아직 국회를 통과하지 않았다.
+              이 두 문장은 화면 구성 요소가 아니라 고지 의무라서 남긴다.
+            */}
             <section className="holding-overlay__cautions">
               <h2>{HOLDING_TAX_MESSAGES.cautionsTitle}</h2>
               {HOLDING_TAX_MESSAGES.cautions.map((caution) => (
@@ -301,9 +185,24 @@ export function HoldingTaxOverlay({
             </section>
           </>
         )}
-          </>
-        )}
       </main>
+
+      {/*
+        조건은 시안대로 모달로 묻는다. 본문에 펼쳐 두면 결과를 보러 온 화면에
+        입력 폼이 먼저 서고, 그러면 이 화면이 무엇을 보여주는 곳인지 흐려진다.
+      */}
+      {conditionsOpen && controller.items.length > 0 && (
+        <HoldingTaxConditionsModal
+          controller={controller}
+          onCancel={() => setConditionsOpen(false)}
+          onSubmit={() => {
+            // 모달이 저장까지 마쳤다. 저장된 값을 다시 읽어 계산에 반영한다.
+            setConditions(restoreHoldingTaxConditionValues(controller.items))
+            setConditionsOpen(false)
+          }}
+          variant="edit"
+        />
+      )}
     </div>
   )
 }

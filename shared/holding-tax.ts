@@ -14,6 +14,8 @@ import type {
 export interface PortfolioItem extends OwnershipPeriod {
   readonly assetKind: AssetKind
   readonly officialPrice: number
+  /** 직전년도 공시가격. 자료가 없으면 과세표준상한을 적용하지 않는다. */
+  readonly priorOfficialPrice?: number
   readonly ownershipShare: number
   readonly isSoleHouseholdOwner: boolean
   readonly residency: Residency
@@ -22,7 +24,10 @@ export interface PortfolioItem extends OwnershipPeriod {
 
 export interface PriorYearHoldingTax {
   readonly propertyBaseTax?: number
+  /** 종부세 산출세액(행 44). 2026년 세부담상한 현행 동작에 사용한다. */
   readonly comprehensiveCalculatedTax?: number
+  /** 세액공제·상한 반영 후 종합부동산세(행 47). 2027년 이후에 사용한다. */
+  readonly comprehensiveTax?: number
 }
 
 export interface HoldingTaxInput {
@@ -44,8 +49,12 @@ export interface PropertyTaxResult {
   readonly itemIndex: number
   readonly ownershipShare: number
   readonly fullOfficialPrice: number
+  readonly priorOfficialPrice: number | null
   readonly ownedOfficialPrice: number
   readonly fairMarketValueRatio: number
+  readonly uncappedFullTaxableBase: number
+  readonly fullTaxableBaseCap: number | null
+  readonly taxableBaseCapApplied: boolean
   readonly fullTaxableBase: number
   readonly taxableBase: number
   readonly preferentialRateApplied: boolean
@@ -99,6 +108,7 @@ export type ComprehensiveTaxCreditResult =
 export type ComprehensiveTaxBurdenCapMissingInput =
   | 'priorYearPropertyBaseTax'
   | 'priorYearComprehensiveCalculatedTax'
+  | 'priorYearComprehensiveTax'
 
 export interface ComprehensiveTaxBurdenCapComputedResult {
   readonly status: 'computed'
@@ -128,6 +138,13 @@ export type ComprehensiveTaxBurdenCapResult =
   | ComprehensiveTaxBurdenCapNotApplicableResult
   | ComprehensiveTaxBurdenCapNotComputedResult
 
+export interface ComprehensivePropertyTaxSubtotalResult {
+  readonly taxableBase: number
+  readonly appliedRate: HoldingAppliedRateResult
+  readonly calculatedTax: number
+  readonly propertyTax: number
+}
+
 export interface ComprehensiveTaxResult {
   readonly status: ComprehensiveTaxStatus
   readonly homeCount: number
@@ -140,6 +157,7 @@ export interface ComprehensiveTaxResult {
   readonly appliedRate: HoldingAppliedRateResult
   readonly baseTax: number
   readonly propertyTaxFairMarketValueRatio: number
+  readonly propertyTaxSubtotal: ComprehensivePropertyTaxSubtotalResult
   readonly propertyTaxCredit: number
   readonly netTax: number
   readonly residenceRecognition: ComprehensiveResidenceRecognitionResult

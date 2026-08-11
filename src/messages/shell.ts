@@ -25,4 +25,5 @@ export const SHELL_MESSAGES = {
   tradeYearOption: (year: string) => `${year}년`,
   priceNote: '보유세는 실거래가가 아니라 공시가격으로 매겨요 · 공시가격은 동·호를 골라야 나와요',
   collapsePanelLabel: '사이드바 접기',
+  resultLabel: '보유세 계산 결과',
 } as const

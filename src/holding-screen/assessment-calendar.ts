@@ -4,6 +4,8 @@ export const HOLDING_TAX_COMPARISON_YEARS = [
   2026,
   2027,
   2028,
+  2029,
+  2030,
 ] as const satisfies readonly TaxYear[]
 
 export type HoldingTaxComparisonYear =
