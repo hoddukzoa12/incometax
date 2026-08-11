@@ -16,6 +16,7 @@ import {
   persistConsultIntroDismissal,
   shouldShowConsultIntro,
 } from './consult-intro-dismissal'
+import { useLayerHistory } from './layer-history'
 import { PortfolioMenu } from './PortfolioMenu'
 import { useCompactLayout } from './useCompactLayout'
 import '../app.css'
@@ -68,21 +69,47 @@ export default function AppShell() {
     setConsultIntroOpen(false)
   }
 
+  /*
+   * 지도를 덮는 층은 뒤로가기로 하나씩 벗겨진다. 안 그러면 좁은 화면에서
+   * 단지 정보를 열어 놓고 뒤로가기를 누른 사람이 사이트 밖으로 튕겨 나간다.
+   * 나중에 연 것이 먼저 닫힌다 — 동·호 모달은 그것을 띄운 ComplexPanel 이 건다.
+   */
+  useLayerHistory('consultIntro', consultIntroOpen, () => setConsultIntroOpen(false))
+  useLayerHistory('complexPanel', panelOpen, () => setSelectedComplexId(null))
+  useLayerHistory('conditions', askingConditions, () => setAskingConditions(false))
+  useLayerHistory('holdingTax', holdingTaxOverlay.open, holdingTaxOverlay.hide)
+
+  /*
+   * 아이콘이 자리에 따라 다르다. 넓은 화면에서는 옆에 붙은 패널이 접히는 것이라
+   * 접히는 면을 그리지만, 좁은 화면에서는 패널이 지도를 통째로 덮으므로
+   * 접힐 옆면이 없다 — 덮은 것을 걷어내는 ✕ 가 맞다.
+   */
   const closeButton = (
     <button
       className="panel__close"
       type="button"
-      aria-label={SHELL_MESSAGES.collapsePanelLabel}
+      aria-label={compact
+        ? SHELL_MESSAGES.closePanelLabel
+        : SHELL_MESSAGES.collapsePanelLabel}
       onClick={() => setSelectedComplexId(null)}
     >
-      {/* 패널이 접히는 모양 — 오른쪽 면이 닫힌다 */}
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-        <rect
-          x="1.5" y="3" width="15" height="12" rx="2"
-          stroke="currentColor" strokeWidth="1.5"
-        />
-        <rect x="10.5" y="4.5" width="4.5" height="9" fill="currentColor" />
-      </svg>
+      {compact ? (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path
+            d="M4 4l10 10M14 4L4 14"
+            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        /* 패널이 접히는 모양 — 오른쪽 면이 닫힌다 */
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <rect
+            x="1.5" y="3" width="15" height="12" rx="2"
+            stroke="currentColor" strokeWidth="1.5"
+          />
+          <rect x="10.5" y="4.5" width="4.5" height="9" fill="currentColor" />
+        </svg>
+      )}
     </button>
   )
 
@@ -168,11 +195,13 @@ export default function AppShell() {
             />
           </div>
 
+          {/*
+            좁은 화면에서는 단지 패널이 지도를 통째로 덮는다. 아래 62% 만 쓰던
+            바텀시트로는 단지 헤더를 빼면 실거래가에 116px 밖에 안 남아,
+            거래 목록도 연도별 막대도 끝까지 볼 수가 없었다.
+          */}
           {compact && panelOpen && (
-            <div className="sheet" style={{ height: '62%' }}>
-              <div className="sheet__grip">
-                <span />
-              </div>
+            <div className="sheet">
               {closeButton}
               <div className="panel__scroll">{panel}</div>
             </div>

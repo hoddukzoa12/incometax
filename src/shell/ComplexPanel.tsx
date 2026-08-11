@@ -12,6 +12,7 @@ import {
   filterTradesByArea,
 } from '../sidebar/trade-filter-data'
 import { useSidebarData } from '../sidebar/useSidebarData'
+import { useLayerHistory } from './layer-history'
 import { UnitLookup } from './UnitLookup'
 // ComplexSidebar 를 안 쓰므로 그 CSS 를 여기서 싣는다 —
 // 단지 정보·섹션·「거래 더 보기」가 전부 이 파일에 있다.
@@ -48,6 +49,8 @@ export function ComplexPanel({
   }
   const [areaKey, setAreaKey] = useState<string | null>(null)
   const [year, setYear] = useState(ALL_YEARS)
+  /* 동·호 모달도 지도를 덮는 층이다 — 뒤로가기는 사이트가 아니라 이것을 닫는다. */
+  useLayerHistory('unitLookup', pending !== null, () => setPending(null))
 
   const trades = data.trades?.items ?? []
   const areaOptions = availableTradeAreas(trades)

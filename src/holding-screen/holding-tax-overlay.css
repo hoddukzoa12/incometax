@@ -47,6 +47,7 @@
 }
 
 .holding-overlay__title-row h1 {
+  min-width: 0;
   font-size: var(--font-size-xl);
 }
 
@@ -640,13 +641,24 @@
 }
 
 @media (max-width: 45rem) {
-  .holding-overlay__header,
+  .holding-overlay .holding-overlay__header {
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
   .holding-overlay__content {
     padding: var(--space-3);
   }
 
+  .holding-assumptions {
+    padding: var(--space-2);
+  }
+
   .holding-overlay__title-row,
-  .holding-assumptions__summary,
+  .holding-assumptions__summary {
+    gap: var(--space-2);
+  }
+
   .holding-tax-statement__header {
     align-items: stretch;
     flex-direction: column;
@@ -891,9 +903,21 @@
   color: var(--color-neutral-600);
 }
 
-/* 좁은 화면에서는 막대가 붙어 증감 표가 겹친다 */
+/* 좁은 화면에서는 라벨 밑변을 맞추고 올해→내년 증감만 보인다. */
 @media (max-width: 45rem) {
+  /* 구형 브라우저는 lh 선언을 버리므로 rem 대체값을 먼저 둔다. */
+  .trend__col b {
+    min-height: 1.625rem;
+    min-height: 2lh;
+  }
+
   .trend__step {
     display: none;
+  }
+
+  .trend__col.is-focus + .trend__col .trend__step {
+    top: 1.875rem;
+    top: calc(2lh + var(--space-1));
+    display: block;
   }
 }

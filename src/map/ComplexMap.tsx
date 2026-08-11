@@ -41,19 +41,11 @@ const displayModeForLevel = (level: number): MapDisplayMode =>
   level <= MAXIMUM_LABEL_DISPLAY_LEVEL ? 'labels' : 'clusters'
 
 /**
- * 좁은 화면에서 바텀시트가 지도 아래를 덮는 비율 (AppShell 의 `.sheet` 높이).
- * 데스크톱 패널은 지도와 flex 형제라 덮지 않으므로 보정이 필요 없다.
- */
-const SHEET_COVER_RATIO = 0.62
-const COMPACT_LAYOUT_MAX_WIDTH_PX = 720
-const HALF = 2
-const NO_OFFSET = 0
-
-/**
- * 고른 단지를 보이는 영역의 가운데로 옮긴다.
+ * 고른 단지를 지도 가운데로 옮긴다.
  *
- * `setCenter` 는 지도 요소의 정중앙에 놓는데, 좁은 화면에서는 그 아래를
- * 바텀시트가 덮고 있어 라벨이 시트 뒤로 숨는다. 덮인 만큼 위로 올려 준다.
+ * 위아래로 밀어 두지 않는다. 데스크톱 패널은 지도와 flex 형제라 덮지 않고,
+ * 좁은 화면의 단지 패널은 지도를 통째로 덮으므로 비켜 둘 자리가 따로 없다.
+ * 패널을 닫으면 고른 단지가 화면 정중앙에 있어야 한다.
  */
 const panToComplex = (
   map: kakao.maps.Map,
@@ -66,10 +58,6 @@ const panToComplex = (
       animate: { duration: MAP_LEVEL_CHANGE_ANIMATION_DURATION_MS },
     })
   }
-  const compact = window.innerWidth <= COMPACT_LAYOUT_MAX_WIDTH_PX
-  if (!compact) return
-  const coveredHeight = map.getNode().clientHeight * SHEET_COVER_RATIO
-  map.panBy(NO_OFFSET, -coveredHeight / HALF)
 }
 
 const clusterText = (count: number): string =>

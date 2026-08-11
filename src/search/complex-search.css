@@ -1,6 +1,6 @@
 .complex-search {
   position: relative;
-  width: min(24rem, calc(100vw - 2rem));
+  width: 100%;
   color: var(--color-neutral-900);
 }
 
@@ -15,6 +15,7 @@
 .complex-search__input {
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
   min-height: 3rem;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-neutral-300);

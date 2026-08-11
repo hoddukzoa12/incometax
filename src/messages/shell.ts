@@ -25,5 +25,10 @@ export const SHELL_MESSAGES = {
   tradeYearOption: (year: string) => `${year}년`,
   priceNote: '보유세는 실거래가가 아니라 공시가격으로 매겨요 · 공시가격은 동·호를 골라야 나와요',
   collapsePanelLabel: '사이드바 접기',
+  /*
+   * 좁은 화면에서는 패널이 지도를 통째로 덮는다. 접히는 옆면이 없으므로
+   * 「사이드바 접기」라고 하면 무엇이 접히는지 알 수 없다 — 그냥 닫는 것이다.
+   */
+  closePanelLabel: '단지 정보 닫기',
   resultLabel: '보유세 계산 결과',
 } as const
