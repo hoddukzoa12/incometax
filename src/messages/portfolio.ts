@@ -27,7 +27,7 @@ export const PORTFOLIO_MESSAGES = {
   calculateHoldingTax: '보유세 비교',
   identitySeparator: ' · ',
   unitIdentity: (dong: string | null, ho: string | null) => [
-    dong ? `${dong}${SIDEBAR_MESSAGES.dongSuffix}` : null,
+    dong && dong !== '동명없음' ? `${dong}${SIDEBAR_MESSAGES.dongSuffix}` : null,
     ho ? `${ho}${SIDEBAR_MESSAGES.roomSuffix}` : null,
   ].filter((value): value is string => value !== null).join(' '),
   assetKind: {

@@ -17,9 +17,11 @@ const ADDRESS_FIELD = '부동산주소'
  * `address` 는 도로명이 있으면 도로명, 없으면 지번이다
  * (`UnitLookup` 의 `complex.roadAddress ?? complex.legalAddress`).
  */
+const UNNAMED_DONG = '동명없음'
+
 const describeItem = (item: StoredPortfolioItem): string => [
   item.address,
-  item.dong === null ? null : `${item.dong}동`,
+  item.dong === null || item.dong === UNNAMED_DONG ? null : `${item.dong}동`,
   item.ho === null ? null : `${item.ho}호`,
 ].filter((part): part is string => part !== null && part !== '').join(' ')
 
