@@ -275,16 +275,20 @@ export const calculateComprehensiveTax = (
     (total, propertyTax) => total + propertyTax.baseTax,
     ZERO_AMOUNT,
   )
+  // v3.3 엑셀: B55(세액공제 후) → B56(세부담상한) → B57(종합부동산세).
+  // 세부담상한의 당해 기준은 재산세 + 세액공제 후 종부세다.
+  const afterCredit = taxCredit.amount === null
+    ? null
+    : unroundedNetTax - taxCredit.amount
   const taxBurdenCap = calculateComprehensiveTaxBurdenCap(
     propertyBaseTaxTotal,
-    netTax,
+    afterCredit !== null ? roundTaxAmount(afterCredit) : netTax,
     priorYearTax,
     rules.comprehensiveTax.taxBurdenCap,
   )
-  const payableTaxBeforeMinimum = taxCredit.amount === null
+  const payableTaxBeforeMinimum = afterCredit === null
     ? null
-    : unroundedNetTax - taxCredit.amount - taxBurdenCap.excessAmount
-  // holding-tax-v3-spec.md §3.12 그대로 2027년 이후에는 0 하한이 없어 음수가 될 수 있다.
+    : afterCredit - taxBurdenCap.excessAmount
   const unroundedPayableTax = payableTaxBeforeMinimum === null
     ? null
     : rules.comprehensiveTax.payableTaxMinimum === null

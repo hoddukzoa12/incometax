@@ -51,18 +51,26 @@ export const assertValidHoldingTaxInput = (
     throw new RangeError(INVALID_OWNER_AGE_MESSAGE)
   }
 
-  const priorYearFigures = [
+  const priorYearNonNegative = [
     input.priorYearTax?.propertyBaseTax,
     input.priorYearTax?.comprehensiveCalculatedTax,
-    input.priorYearTax?.comprehensiveTax,
   ].filter((amount): amount is number => amount !== undefined)
   if (
-    priorYearFigures.some(
+    priorYearNonNegative.some(
       (amount) =>
         !Number.isFinite(amount) ||
         amount < ZERO_AMOUNT ||
         !Number.isSafeInteger(amount),
     )
+  ) {
+    throw new RangeError(INVALID_PRIOR_YEAR_TAX_MESSAGE)
+  }
+  // payableTax 는 2027년 이후 0 하한이 없어 음수가 될 수 있다.
+  const comprehensiveTax = input.priorYearTax?.comprehensiveTax
+  if (
+    comprehensiveTax !== undefined &&
+    (!Number.isFinite(comprehensiveTax) ||
+      !Number.isSafeInteger(comprehensiveTax))
   ) {
     throw new RangeError(INVALID_PRIOR_YEAR_TAX_MESSAGE)
   }
