@@ -334,10 +334,10 @@ export function HoldingTaxConditionsModal({
                * 안 고른 채 넘어가면 거주지를 확정한다 — 다주택은 첫 집,
                * 1주택은 그 집. 「안 살아요」를 고른 1주택은 그대로 둔다.
                */
-              const answered = taxedItems.some(
+              const allAnswered = taxedItems.every(
                 ({ residency }) => residency !== null,
               )
-              const next = answered
+              const next = allAnswered
                 ? conditions
                 : applyResidingHome(conditions, (residingItem ?? item).id)
               setConditions(next)
