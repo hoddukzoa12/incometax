@@ -172,7 +172,7 @@ describe('calculateComprehensiveTaxCredit boundaries', () => {
     })
   })
 
-  it('uses holding only in 2026 and the maximum of holding and residence from 2027', () => {
+  it('uses holding only in 2026, maximum in 2027, residence only from 2028', () => {
     expect(calculateCredit(2026, 0, 0, 15)).toMatchObject({
       status: 'computed',
       periodRate: 0,
@@ -187,7 +187,7 @@ describe('calculateComprehensiveTaxCredit boundaries', () => {
       status: 'computed',
       holdingPeriodRate: 0.25,
       residencePeriodRate: 0,
-      periodRate: 0.25,
+      periodRate: 0,
     })
   })
 

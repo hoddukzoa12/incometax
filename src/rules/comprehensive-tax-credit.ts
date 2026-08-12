@@ -81,16 +81,15 @@ export const COMPREHENSIVE_TAX_CREDIT_RULES_2027 = {
 } as const satisfies ComprehensiveTaxCreditRules
 
 /**
- * 종부세 2028년 이후 세액공제 — holding-tax-v3-spec.md §3.10.
- * v3 엑셀에 따라 보유·거주 공제 중 큰 비율을 적용하고 600만원으로 제한한다.
- * 이는 거주공제만 적용한다고 적은 tax-rules-spec.md §5.2와 다르며,
- * 사용자 지시대로 v3 엑셀을 우선했다.
+ * 종부세 2028년 이후 세액공제 — 개편안 p64, v3.3 엑셀.
+ * '28년 이후에는 거주공제만 적용한다. 보유공제는 후보에서 빠진다.
+ * 금액 한도 600만원.
  */
 export const COMPREHENSIVE_TAX_CREDIT_RULES_FROM_2028 = {
   ageRates: COMPREHENSIVE_TAX_AGE_CREDIT_RATES,
   holdingPeriodRates: COMPREHENSIVE_TAX_HOLDING_CREDIT_RATES_2027,
   residencePeriodRates: COMPREHENSIVE_TAX_RESIDENCE_CREDIT_RATES_FROM_2027,
-  periodCreditKind: 'maximum',
+  periodCreditKind: 'residence',
   maximumRate: COMPREHENSIVE_TAX_CREDIT_MAXIMUM_RATE,
   amountCap: 6_000_000,
   residenceRecognition:

@@ -617,7 +617,7 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
     const expectedBefore = {
       2026: { periodRate: 0.2, comprehensiveTax: 1_157_760 },
       2027: { periodRate: 0.1, comprehensiveTax: 1_118_880 },
-      2028: { periodRate: 0.1, comprehensiveTax: 1_118_880 },
+      2028: { periodRate: 0, comprehensiveTax: 1_278_720 },
     } as const
     const expectedAfter = {
       2026: { periodRate: 0.2, comprehensiveTax: 1_157_760 },
