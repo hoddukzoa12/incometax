@@ -30,14 +30,18 @@ const ZERO_RATE = 0
 
 const calculatePropertyTaxSubtotal = (
   propertyTaxes: readonly PropertyTaxResult[],
+  propertyTaxFairMarketValueRatio: number,
   rules: TaxRules,
 ): ComprehensivePropertyTaxSubtotalResult => {
-  // 과세표준상한 적용 전(uncapped) 합계로 산출세액을 구한다.
-  // 공제할재산세액의 분모(v3.3 엑셀 F15)는 상한 전 산출세액이다.
-  const taxableBase = propertyTaxes.reduce(
-    (total, propertyTax) => total + propertyTax.uncappedFullTaxableBase,
+  // 공제할재산세액의 분모(v3.3 엑셀 F15)는 주택소계 시가표준액 × 60%(고정)로
+  // 구한 과세표준에 세율을 적용한 산출세액이다. 개별 물건의 공정비율(43/44/45%)이
+  // 아니라 종부세용 60%를 쓴다 — 종부세 공제할재산세액은 종부세 과세표준에
+  // 대응하는 재산세 상당액이기 때문이다.
+  const officialPriceTotal = propertyTaxes.reduce(
+    (total, propertyTax) => total + propertyTax.fullOfficialPrice,
     ZERO_AMOUNT,
   )
+  const taxableBase = officialPriceTotal * propertyTaxFairMarketValueRatio
   const brackets = rules.propertyTax.brackets.general
   const bracket = findApplicableTaxBracket(taxableBase, brackets)
   const calculatedTax = evaluateBracketTax(taxableBase, brackets)
@@ -221,6 +225,7 @@ export const calculateComprehensiveTax = (
     rules.propertyTax.fairMarketValueRatios.other
   const propertyTaxSubtotal = calculatePropertyTaxSubtotal(
     propertyTaxes,
+    propertyTaxFairMarketValueRatio,
     rules,
   )
 
@@ -245,7 +250,6 @@ export const calculateComprehensiveTax = (
   const brackets = getBrackets(rules.comprehensiveTax, homeCount)
   const bracket = findApplicableTaxBracket(taxableBase, brackets)
   const baseTax = evaluateBracketTax(taxableBase, brackets)
-  // 공제할재산세액 — holding-tax-v3-spec.md §3.8의 주택소계 수식을 그대로 적용한다.
   const propertyTaxCredit =
     propertyTaxSubtotal.propertyTax *
     (

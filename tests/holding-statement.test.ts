@@ -109,9 +109,9 @@ describe('holding-tax compact statement', () => {
     )
 
     expect(html).toContain('2027년 보유세')
-    expect(html).toContain('7,999,398 원')
-    expect(html).toContain('지금보다 1,009,228원 늘어요.')
-    expect(html).toContain('2026년 현행 6,990,170 원 · 2030년 7,999,398 원')
+    expect(html).toContain('8,477,329 원')
+    expect(html).toContain('지금보다 1,098,196원 늘어요.')
+    expect(html).toContain('2026년 현행 7,379,133 원 · 2030년 8,477,329 원')
     expect(html).toContain('무엇 때문에 늘었나요?')
     expect(html).toContain('계산 근거 보기')
   })
@@ -120,7 +120,7 @@ describe('holding-tax compact statement', () => {
     const comparison = calculatedComparison(1)
 
     expect(comparison.calculations.map(({ result }) => result.totalTax))
-      .toEqual([6_990_170, 7_999_398, 7_999_398, 7_999_398, 7_999_398])
+      .toEqual([7_379_133, 8_477_329, 8_477_329, 8_477_329, 8_477_329])
 
     const property = propertyRows(
       comparison.calculations,
@@ -162,7 +162,7 @@ describe('holding-tax compact statement', () => {
       ...totals.rows,
     ]).toHaveLength(17)
     expect(comprehensive.rows.find(({ label }) => label === '재산세 공제'))
-      .toMatchObject({ amount: '−1,406,160 원' })
+      .toMatchObject({ amount: '−1,007,884 원' })
     expect(comprehensive.rows.find(
       ({ label }) => label === '세부담상한 차감액',
     )).toMatchObject({ amount: '0 원' })
@@ -177,10 +177,10 @@ describe('holding-tax compact statement', () => {
       ['기본공제', '1,200,000,000 원'],
       ['과세표준', '622,200,000 원'],
       ['산출세액', '3,822,000 원'],
-      ['재산세 공제', '−1,163,168 원'],
-      ['세부담상한 차감액', '−434,842 원'],
-      ['농어촌특별세', '444,798 원'],
-      ['합계', '2,668,788 원'],
+      ['재산세 공제', '−833,716 원'],
+      ['세부담상한 차감액', '−440,158 원'],
+      ['농어촌특별세', '509,625 원'],
+      ['합계', '3,057,751 원'],
     ])
     const capBasisByYear = Object.fromEntries(
       ([2026, 2027, 2028] as const).map((year) => [
@@ -199,38 +199,38 @@ describe('holding-tax compact statement', () => {
     const changeRows = holdingTaxChangeRows(comparison.calculations)
     expect(changeRows).toEqual([
       {
-        key: '2026:2027:burdenCap',
-        label: '세부담상한',
-        fromYear: 2026,
-        toYear: 2027,
-        fromValue: '521,810원 차감',
-        toValue: '적용 없음',
-        contribution: 521_810,
-      },
-      {
         key: '2026:2027:beforeBurdenCap',
         label: '상한 적용 전 세액',
         fromYear: 2026,
         toYear: 2027,
-        fromValue: '7,511,980원',
-        toValue: '7,999,398원',
-        contribution: 487_418,
+        fromValue: '7,907,323원',
+        toValue: '8,477,329원',
+        contribution: 570_006,
+      },
+      {
+        key: '2026:2027:burdenCap',
+        label: '세부담상한',
+        fromYear: 2026,
+        toYear: 2027,
+        fromValue: '528,190원 차감',
+        toValue: '적용 없음',
+        contribution: 528_190,
       },
     ])
     expect(changeRows.reduce(
       (total, { contribution }) => total + contribution,
       0,
-    )).toBe(7_999_398 - 6_990_170)
+    )).toBe(8_477_329 - 7_379_133)
 
     const reasonsHtml = renderToStaticMarkup(
       createElement(HoldingTaxChangeReasons, {
         calculations: comparison.calculations,
       }),
     )
-    expect(reasonsHtml).toContain('521,810원 늘리는 요인')
-    expect(reasonsHtml).toContain('487,418원 늘리는 요인')
+    expect(reasonsHtml).toContain('570,006원 늘리는 요인')
+    expect(reasonsHtml).toContain('528,190원 늘리는 요인')
     expect(reasonsHtml).toContain(
-      '2026년 521,810원 차감 → 2027년 적용 없음',
+      '2026년 528,190원 차감 → 2027년 적용 없음',
     )
   })
 

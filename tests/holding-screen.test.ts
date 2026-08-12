@@ -113,9 +113,9 @@ describe('holding-tax screen boundary', () => {
     })
     expect(currentReform.result.comprehensiveTax).toMatchObject({
       basicDeduction: 900_000_000,
-      totalTax: 218_400,
+      totalTax: 276_414,
     })
-    expect(currentReform.result.totalTax).toBe(2_630_400)
+    expect(currentReform.result.totalTax).toBe(2_688_414)
     expect(comparison.calculations.map(({ input }) => ({
       year: input.year,
       ownerAge: input.ownerAge,
@@ -326,54 +326,54 @@ describe('holding-tax screen boundary', () => {
 
     expect(current.input.priorYearTax).toEqual({
       propertyBaseTax: 2_444_400,
-      comprehensiveCalculatedTax: 802_080,
-      comprehensiveTax: 802_080,
+      comprehensiveCalculatedTax: 1_018_171,
+      comprehensiveTax: 1_018_171,
     })
     expect(current.result.comprehensiveTax.taxBurdenCap).toEqual({
       status: 'computed',
       rate: 1.5,
-      priorYearBase: 3_246_480,
-      maximumTaxBurden: 4_869_720,
-      currentYearBase: 5_304_562,
-      excessAmount: 434_842,
+      priorYearBase: 3_462_571,
+      maximumTaxBurden: 5_193_857,
+      currentYearBase: 5_634_014,
+      excessAmount: 440_158,
     })
     expect(current.result).toMatchObject({
       propertyTaxTotal: 4_321_382,
       comprehensiveTax: {
-        netTax: 2_658_832,
-        payableTax: 2_223_990,
-        ruralSpecialTax: 444_798,
-        totalTax: 2_668_788,
+        netTax: 2_988_284,
+        payableTax: 2_548_126,
+        ruralSpecialTax: 509_625,
+        totalTax: 3_057_751,
       },
-      totalTax: 6_990_170,
+      totalTax: 7_379_133,
     })
     const beforeBurdenCap = calculateHoldingTax({
       ...current.input,
       priorYearTax: undefined,
     })
-    expect(beforeBurdenCap.totalTax).toBe(7_511_980)
+    expect(beforeBurdenCap.totalTax).toBe(7_907_323)
   })
 
   it.each([
     {
       annualOfficialPriceGrowthRate: 0,
       expected: [
-        { year: 2027, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 7_999_398 },
-        { year: 2028, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 7_999_398 },
+        { year: 2027, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 8_477_329 },
+        { year: 2028, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 8_477_329 },
       ],
     },
     {
       annualOfficialPriceGrowthRate: 0.05,
       expected: [
-        { year: 2027, officialPrice: 2_348_850_000, priorOfficialPrice: 2_237_000_000, totalTax: 9_205_852 },
-        { year: 2028, officialPrice: 2_466_292_500, priorOfficialPrice: 2_348_850_000, totalTax: 10_579_224 },
+        { year: 2027, officialPrice: 2_348_850_000, priorOfficialPrice: 2_237_000_000, totalTax: 9_744_242 },
+        { year: 2028, officialPrice: 2_466_292_500, priorOfficialPrice: 2_348_850_000, totalTax: 11_180_648 },
       ],
     },
     {
       annualOfficialPriceGrowthRate: 0.1,
       expected: [
-        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_334_955 },
-        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_206_205 },
+        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_904_846 },
+        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_901_280 },
       ],
     },
   ])(
@@ -444,26 +444,26 @@ describe('holding-tax screen boundary', () => {
     }))).toEqual([
       {
         year: 2027,
-        totalTax: 13_237_569,
+        totalTax: 14_015_495,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 4_869_720,
-          maximumTaxBurden: 9_739_440,
-          currentYearBase: 26_833_115,
-          excessAmount: 17_093_675,
+          priorYearBase: 5_193_856,
+          maximumTaxBurden: 10_387_712,
+          currentYearBase: 27_535_088,
+          excessAmount: 17_147_376,
         },
       },
       {
         year: 2028,
-        totalTax: 26_475_138,
+        totalTax: 28_030_991,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 9_739_440,
-          maximumTaxBurden: 19_478_880,
-          currentYearBase: 125_230_455,
-          excessAmount: 105_751_575,
+          priorYearBase: 10_387_712,
+          maximumTaxBurden: 20_775_424,
+          currentYearBase: 126_966_912,
+          excessAmount: 106_191_488,
         },
       },
     ])
