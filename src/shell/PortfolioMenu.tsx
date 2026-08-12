@@ -47,7 +47,7 @@ export function PortfolioMenu({
         aria-label={open ? SHELL_MESSAGES.portfolioClose : SHELL_MESSAGES.portfolioOpen}
         onClick={() => setOpen((value) => !value)}
       >
-        내 부동산 <span className="chip__n">{items.length}</span>건
+        {SHELL_MESSAGES.portfolioChip(items.length)}
       </button>
 
       {open && (

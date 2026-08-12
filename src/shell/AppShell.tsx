@@ -121,7 +121,6 @@ export default function AppShell() {
         flash(SHELL_MESSAGES.added(seed.complexName))
       }}
       addRequestSeq={addRequestSeq}
-      onCalculate={() => setAskingConditions(true)}
     />
   )
 

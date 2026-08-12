@@ -1,6 +1,6 @@
 export const SHELL_MESSAGES = {
   logoAlt: '',
-  portfolioChip: (count: number) => `내 부동산 ${count}건`,
+  portfolioChip: (count: number) => `${count}건 보유세 계산`,
   portfolioOpen: '내 부동산 목록 열기',
   portfolioClose: '내 부동산 목록 닫기',
   portfolioTitle: '내 부동산',

@@ -32,16 +32,14 @@ export function ComplexPanel({
   complexId,
   addRequestSeq,
   onAddToPortfolio,
-  onCalculate,
 }: {
   readonly complexId: string | null
   /** 지도 라벨의 + 를 누를 때마다 증가한다. 같은 단지를 다시 눌러도 모달이 열려야 한다. */
   readonly addRequestSeq: number
   readonly onAddToPortfolio: (seed: PortfolioItemSeed) => void
-  readonly onCalculate: () => void
 }) {
   const data = useSidebarData(complexId)
-  const [pending, setPending] = useState<'add' | 'calculate' | null>(null)
+  const [pending, setPending] = useState<'add' | null>(null)
   const [seenAddSeq, setSeenAddSeq] = useState(addRequestSeq)
   if (addRequestSeq !== seenAddSeq) {
     setSeenAddSeq(addRequestSeq)
@@ -98,23 +96,12 @@ export function ComplexPanel({
               )}
             </ComplexBasics>
             <div className="sidehead__acts">
-              {/*
-                계산은 담은 것 전체를 합산한다. 아직 아무것도 안 담았으면
-                이 단지를 담는 것부터가 순서라 그때만 계산을 내놓는다.
-              */}
               <button
                 className="cta"
                 type="button"
-                onClick={() => setPending('calculate')}
-              >
-                <span>{SHELL_MESSAGES.calculateFromComplex}</span>
-              </button>
-              <button
-                className="ghost"
-                type="button"
                 onClick={() => setPending('add')}
               >
-                {SHELL_MESSAGES.addFromComplex}
+                <span>{SHELL_MESSAGES.addFromComplex}</span>
               </button>
             </div>
           </div>
@@ -187,13 +174,11 @@ export function ComplexPanel({
       {pending !== null && data.detail && (
         <UnitLookup
           complex={data.detail}
-          mode={pending}
+          mode="add"
           onCancel={() => setPending(null)}
           onConfirm={(seed) => {
-            const mode = pending
             setPending(null)
             onAddToPortfolio(seed)
-            if (mode === 'calculate') onCalculate()
           }}
         />
       )}
