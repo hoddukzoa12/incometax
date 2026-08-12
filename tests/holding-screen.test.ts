@@ -334,13 +334,13 @@ describe('holding-tax screen boundary', () => {
       rate: 1.5,
       priorYearBase: 3_246_480,
       maximumTaxBurden: 4_869_720,
-      currentYearBase: 4_974_450,
-      excessAmount: 104_730,
+      currentYearBase: 5_304_562,
+      excessAmount: 434_842,
     })
     expect(current.result).toMatchObject({
       propertyTaxTotal: 4_321_382,
       comprehensiveTax: {
-        netTax: 2_328_720,
+        netTax: 2_658_832,
         payableTax: 2_223_990,
         ruralSpecialTax: 444_798,
         totalTax: 2_668_788,
@@ -351,7 +351,7 @@ describe('holding-tax screen boundary', () => {
       ...current.input,
       priorYearTax: undefined,
     })
-    expect(beforeBurdenCap.totalTax).toBe(7_115_846)
+    expect(beforeBurdenCap.totalTax).toBe(7_511_980)
   })
 
   it.each([
@@ -372,8 +372,8 @@ describe('holding-tax screen boundary', () => {
     {
       annualOfficialPriceGrowthRate: 0.1,
       expected: [
-        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_232_971 },
-        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_082_427 },
+        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_334_955 },
+        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_206_205 },
       ],
     },
   ])(
@@ -450,8 +450,8 @@ describe('holding-tax screen boundary', () => {
           rate: 2,
           priorYearBase: 4_869_720,
           maximumTaxBurden: 9_739_440,
-          currentYearBase: 24_311_940,
-          excessAmount: 14_572_500,
+          currentYearBase: 26_833_115,
+          excessAmount: 17_093_675,
         },
       },
       {
@@ -462,8 +462,8 @@ describe('holding-tax screen boundary', () => {
           rate: 2,
           priorYearBase: 9_739_440,
           maximumTaxBurden: 19_478_880,
-          currentYearBase: 119_291_880,
-          excessAmount: 99_813_000,
+          currentYearBase: 125_230_455,
+          excessAmount: 105_751_575,
         },
       },
     ])

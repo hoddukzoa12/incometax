@@ -177,8 +177,8 @@ describe('holding-tax compact statement', () => {
       ['기본공제', '1,200,000,000 원'],
       ['과세표준', '622,200,000 원'],
       ['산출세액', '3,822,000 원'],
-      ['재산세 공제', '−1,493,280 원'],
-      ['세부담상한 차감액', '−104,730 원'],
+      ['재산세 공제', '−1,163,168 원'],
+      ['세부담상한 차감액', '−434,842 원'],
       ['농어촌특별세', '444,798 원'],
       ['합계', '2,668,788 원'],
     ])
@@ -199,22 +199,22 @@ describe('holding-tax compact statement', () => {
     const changeRows = holdingTaxChangeRows(comparison.calculations)
     expect(changeRows).toEqual([
       {
-        key: '2026:2027:beforeBurdenCap',
-        label: '상한 적용 전 세액',
-        fromYear: 2026,
-        toYear: 2027,
-        fromValue: '7,115,846원',
-        toValue: '7,999,398원',
-        contribution: 883_552,
-      },
-      {
         key: '2026:2027:burdenCap',
         label: '세부담상한',
         fromYear: 2026,
         toYear: 2027,
-        fromValue: '125,676원 차감',
+        fromValue: '521,810원 차감',
         toValue: '적용 없음',
-        contribution: 125_676,
+        contribution: 521_810,
+      },
+      {
+        key: '2026:2027:beforeBurdenCap',
+        label: '상한 적용 전 세액',
+        fromYear: 2026,
+        toYear: 2027,
+        fromValue: '7,511,980원',
+        toValue: '7,999,398원',
+        contribution: 487_418,
       },
     ])
     expect(changeRows.reduce(
@@ -227,10 +227,10 @@ describe('holding-tax compact statement', () => {
         calculations: comparison.calculations,
       }),
     )
-    expect(reasonsHtml).toContain('883,552원 늘리는 요인')
-    expect(reasonsHtml).toContain('125,676원 늘리는 요인')
+    expect(reasonsHtml).toContain('521,810원 늘리는 요인')
+    expect(reasonsHtml).toContain('487,418원 늘리는 요인')
     expect(reasonsHtml).toContain(
-      '2026년 125,676원 차감 → 2027년 적용 없음',
+      '2026년 521,810원 차감 → 2027년 적용 없음',
     )
   })
 

@@ -32,8 +32,10 @@ const calculatePropertyTaxSubtotal = (
   propertyTaxes: readonly PropertyTaxResult[],
   rules: TaxRules,
 ): ComprehensivePropertyTaxSubtotalResult => {
+  // 과세표준상한 적용 전(uncapped) 합계로 산출세액을 구한다.
+  // 공제할재산세액의 분모(v3.3 엑셀 F15)는 상한 전 산출세액이다.
   const taxableBase = propertyTaxes.reduce(
-    (total, propertyTax) => total + propertyTax.fullTaxableBase,
+    (total, propertyTax) => total + propertyTax.uncappedFullTaxableBase,
     ZERO_AMOUNT,
   )
   const brackets = rules.propertyTax.brackets.general
