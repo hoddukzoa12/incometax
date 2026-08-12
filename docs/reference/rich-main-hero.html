@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rich-main-hero 추출본</title>
+<style>body{margin:0}</style>
+</head><body>
+<section class="rich-main-hero" aria-label="세무법인 리치 메인 슬라이드">
+    <a href="https://youtu.be/CW7nz-ib-z8?si=3WMBWI8RtVlrVSlj
+" target="_blank">
+  <div class="rich-hero-slide rich-slide-01">
+    <div class="rich-hero-bg"></div>
+    <div class="rich-hero-overlay"></div>
+    <div class="rich-hero-inner">
+      <div class="rich-hero-copy">
+        <span class="rich-hero-badge">세무법인 리치 대표세무사</span>
+        <h2 class="rich-hero-title">
+          상속·증여 세금,<br>
+          리치가 풀어드립니다
+        </h2>
+        <p class="rich-hero-desc rich-desc-pc">
+          20만 구독자가 신뢰하는 세금 전문가,<br>
+          20권 이상의 저서로 검증된 자산 전문가입니다.
+        </p>
+        <p class="rich-hero-desc rich-desc-mobile">
+          20만 구독자가 신뢰하는<br>
+          세금 전문가,<br>
+          검증된 자산 전문가입니다.
+        </p>
+      </div>
+    </div>
+  </div></a>
+  <div class="rich-hero-slide rich-slide-02">
+    <div class="rich-hero-bg"></div>
+    <div class="rich-hero-overlay"></div>
+    <div class="rich-hero-inner">
+      <div class="rich-hero-copy">
+        <span class="rich-hero-badge">부동산·토지보상 전문</span>
+        <h2 class="rich-hero-title">
+          부동산 세금,<br>
+          한 발 앞서 준비하세요
+        </h2>
+        <p class="rich-hero-desc rich-desc-pc">
+          양도세 중과, 다주택자 절세, 토지수용 보상금까지<br>
+          부동산 거래의 모든 세금을 체계적으로 설계합니다.
+        </p>
+        <p class="rich-hero-desc rich-desc-mobile">
+          양도세 중과, 다주택자 절세,<br>
+          토지수용 보상금까지<br>
+          체계적으로 설계합니다.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="rich-hero-slide rich-slide-03">
+    <div class="rich-hero-bg"></div>
+    <div class="rich-hero-overlay"></div>
+    <div class="rich-hero-inner">
+      <div class="rich-hero-copy">
+        <span class="rich-hero-badge">베스트셀러 저자</span>
+        <h2 class="rich-hero-title">
+          20권 이상의 세금 도서,<br>
+          실전 지식의 집대성
+        </h2>
+        <p class="rich-hero-desc rich-desc-pc">
+          「부의 이전」「나의 토지수용보상금 지키기」 등<br>
+          어려운 세금을 누구나 이해할 수 있도록 풀어냈습니다.
+        </p>
+        <p class="rich-hero-desc rich-desc-mobile">
+          20권 이상의 세금 도서로<br>
+          어려운 세금을 쉽게<br>
+          풀어낸 전문가입니다.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="rich-hero-progress" aria-hidden="true">
+    <span></span>
+  </div>
+</section>
+<style>
+  .rich-main-hero {
+    position: relative;
+    width: 100%;
+    height: 720px;
+    min-height: 560px;
+    overflow: hidden;
+    background: #111827;
+  }
+  .rich-hero-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    animation-duration: 18s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .rich-slide-01 {
+    animation-name: richSlideFade01;
+  }
+  .rich-slide-02 {
+    animation-name: richSlideFade02;
+  }
+  .rich-slide-03 {
+    animation-name: richSlideFade03;
+  }
+  .rich-hero-bg {
+    position: absolute;
+    inset: 0;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    transform: scale(1);
+    animation-duration: 18s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .rich-slide-01 .rich-hero-bg {
+    background-image: url("https://023339001.com/wp-content/uploads/2026/05/main_img_01.jpg");
+    animation-name: richBgZoom01;
+  }
+  .rich-slide-02 .rich-hero-bg {
+    background-image: url("https://023339001.com/wp-content/uploads/2026/05/main_img_03.jpg");
+    animation-name: richBgZoom02;
+  }
+  .rich-slide-03 .rich-hero-bg {
+    background-image: url("https://023339001.com/wp-content/uploads/2026/05/main_img_02.jpg");
+    animation-name: richBgZoom03;
+  }
+  .rich-hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .rich-hero-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.48) 0%,
+      rgba(0, 0, 0, 0.28) 45%,
+      rgba(0, 0, 0, 0.08) 100%
+    );
+  }
+  .rich-hero-inner {
+    position: relative;
+    z-index: 2;
+    width: min(1140px, calc(100% - 40px));
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+  }
+  .rich-hero-copy {
+    max-width: 980px;
+    color: #ffffff;
+    opacity: 0;
+    transform: translateY(28px);
+    animation-duration: 18s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-iteration-count: infinite;
+  }
+  .rich-slide-01 .rich-hero-copy {
+    animation-name: richTextReveal01;
+  }
+  .rich-slide-02 .rich-hero-copy {
+    animation-name: richTextReveal02;
+  }
+  .rich-slide-03 .rich-hero-copy {
+    animation-name: richTextReveal03;
+  }
+  .rich-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 26px;
+    margin-bottom: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .rich-hero-title {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(44px, 5.2vw, 82px);
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.055em;
+    text-shadow: 0 3px 18px rgba(0, 0, 0, 0.24);
+  }
+  .rich-hero-desc {
+    margin: 36px 0 0;
+    color: rgba(255, 255, 255, 0.94);
+    font-size: clamp(18px, 1.8vw, 26px);
+    font-weight: 500;
+    line-height: 1.65;
+    letter-spacing: -0.035em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  .rich-desc-mobile {
+    display: none;
+  }
+  .rich-hero-progress {
+    position: absolute;
+    left: 50%;
+    bottom: 42px;
+    z-index: 5;
+    width: 180px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+    transform: translateX(-50%);
+  }
+  .rich-hero-progress span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    transform-origin: left center;
+    animation: richProgress 6s linear infinite;
+  }
+  @keyframes richSlideFade01 {
+    0%, 28% {
+      opacity: 1;
+      visibility: visible;
+    }
+    33%, 100% {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+  @keyframes richSlideFade02 {
+    0%, 33% {
+      opacity: 0;
+      visibility: hidden;
+    }
+    38%, 61% {
+      opacity: 1;
+      visibility: visible;
+    }
+    66%, 100% {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+  @keyframes richSlideFade03 {
+    0%, 66% {
+      opacity: 0;
+      visibility: hidden;
+    }
+    71%, 94% {
+      opacity: 1;
+      visibility: visible;
+    }
+    100% {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+  @keyframes richBgZoom01 {
+    0%, 28% {
+      transform: scale(1.06);
+    }
+    33%, 100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes richBgZoom02 {
+    0%, 33% {
+      transform: scale(1);
+    }
+    38%, 61% {
+      transform: scale(1.06);
+    }
+    66%, 100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes richBgZoom03 {
+    0%, 66% {
+      transform: scale(1);
+    }
+    71%, 94% {
+      transform: scale(1.06);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes richTextReveal01 {
+    0%, 4% {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+    8%, 28% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    33%, 100% {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+  @keyframes richTextReveal02 {
+    0%, 33% {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+    38%, 61% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    66%, 100% {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+  @keyframes richTextReveal03 {
+    0%, 66% {
+      opacity: 0;
+      transform: translateY(28px);
+    }
+    71%, 94% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+  @keyframes richProgress {
+    0% {
+      transform: scaleX(0);
+    }
+    100% {
+      transform: scaleX(1);
+    }
+  }
+  @media (max-width: 1023px) {
+    .rich-main-hero {
+      height: 620px;
+      min-height: 520px;
+    }
+    .rich-hero-badge {
+      min-height: 40px;
+      padding: 0 22px;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    .rich-hero-desc {
+      margin-top: 28px;
+    }
+  }
+  @media (max-width: 767px) {
+    .rich-main-hero {
+      height: 390px;
+      min-height: 390px;
+      aspect-ratio: auto;
+      margin-bottom: 44px;
+    }
+    .rich-slide-01 .rich-hero-bg {
+      background-image: url("https://023339001.com/wp-content/uploads/2026/05/m_main_01.jpg");
+      background-position: center center;
+    }
+    .rich-slide-02 .rich-hero-bg {
+      background-image: url("https://023339001.com/wp-content/uploads/2026/05/m_main_02.jpg");
+      background-position: center center;
+    }
+    .rich-slide-03 .rich-hero-bg {
+      background-image: url("https://023339001.com/wp-content/uploads/2026/05/m_main_03.jpg");
+      background-position: center center;
+    }
+    .rich-hero-overlay {
+      background: rgba(0, 0, 0, 0.42);
+    }
+    .rich-hero-overlay::after {
+      background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.48) 0%,
+        rgba(0, 0, 0, 0.22) 62%,
+        rgba(0, 0, 0, 0.04) 100%
+      );
+    }
+    .rich-hero-inner {
+      width: calc(100% - 36px);
+      align-items: center;
+    }
+    .rich-hero-copy {
+      max-width: 100%;
+      transform: translateY(18px);
+    }
+    .rich-hero-badge {
+      min-height: 30px;
+      padding: 0 14px;
+      margin-bottom: 18px;
+      font-size: 12px;
+      letter-spacing: -0.04em;
+    }
+    .rich-hero-title {
+      font-size: clamp(26px, 7.5vw, 34px);
+      line-height: 1.22;
+      letter-spacing: -0.06em;
+      white-space: nowrap;
+    }
+    .rich-desc-pc {
+      display: none;
+    }
+    .rich-desc-mobile {
+      display: block;
+    }
+    .rich-hero-desc {
+      margin-top: 16px;
+      font-size: clamp(13px, 3.5vw, 15px);
+      line-height: 1.58;
+      letter-spacing: -0.045em;
+    }
+    .rich-hero-progress {
+      bottom: 18px;
+      width: 110px;
+      height: 3px;
+    }
+  }
+  @media (max-width: 380px) {
+    .rich-main-hero {
+      height: 370px;
+      min-height: 370px;
+      margin-bottom: 38px;
+    }
+    .rich-hero-title {
+      font-size: clamp(24px, 7vw, 30px);
+    }
+    .rich-hero-desc {
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+    .rich-hero-badge {
+      margin-bottom: 14px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rich-hero-slide,
+    .rich-hero-bg,
+    .rich-hero-copy,
+    .rich-hero-progress span {
+      animation: none;
+    }
+    .rich-slide-01 {
+      opacity: 1;
+      visibility: visible;
+    }
+    .rich-slide-01 .rich-hero-bg {
+      transform: scale(1);
+    }
+    .rich-slide-01 .rich-hero-copy {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>				</div>
+				</div>
+</body></html>
