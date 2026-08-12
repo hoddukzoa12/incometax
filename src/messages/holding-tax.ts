@@ -334,8 +334,6 @@ export const HOLDING_TAX_MESSAGES = {
   trendNextLead: (year: number) => `${year}년에는 약`,
   trendNextDelta: (difference: string, increases: boolean) =>
     `${difference} ${increases ? '더' : '덜'} 내요`,
-  trendStep: (difference: string, increases: boolean) =>
-    `${increases ? '▲' : '▼'} ${difference}`,
   trendItemsLabel: (count: number) => `${count}채`,
   trendChartLabel: '연도별 보유세',
   trendBarLabel: (year: number, amount: string, projected: boolean) =>

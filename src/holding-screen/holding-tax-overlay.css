@@ -813,13 +813,9 @@
   font-size: var(--font-size-xs);
 }
 
-/* 빗금은 추정치라는 뜻이다. 고시값과 같은 면으로 그리면 둘이 구분되지 않는다. */
+/* 추정치는 올해와 같은 계열이되 밝기를 낮춘다 — 같은 성격, 확정은 아님. */
 .trend__col.is-est i {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--color-neutral-200) 0 4px,
-    var(--color-neutral-100) 4px 8px
-  );
+  background: color-mix(in srgb, var(--color-accent) 60%, transparent);
 }
 
 .trend__col.is-focus i {
@@ -875,49 +871,10 @@
   font-weight: var(--font-weight-regular);
 }
 
-/*
- * 막대와 막대 사이의 증감. 앞 칸과의 경계에 걸쳐 세운다 —
- * 막대 두 개를 눈으로 빼는 대신 얼마가 뛰었는지 바로 읽히게 한다.
- */
-.trend__step {
-  position: absolute;
-  z-index: 1;
-  top: 1.35rem;
-  left: 0;
-  transform: translateX(-50%);
-  padding: 1px var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-neutral-0);
-  font-size: var(--font-size-xs);
-  font-style: normal;
-  font-weight: var(--font-weight-semibold);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.trend__step--up {
-  color: var(--color-accent);
-}
-
-.trend__step--down {
-  color: var(--color-neutral-600);
-}
-
-/* 좁은 화면에서는 라벨 밑변을 맞추고 올해→내년 증감만 보인다. */
+/* 좁은 화면에서는 라벨이 두 줄이 될 수 있으므로 밑변을 맞춘다. */
 @media (max-width: 45rem) {
-  /* 구형 브라우저는 lh 선언을 버리므로 rem 대체값을 먼저 둔다. */
   .trend__col b {
     min-height: 1.625rem;
     min-height: 2lh;
-  }
-
-  .trend__step {
-    display: none;
-  }
-
-  .trend__col.is-focus + .trend__col .trend__step {
-    top: 1.875rem;
-    top: calc(2lh + var(--space-1));
-    display: block;
   }
 }

@@ -159,13 +159,8 @@ export function TaxTrend({
         role="img"
         aria-label={HOLDING_TAX_MESSAGES.trendChartLabel}
       >
-        {series.map((point, pointIndex) => {
+        {series.map((point) => {
           const amount = point.totalTax ?? ZERO_AMOUNT
-          const previousPoint = series[pointIndex - 1]
-          const stepDifference =
-            previousPoint?.totalTax != null && point.totalTax !== null
-              ? point.totalTax - previousPoint.totalTax
-              : null
           const height = maximum > ZERO_AMOUNT
             ? Math.max(
                 MIN_BAR_PERCENT,
@@ -186,19 +181,6 @@ export function TaxTrend({
                 point.basis === 'projected',
               )}
             >
-              {/* 막대 사이의 증감 — 앞 칸과의 경계에 걸쳐 놓는다 */}
-              {stepDifference !== null && stepDifference !== ZERO_AMOUNT && (
-                <em
-                  className={stepDifference > ZERO_AMOUNT
-                    ? 'trend__step trend__step--up'
-                    : 'trend__step trend__step--down'}
-                >
-                  {HOLDING_TAX_MESSAGES.trendStep(
-                    formatManwon(Math.abs(stepDifference)),
-                    stepDifference > ZERO_AMOUNT,
-                  )}
-                </em>
-              )}
               <b>{formatManwon(amount)}</b>
               <i style={{ height: `${height}%` }} />
               <span>{String(point.year).slice(2)}</span>
