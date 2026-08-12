@@ -14,10 +14,6 @@ import { useCallback, useState } from 'react'
 const VIEW_QUERY_KEY = 'view'
 const HOLDING_TAX_VIEW = 'holding-tax'
 
-const isHoldingTaxUrl = (): boolean =>
-  new URL(window.location.href).searchParams.get(VIEW_QUERY_KEY) ===
-    HOLDING_TAX_VIEW
-
 const writeUrl = (open: boolean): void => {
   const url = new URL(window.location.href)
   if (open) url.searchParams.set(VIEW_QUERY_KEY, HOLDING_TAX_VIEW)
@@ -31,7 +27,7 @@ const writeUrl = (open: boolean): void => {
 }
 
 export const useHoldingTaxOverlay = () => {
-  const [open, setOpen] = useState(isHoldingTaxUrl)
+  const [open, setOpen] = useState(false)
 
   const show = useCallback(() => {
     writeUrl(true)

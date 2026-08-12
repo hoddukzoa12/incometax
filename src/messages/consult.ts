@@ -47,8 +47,7 @@ export const CONSULT_MESSAGES = {
   dismissToday: '오늘 하루 보지않기',
   close: '닫기',
   introCta: '상담하러 가기',
-  resultTitle: '이 계산 결과를 전문가와 함께 확인해 보세요',
-  resultDescription:
-    '입력한 부동산과 화면의 예상 세액을 바탕으로 상담을 이어갈 수 있어요.',
-  resultCta: '이 결과로 상담받기',
+  resultTitle: '부동산 세금이 고민이라면?',
+  resultDescription: null,
+  resultCta: '상담 신청하기',
 } as const

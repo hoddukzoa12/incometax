@@ -52,10 +52,6 @@ export function TaxTrend({
   const publishedYears = series
     .filter(({ basis }) => basis === 'published')
     .map(({ year }) => year)
-  const label = taxedItems.length > SINGLE_ITEM
-    ? HOLDING_TAX_MESSAGES.trendItemsLabel(taxedItems.length)
-    : taxedItems[0]?.complexName ?? ''
-
   const comprehensive = focusCalculation?.result.comprehensiveTax
   const taxCredit = comprehensive?.taxCredit
   const creditRates = taxCredit?.status === 'computed' ? taxCredit : null
@@ -102,20 +98,6 @@ export function TaxTrend({
                 )}
           </p>
         )}
-        <p className="trend__price">
-          {HOLDING_TAX_MESSAGES.trendPriceTotal(
-            label,
-            formatInlineWon(current.officialPriceTotal),
-          )}
-          {previous !== undefined && (
-            <span>
-              {HOLDING_TAX_MESSAGES.trendPriorPrice(
-                previous.year,
-                formatInlineWon(previous.officialPriceTotal),
-              )}
-            </span>
-          )}
-        </p>
         <div className="trend__split">
           <span>
             {HOLDING_TAX_MESSAGES.trendPropertyTax}{' '}

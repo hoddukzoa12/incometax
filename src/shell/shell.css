@@ -168,6 +168,17 @@
   cursor: default;
 }
 
+.cta__check {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--color-neutral-0);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
 .cta__badge {
   display: grid;
   place-items: center;

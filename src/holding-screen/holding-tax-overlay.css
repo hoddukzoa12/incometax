@@ -594,7 +594,7 @@
 
 .holding-overlay__cautions {
   padding: var(--space-4) 0;
-  color: var(--color-neutral-500);
+  color: var(--color-neutral-900);
   font-size: var(--font-size-sm);
   line-height: 1.5;
 }
@@ -637,7 +637,9 @@
 }
 
 .holding-overlay__consult .consult-link {
+  justify-content: center;
   width: 100%;
+  font-size: var(--font-size-lg);
 }
 
 @media (max-width: 45rem) {
@@ -716,17 +718,6 @@
   font-size: var(--font-size-sm);
 }
 
-.trend__price {
-  margin: var(--space-2) 0 0;
-  color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-.trend__price span {
-  color: var(--color-neutral-500);
-}
-
 /*
  * 내년 — 이 화면에서 두 번째로 큰 숫자다. 올해 세액 다음으로 사람들이 알고 싶은 게
  * "그래서 내년엔 얼마나 더 내나"라서, 본문 글씨가 아니라 한 단 위의 크기를 준다.
@@ -795,7 +786,7 @@
 
 .trend__col b {
   color: var(--color-neutral-500);
-  font-size: var(--font-size-xs);
+  font-size: 15px;
   font-weight: var(--font-weight-regular);
   font-variant-numeric: tabular-nums;
 }
@@ -835,7 +826,7 @@
 .trend__note {
   margin: 0;
   color: var(--color-neutral-500);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
 }
 
 .perprop {

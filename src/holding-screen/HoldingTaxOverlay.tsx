@@ -191,7 +191,9 @@ export function HoldingTaxOverlay({
               <div>
                 <p>{CONSULT_MESSAGES.operatorName}</p>
                 <h2>{CONSULT_MESSAGES.resultTitle}</h2>
-                <p>{CONSULT_MESSAGES.resultDescription}</p>
+                {CONSULT_MESSAGES.resultDescription !== null && (
+                  <p>{CONSULT_MESSAGES.resultDescription}</p>
+                )}
               </div>
               <a
                 className="cta consult-link"
@@ -199,8 +201,8 @@ export function HoldingTaxOverlay({
                 target="_blank"
                 rel="noopener noreferrer"
               >
+                <span className="cta__check" aria-hidden="true">✓</span>
                 <span>{CONSULT_MESSAGES.resultCta}</span>
-                <span className="cta__badge" aria-hidden="true">→</span>
               </a>
             </section>
             {/*
