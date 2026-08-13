@@ -106,6 +106,7 @@ export interface ApartmentUnitOptionsRequest {
   readonly complexName: string
   readonly pnu?: string
   readonly dong?: string
+  readonly aptCode?: string
 }
 
 export type ApartmentUnitOptionsResult =
@@ -122,6 +123,11 @@ export type ApartmentUnitOptionsResult =
       readonly key: string
       readonly status: 'noData'
       readonly reason: 'addressNotFound' | 'complexNotFound' | 'dongNotFound'
+    }
+  | {
+      readonly key: string
+      readonly status: 'ambiguous'
+      readonly candidates: readonly ApartmentUnitOption[]
     }
   | {
       readonly key: string

@@ -21,12 +21,17 @@ const complexTradesEndpoint = (complexId: string): string =>
 const complexOfficialPriceEndpoint = (complexId: string): string =>
   `/api/complexes/${encodeURIComponent(complexId)}/official-price`
 
-const complexUnitOptionsEndpoint = (complexId: string, dong?: string): string => {
+const complexUnitOptionsEndpoint = (
+  complexId: string,
+  dong?: string,
+  aptCode?: string,
+): string => {
   const url = new URL(
     `/api/complexes/${encodeURIComponent(complexId)}/unit-options`,
     window.location.origin,
   )
   if (dong) url.searchParams.set('dong', dong)
+  if (aptCode) url.searchParams.set('aptCode', aptCode)
   return url.toString()
 }
 
@@ -81,6 +86,10 @@ const isUnitOptionsResult = (
     return value.reason === 'addressNotFound' ||
       value.reason === 'complexNotFound' ||
       value.reason === 'dongNotFound'
+  }
+  if (value.status === 'ambiguous') {
+    return Array.isArray(value.candidates) &&
+      value.candidates.every(isUnitOption)
   }
   if (value.status === 'failed') {
     return isRecord(value.failure) &&
@@ -169,8 +178,9 @@ export async function fetchApartmentUnitOptions(
   complexId: string,
   dong: string | undefined,
   signal: AbortSignal,
+  aptCode?: string,
 ): Promise<ApartmentUnitOptionsResult> {
-  const body = await getJson(complexUnitOptionsEndpoint(complexId, dong), signal)
+  const body = await getJson(complexUnitOptionsEndpoint(complexId, dong, aptCode), signal)
   if (!isUnitOptionsResult(body) || body.key !== complexId) {
     throw new TypeError('Apartment unit options are invalid')
   }

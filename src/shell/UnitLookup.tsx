@@ -31,6 +31,13 @@ const optionNames = (
     ? state.value.value[field].map((option) => option.name)
     : []
 
+const ambiguousCandidates = (
+  state: Loadable<ApartmentUnitOptionsResult> | null,
+): readonly { readonly code: string; readonly name: string }[] | null =>
+  state?.status === 'loaded' && state.value.status === 'ambiguous'
+    ? state.value.candidates
+    : null
+
 /**
  * 「어느 집인가요?」 — 동과 호를 칩으로 고르고 그 자리에서 공시가격을 보여 준다.
  *
@@ -53,6 +60,7 @@ export function UnitLookup({
 }) {
   const [dong, setDong] = useState<string | null>(null)
   const [ho, setHo] = useState<string | null>(null)
+  const [selectedAptCode, setSelectedAptCode] = useState<string | null>(null)
   const [dongState, setDongState] = useState<
     Loadable<ApartmentUnitOptionsResult>
   >({ status: 'loading' })
@@ -65,24 +73,30 @@ export function UnitLookup({
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchApartmentUnitOptions(complex.complexId, undefined, controller.signal)
+    fetchApartmentUnitOptions(
+      complex.complexId, undefined, controller.signal,
+      selectedAptCode ?? undefined,
+    )
       .then((value) => setDongState({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setDongState({ status: 'failed' })
       })
     return () => controller.abort()
-  }, [complex.complexId])
+  }, [complex.complexId, selectedAptCode])
 
   useEffect(() => {
     if (dong === null) return
     const controller = new AbortController()
-    fetchApartmentUnitOptions(complex.complexId, dong, controller.signal)
+    fetchApartmentUnitOptions(
+      complex.complexId, dong, controller.signal,
+      selectedAptCode ?? undefined,
+    )
       .then((value) => setHoState({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setHoState({ status: 'failed' })
       })
     return () => controller.abort()
-  }, [complex.complexId, dong])
+  }, [complex.complexId, dong, selectedAptCode])
 
   useEffect(() => {
     if (dong === null || ho === null) return
@@ -107,6 +121,7 @@ export function UnitLookup({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onCancel])
 
+  const candidates = ambiguousCandidates(dongState)
   const dongs = optionNames(dongState, 'dongs')
   const hos = optionNames(hoState, 'rooms')
   const found = priceState?.status === 'loaded' &&
@@ -131,6 +146,31 @@ export function UnitLookup({
         </div>
 
         <div className="mbox__body">
+          {candidates !== null && (
+            <div>
+              <h3>같은 주소에 여러 단지가 있어요</h3>
+              <div className="chips">
+                {candidates.map((candidate) => (
+                  <button
+                    key={candidate.code}
+                    type="button"
+                    aria-pressed={selectedAptCode === candidate.code}
+                    onClick={() => {
+                      setSelectedAptCode(candidate.code)
+                      setDong(null)
+                      setHo(null)
+                      setPriceState(null)
+                      setHoState(null)
+                    }}
+                  >
+                    {candidate.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {candidates === null && (
           <div>
             <h3>{SIDEBAR_MESSAGES.dongLabel}</h3>
             {dongState.status === 'loading' && (
@@ -157,6 +197,7 @@ export function UnitLookup({
               ))}
             </div>
           </div>
+          )}
 
           {dong !== null && (
             <div>

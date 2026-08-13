@@ -37,6 +37,7 @@ type ApartmentContextResolution =
   | {
       readonly status: 'ambiguous'
       readonly candidateNames: readonly string[]
+      readonly candidateOptions: readonly { readonly code: string; readonly name: string }[]
     }
 
 const loadApartmentContext = async (
@@ -51,6 +52,20 @@ const loadApartmentContext = async (
     common,
   ))
   validateOptionRows(complexRows, '단지')
+  // aptCode가 지정됐으면 이름 매칭 없이 해당 코드의 단지를 직접 쓴다.
+  const complex = request.aptCode
+    ? complexRows.find((row) => text(row.code) === request.aptCode) ?? null
+    : null
+  if (complex) {
+    return {
+      status: 'found',
+      context: {
+        common,
+        complexCode: requiredText(complex, 'code', '단지 code'),
+        noticeDate: text(complex.notice_date) || notice.code,
+      },
+    }
+  }
   const resolution = resolveComplex(complexRows, request.complexName)
   if (resolution.status === 'notFound') return resolution
   if (resolution.status === 'ambiguous') {
@@ -58,15 +73,19 @@ const loadApartmentContext = async (
       status: 'ambiguous',
       candidateNames: resolution.candidates.map((candidate) =>
         requiredText(candidate, 'name', '단지 name')),
+      candidateOptions: resolution.candidates.map((candidate) => ({
+        code: requiredText(candidate, 'code', '단지 code'),
+        name: requiredText(candidate, 'name', '단지 name'),
+      })),
     }
   }
-  const complex = resolution.row
+  const matched = resolution.row
   return {
     status: 'found',
     context: {
       common,
-      complexCode: requiredText(complex, 'code', '단지 code'),
-      noticeDate: text(complex.notice_date) || notice.code,
+      complexCode: requiredText(matched, 'code', '단지 code'),
+      noticeDate: text(matched.notice_date) || notice.code,
     },
   }
 }
@@ -142,7 +161,11 @@ export async function lookupApartmentUnitOptions(
     return { key: request.key, status: 'noData', reason: 'complexNotFound' }
   }
   if (resolution.status === 'ambiguous') {
-    return ambiguousComplex(request.key, resolution.candidateNames)
+    return {
+      key: request.key,
+      status: 'ambiguous' as const,
+      candidates: resolution.candidateOptions,
+    }
   }
   const { context } = resolution
   const dongRows = await loadDongRows(context, client)

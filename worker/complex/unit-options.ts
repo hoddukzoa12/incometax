@@ -37,6 +37,7 @@ export const handleComplexUnitOptions = async (
   }
   const pnu = resolveStoredComplexPnu(complex)
   const dong = url.searchParams.get('dong')?.trim() || undefined
+  const aptCode = url.searchParams.get('aptCode')?.trim() || undefined
   if (!pnu) {
     const result: ApartmentUnitOptionsResult = {
       key: complexId,
@@ -54,6 +55,7 @@ export const handleComplexUnitOptions = async (
       complexName: complex.name,
       pnu,
       dong,
+      aptCode,
     },
     env,
     context,

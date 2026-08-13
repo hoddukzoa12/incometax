@@ -60,6 +60,7 @@ export const unitOptionsNoDataMessage = (
   optionKind: 'dongs' | 'rooms',
 ): string | null => {
   if (result.status === 'noData') return NO_DATA_MESSAGES[result.reason]
+  if (result.status === 'ambiguous') return null
   if (result.status === 'failed' || result.value[optionKind].length > 0) {
     return null
   }

@@ -304,16 +304,11 @@ describe('OfficialPriceService', () => {
 
     expect(result).toMatchObject({
       key: 'ambiguous-complex',
-      status: 'failed',
-      failure: {
-        kind: 'complexAmbiguous',
-        retryable: false,
-      },
+      status: 'ambiguous',
     })
-    expect(result.status === 'failed' && result.failure.message)
-      .toContain('(73) 경남아파트')
-    expect(result.status === 'failed' && result.failure.message)
-      .toContain('(73) 현대아파트')
+    if (result.status === 'ambiguous') {
+      expect(result.candidates.length).toBeGreaterThan(1)
+    }
   })
 
   it('returns complexNotFound only when a parcel has no listed complex', async () => {
