@@ -22,3 +22,7 @@ migrations_dir = "migrations"
 [[routes]]
 pattern = "tax.rich-group.kr"
 custom_domain = true
+
+[[routes]]
+pattern = "rich-group.kr"
+custom_domain = true
