@@ -47,6 +47,7 @@ function cacheRequest(request: OfficialPriceRequest, pnu: string): Request {
     url.searchParams.set('complex', request.complexName)
     url.searchParams.set('dong', request.dong)
     url.searchParams.set('room', request.room)
+    if (request.aptCode) url.searchParams.set('aptCode', request.aptCode)
   }
   return new Request(url)
 }
