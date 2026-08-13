@@ -59,9 +59,11 @@ function apartmentOptionsCacheRequest(
     OFFICIAL_PRICE_CACHE_PATHS.apartmentOptions,
     OFFICIAL_PRICE_CACHE_ORIGIN,
   )
+  url.searchParams.set('v', '2')
   url.searchParams.set('pnu', pnu)
   url.searchParams.set('complex', request.complexName)
   if (request.dong) url.searchParams.set('dong', request.dong)
+  if (request.aptCode) url.searchParams.set('aptCode', request.aptCode)
   return new Request(url)
 }
 

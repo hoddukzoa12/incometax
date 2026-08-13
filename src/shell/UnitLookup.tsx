@@ -77,7 +77,12 @@ export function UnitLookup({
       complex.complexId, undefined, controller.signal,
       selectedAptCode ?? undefined,
     )
-      .then((value) => setDongState({ status: 'loaded', value }))
+      .then((value) => {
+        setDongState({ status: 'loaded', value })
+        if (value.status === 'found' && value.value.aptCode && !selectedAptCode) {
+          setSelectedAptCode(value.value.aptCode)
+        }
+      })
       .catch((error: unknown) => {
         if (!isAbortError(error)) setDongState({ status: 'failed' })
       })

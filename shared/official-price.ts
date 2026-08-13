@@ -118,6 +118,7 @@ export type ApartmentUnitOptionsResult =
         readonly pnu: string
         readonly dongs: readonly ApartmentUnitOption[]
         readonly rooms: readonly ApartmentUnitOption[]
+        readonly aptCode?: string
       }
     }
   | {

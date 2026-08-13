@@ -173,7 +173,7 @@ export async function lookupApartmentUnitOptions(
     return {
       key: request.key,
       status: 'found',
-      value: { pnu, dongs: toOptions(dongRows, '동'), rooms: [] },
+      value: { pnu, dongs: toOptions(dongRows, '동'), rooms: [], aptCode: context.complexCode },
     }
   }
   const dong = findUnit(dongRows, request.dong, '동')
@@ -193,6 +193,7 @@ export async function lookupApartmentUnitOptions(
       pnu,
       dongs: toOptions(dongRows, '동'),
       rooms: toOptions(rooms, '호'),
+      aptCode: context.complexCode,
     },
   }
 }

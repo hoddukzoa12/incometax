@@ -108,6 +108,7 @@ describe('OfficialPriceService', () => {
         pnu: TEST_PNU,
         dongs: [{ code: '1', name: '1' }, { code: '2', name: '2' }],
         rooms: [],
+        aptCode: '1381',
       },
     })
     await expect(service.lookupApartmentOptions(
@@ -120,6 +121,7 @@ describe('OfficialPriceService', () => {
         pnu: TEST_PNU,
         dongs: [{ code: '1', name: '1' }, { code: '2', name: '2' }],
         rooms: [{ code: '10', name: '101' }, { code: '11', name: '102' }],
+        aptCode: '1381',
       },
     })
     expect(fetcher).toHaveBeenCalledTimes(6)
