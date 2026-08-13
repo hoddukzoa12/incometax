@@ -41,7 +41,7 @@ type ApartmentContextResolution =
     }
 
 const loadApartmentContext = async (
-  request: ApartmentUnitOptionsRequest,
+  request: { readonly complexName: string; readonly aptCode?: string },
   parsedPnu: ParsedPnu,
   notice: NoticeDate,
   client: RealtyPriceClient,

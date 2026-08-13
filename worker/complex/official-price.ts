@@ -83,6 +83,7 @@ export const handleComplexOfficialPrice = async (
     dong: body.dong,
     room: body.room,
     pnu,
+    aptCode: body.aptCode,
   }
   const result = await service.lookup(officialPriceRequest, env, context)
   return Response.json(result, {

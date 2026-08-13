@@ -105,13 +105,14 @@ export function UnitLookup({
       key: `${complex.complexId}:${dong}:${ho}`,
       dong,
       room: ho,
+      aptCode: selectedAptCode ?? undefined,
     }, controller.signal)
       .then((value) => setPriceState({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setPriceState({ status: 'failed' })
       })
     return () => controller.abort()
-  }, [complex.complexId, dong, ho])
+  }, [complex.complexId, dong, ho, selectedAptCode])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -121,7 +122,16 @@ export function UnitLookup({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onCancel])
 
-  const candidates = ambiguousCandidates(dongState)
+  // 후보 목록은 첫 응답에서만 온다. 단지를 골라서 다시 fetch하면 found가 오므로
+  // 첫 응답의 후보를 따로 보관한다.
+  const [savedCandidates, setSavedCandidates] = useState<
+    readonly { readonly code: string; readonly name: string }[] | null
+  >(null)
+  const freshCandidates = ambiguousCandidates(dongState)
+  if (freshCandidates !== null && savedCandidates === null) {
+    setSavedCandidates(freshCandidates)
+  }
+  const candidates = savedCandidates
   const dongs = optionNames(dongState, 'dongs')
   const hos = optionNames(hoState, 'rooms')
   const found = priceState?.status === 'loaded' &&
@@ -170,7 +180,7 @@ export function UnitLookup({
             </div>
           )}
 
-          {candidates === null && (
+          {(candidates === null || selectedAptCode !== null) && (
           <div>
             <h3>{SIDEBAR_MESSAGES.dongLabel}</h3>
             {dongState.status === 'loading' && (

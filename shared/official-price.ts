@@ -8,6 +8,7 @@ export interface ApartmentOfficialPriceRequest {
   readonly dong: string
   readonly room: string
   readonly pnu?: string
+  readonly aptCode?: string
 }
 
 export interface DetachedHouseOfficialPriceRequest {
@@ -24,7 +25,7 @@ export type OfficialPriceRequest =
 export type ComplexOfficialPriceRequest = Pick<
   ApartmentOfficialPriceRequest,
   'key' | 'dong' | 'room'
->
+> & { readonly aptCode?: string }
 
 export interface OfficialPriceHistoryItem {
   readonly baseDate: string
