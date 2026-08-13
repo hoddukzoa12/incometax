@@ -36,7 +36,18 @@
 - **캐시**: Cloudflare KV
 - **지도**: Kakao Maps SDK
 - **공시가격**: 부동산공시가격 알리미 (realtyprice.kr)
-- **실거래가**: 국토교통부 실거래가 API (data.go.kr)
+- **실거래가·단지정보**: 공공데이터포털 (data.go.kr)
+
+### 공공데이터포털 API
+
+| API | 용도 |
+|---|---|
+| [행정안전부 법정동코드](https://www.data.go.kr/data/15077871/openapi.do) (`StanReginCd`) | 법정동 코드 동기화 |
+| [국토교통부 공동주택 단지 목록](https://www.data.go.kr/data/15057332/openapi.do) (`AptListService3`) | 단지 마스터 적재 |
+| [국토교통부 공동주택 기본 정보](https://www.data.go.kr/data/15058453/openapi.do) (`AptBasisInfoServiceV4`) | 단지 상세(동수·세대수·사용승인일) |
+| [국토교통부 아파트 실거래가](https://www.data.go.kr/data/15058017/openapi.do) (`RTMSDataSvcAptTrade`) | 아파트 실거래가 |
+| [국토교통부 연립다세대 실거래가](https://www.data.go.kr/data/15058038/openapi.do) (`RTMSDataSvcRHTrade`) | 연립다세대 실거래가 |
+| [국토교통부 오피스텔 실거래가](https://www.data.go.kr/data/15058452/openapi.do) (`RTMSDataSvcOffiTrade`) | 오피스텔 실거래가 |
 
 ## 개발
 
