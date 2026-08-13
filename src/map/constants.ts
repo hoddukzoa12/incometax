@@ -23,7 +23,7 @@ const CLUSTER_STYLE = {
   border:
     '2px solid color-mix(in srgb, var(--color-neutral-0) 90%, transparent)',
   borderRadius: 'var(--radius-pill)',
-  fontSize: 'var(--font-size-sm)',
+  fontSize: 'var(--font-size-md)',
   fontWeight: 'var(--font-weight-semibold)',
   lineHeight: 'calc(var(--space-6) + var(--space-1))',
   textAlign: 'center',

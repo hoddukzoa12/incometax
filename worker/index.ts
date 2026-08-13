@@ -28,6 +28,7 @@ const LDONG_REFRESH_CRON = '0 19 * * *'
 
 export type Env = LdongRefreshEnv & {
   readonly COMPLEX_DB: D1Database
+  readonly YOUTUBE_VIDEO_ID?: string
 }
 
 function json(data: unknown, status = 200): Response {
@@ -144,6 +145,11 @@ export default {
   async fetch(request, env, context): Promise<Response> {
     const url = new URL(request.url)
 
+    if (url.pathname === '/api/config' && request.method === 'GET') {
+      return json({
+        youtubeVideoId: env.YOUTUBE_VIDEO_ID ?? null,
+      })
+    }
     if (url.pathname === '/api/ldong/status' && request.method === 'GET') {
       const snapshot = await env.LDONG.get<LdongSnapshot>(
         LDONG_SNAPSHOT_KEY,

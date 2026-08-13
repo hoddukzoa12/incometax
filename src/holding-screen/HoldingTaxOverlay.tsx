@@ -204,6 +204,10 @@ export function HoldingTaxOverlay({
                 <span className="cta__check" aria-hidden="true">✓</span>
                 <span>{CONSULT_MESSAGES.resultCta}</span>
               </a>
+              <p className="holding-overlay__error-contact">
+                오류 문의는{' '}
+                <a href="mailto:jwtax36969@gmail.com">jwtax36969@gmail.com</a>
+              </p>
             </section>
             {/*
               시안에는 유의사항이 없다. 그건 목업이라 법적 의무가 없었기 때문이고,

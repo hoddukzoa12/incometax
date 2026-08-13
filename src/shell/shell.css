@@ -43,6 +43,61 @@
   min-width: 0;
 }
 
+/* ── 지도 우측 상단 — 유튜브 임베드(데스크톱) / 아이콘(모바일) ── */
+.map__youtube-embed {
+  position: absolute;
+  z-index: 8;
+  top: var(--space-4);
+  right: calc(var(--space-4) + 40px);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgb(16 20 24 / 18%);
+}
+
+.map__youtube-embed iframe {
+  display: block;
+  border: 0;
+}
+
+.map__youtube {
+  position: absolute;
+  z-index: 9;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-neutral-900);
+  border-radius: var(--radius-pill);
+  background: var(--color-neutral-0);
+  box-shadow: 0 4px 14px rgb(16 20 24 / 18%);
+  color: var(--color-neutral-900);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.map__youtube svg {
+  width: 24px;
+  height: auto;
+  flex: none;
+}
+
+.map__youtube--icon {
+  position: static;
+  display: grid;
+  place-items: center;
+  width: var(--size-touch-target-min);
+  height: var(--size-touch-target-min);
+  padding: 0;
+  border-radius: var(--radius-pill);
+}
+
+.map__youtube--icon svg {
+  width: 22px;
+}
+
 /* ── 지도 모서리 — 내 부동산 진입 ── */
 .map__corner {
   position: absolute;

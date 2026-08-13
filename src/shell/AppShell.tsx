@@ -23,6 +23,7 @@ import '../app.css'
 import './shell.css'
 
 const TOAST_MS = 2200
+const YOUTUBE_EMBED_URL = 'https://www.youtube.com/embed/'
 
 /**
  * 앱 셸 — claude.ai/design 시안(shell-v2.html, B안).
@@ -45,6 +46,17 @@ export default function AppShell() {
    * 결과. 조건이 세액을 가르므로 결과를 띄워 놓고 되묻는 것은 순서가 뒤집힌 것이다.
    */
   const [askingConditions, setAskingConditions] = useState(false)
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((response) => response.json())
+      .then((data) => {
+        const config = data as { youtubeVideoId?: string | null }
+        if (config.youtubeVideoId) setYoutubeVideoId(config.youtubeVideoId)
+      })
+      .catch(() => {})
+  }, [])
   const [focus, setFocus] = useState<
     { readonly lat: number; readonly lng: number; readonly seq: number } | null
   >(null)
@@ -187,7 +199,35 @@ export default function AppShell() {
             </p>
           )}
 
+          {!compact && youtubeVideoId !== null && (
+            <div className="map__youtube-embed">
+              <iframe
+                width="320"
+                height="180"
+                src={`${YOUTUBE_EMBED_URL}${encodeURIComponent(youtubeVideoId)}`}
+                title="두꺼비세무사"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          )}
+
           <div className="map__corner">
+            {compact && youtubeVideoId !== null && (
+              <a
+                className="map__youtube map__youtube--icon"
+                href={`https://www.youtube.com/watch?v=${encodeURIComponent(youtubeVideoId)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="두꺼비세무사 유튜브"
+              >
+                <svg viewBox="0 0 28 20" aria-hidden="true">
+                  <path fill="#FF0000" d="M27.4 3.1a3.5 3.5 0 0 0-2.5-2.5C22.7 0 14 0 14 0S5.3 0 3.1.6A3.5 3.5 0 0 0 .6 3.1C0 5.3 0 10 0 10s0 4.7.6 6.9a3.5 3.5 0 0 0 2.5 2.5C5.3 20 14 20 14 20s8.7 0 10.9-.6a3.5 3.5 0 0 0 2.5-2.5C28 14.7 28 10 28 10s0-4.7-.6-6.9Z"/>
+                  <path fill="#FFF" d="m11.2 14.3 7.2-4.3-7.2-4.3v8.6Z"/>
+                </svg>
+              </a>
+            )}
             <PortfolioMenu
               controller={portfolio}
               onCalculateHoldingTax={() => setAskingConditions(true)}

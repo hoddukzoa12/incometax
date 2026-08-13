@@ -48,7 +48,7 @@
 
 .holding-overlay__title-row h1 {
   min-width: 0;
-  font-size: var(--font-size-xl);
+  font-size: 22px;
 }
 
 .holding-overlay button {
@@ -72,7 +72,7 @@
 .holding-assumptions__summary p {
   margin-top: var(--space-1);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-md);
+  font-size: 16px;
 }
 
 .holding-overlay__content {
@@ -139,7 +139,7 @@
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-sm);
   color: var(--color-warning);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -158,7 +158,7 @@
 .holding-conditions__facts h3,
 .holding-conditions__question h3 {
   color: var(--color-neutral-900);
-  font-size: var(--font-size-base);
+  font-size: 18px;
 }
 
 .holding-conditions input,
@@ -179,7 +179,7 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--color-neutral-700);
-  font-size: var(--font-size-md);
+  font-size: 16px;
 }
 
 .holding-conditions__checkbox input {
@@ -222,7 +222,7 @@
   align-items: center;
   gap: var(--space-1);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .holding-conditions__fact small {
@@ -248,19 +248,19 @@
   display: grid;
   gap: var(--space-1);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .holding-conditions__base-date {
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .holding-conditions__growth-input {
   display: grid;
   gap: var(--space-1);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .holding-conditions__growth-input > span:last-child {
@@ -277,7 +277,7 @@
   border-radius: var(--radius-sm);
   background: var(--color-neutral-100);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .holding-conditions__price-history section {
@@ -361,7 +361,7 @@
 
 .holding-result-summary__eyebrow {
   color: var(--color-neutral-600);
-  font-size: var(--font-size-lg);
+  font-size: 20px;
   font-weight: var(--font-weight-semibold);
 }
 
@@ -373,20 +373,20 @@
 
 .holding-result-summary__change {
   color: var(--color-accent);
-  font-size: var(--font-size-xl);
+  font-size: 22px;
   font-weight: var(--font-weight-bold);
 }
 
 .holding-result-summary__comparison {
   color: var(--color-neutral-700);
-  font-size: var(--font-size-md);
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
 .holding-result-summary__basis,
 .holding-result-summary__disclaimer {
   color: var(--color-neutral-500);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
 }
 
 .holding-result-summary__actions {
@@ -404,7 +404,7 @@
 .holding-tax-changes h2,
 .holding-tax-statement__header h2,
 .holding-tax-details__assumptions h2 {
-  font-size: var(--font-size-lg);
+  font-size: 20px;
 }
 
 .holding-tax-changes ul {
@@ -470,7 +470,7 @@
 
 .holding-tax-details__assumptions p {
   color: var(--color-neutral-600);
-  font-size: var(--font-size-md);
+  font-size: 16px;
 }
 
 .holding-tax-table-scroll {
@@ -499,7 +499,7 @@
   top: 0;
   background: var(--color-accent);
   color: var(--color-neutral-0);
-  font-size: var(--font-size-md);
+  font-size: 16px;
   text-align: right;
 }
 
@@ -513,14 +513,14 @@
 
 .holding-tax-table tbody th {
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   font-weight: var(--font-weight-regular);
   text-align: left;
 }
 
 .holding-tax-table tbody td {
   color: var(--color-neutral-900);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   text-align: right;
 }
 
@@ -534,7 +534,7 @@
   padding: var(--space-3);
   background: var(--color-neutral-100);
   color: var(--color-neutral-900);
-  font-size: var(--font-size-base);
+  font-size: 18px;
   font-weight: var(--font-weight-bold);
 }
 
@@ -553,7 +553,7 @@
   place-items: center;
   border-radius: var(--radius-pill);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
   vertical-align: middle;
 }
 
@@ -592,16 +592,27 @@
   justify-self: start;
 }
 
+.holding-overlay__error-contact {
+  margin: 0;
+  color: var(--color-neutral-200);
+  font-size: 16px;
+  text-align: center;
+}
+
+.holding-overlay__error-contact a {
+  color: var(--color-neutral-200);
+}
+
 .holding-overlay__cautions {
   padding: var(--space-4) 0;
   color: var(--color-neutral-900);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   line-height: 1.5;
 }
 
 .holding-overlay__cautions h2 {
   margin-bottom: var(--space-2);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .holding-overlay__cautions p + p {
@@ -628,7 +639,7 @@
 }
 
 .holding-overlay__consult > div > p:first-child {
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   font-weight: var(--font-weight-bold);
 }
 
@@ -639,7 +650,7 @@
 .holding-overlay__consult .consult-link {
   justify-content: center;
   width: 100%;
-  font-size: var(--font-size-lg);
+  font-size: 20px;
 }
 
 @media (max-width: 45rem) {
@@ -695,27 +706,27 @@
 .trend__eyebrow {
   margin: 0;
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   font-weight: var(--font-weight-semibold);
 }
 
 .trend__head h2 {
   margin: var(--space-1) 0 0;
   color: var(--color-neutral-700);
-  font-size: var(--font-size-lg);
+  font-size: 20px;
   font-weight: var(--font-weight-regular);
 }
 
 .trend__head h2 strong {
   color: var(--color-neutral-900);
-  font-size: 2.25rem;
+  font-size: 2.375rem;
   font-variant-numeric: tabular-nums;
 }
 
 .trend__diff {
   margin: var(--space-1) 0 0;
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 /*
@@ -731,12 +742,12 @@
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-neutral-200);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-md);
+  font-size: 16px;
 }
 
 .trend__next strong {
   color: var(--color-neutral-900);
-  font-size: var(--font-size-xl);
+  font-size: 22px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -745,7 +756,7 @@
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   color: var(--color-accent);
-  font-size: var(--font-size-md);
+  font-size: 16px;
   font-style: normal;
   font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
@@ -757,7 +768,7 @@
   gap: var(--space-4);
   margin-top: var(--space-2);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .trend__split b {
@@ -801,7 +812,7 @@
 
 .trend__col span {
   color: var(--color-neutral-500);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
 }
 
 /* 추정치는 올해와 같은 계열이되 밝기를 낮춘다 — 같은 성격, 확정은 아님. */
@@ -826,7 +837,7 @@
 .trend__note {
   margin: 0;
   color: var(--color-neutral-500);
-  font-size: var(--font-size-sm);
+  font-size: 14px;
 }
 
 .perprop {
@@ -838,7 +849,7 @@
 .perprop table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-sm);
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -853,7 +864,7 @@
 .perprop thead th {
   border-bottom: 1.5px solid var(--color-neutral-900);
   color: var(--color-neutral-600);
-  font-size: var(--font-size-xs);
+  font-size: 13px;
 }
 
 .perprop tbody th,
