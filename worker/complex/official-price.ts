@@ -28,7 +28,8 @@ const parseRequest = (value: unknown): ComplexOfficialPriceRequest | null => {
   const key = requiredString(value.key)
   const dong = requiredString(value.dong)
   const room = requiredString(value.room)
-  return key && dong && room ? { key, dong, room } : null
+  const aptCode = requiredString(value.aptCode) ?? undefined
+  return key && dong && room ? { key, dong, room, aptCode } : null
 }
 
 export const handleComplexOfficialPrice = async (
