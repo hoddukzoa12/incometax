@@ -86,7 +86,6 @@ export default function AppShell() {
    * 단지 정보를 열어 놓고 뒤로가기를 누른 사람이 사이트 밖으로 튕겨 나간다.
    * 나중에 연 것이 먼저 닫힌다 — 동·호 모달은 그것을 띄운 ComplexPanel 이 건다.
    */
-  useLayerHistory('consultIntro', consultIntroOpen, () => setConsultIntroOpen(false))
   useLayerHistory('complexPanel', panelOpen, () => setSelectedComplexId(null))
   useLayerHistory('conditions', askingConditions, () => setAskingConditions(false))
   useLayerHistory('holdingTax', holdingTaxOverlay.open, holdingTaxOverlay.hide)
