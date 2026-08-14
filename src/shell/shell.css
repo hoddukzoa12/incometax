@@ -49,9 +49,25 @@
   z-index: 8;
   top: var(--space-4);
   right: calc(var(--space-4) + 40px);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid var(--color-neutral-900);
   border-radius: var(--radius-md);
+  overflow: hidden;
   box-shadow: 0 4px 14px rgb(16 20 24 / 18%);
+}
+
+.map__youtube-embed-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
 .map__youtube-embed iframe {
@@ -86,16 +102,21 @@
 
 .map__youtube--icon {
   position: static;
-  display: grid;
-  place-items: center;
-  width: var(--size-touch-target-min);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   height: var(--size-touch-target-min);
-  padding: 0;
+  padding: 0 var(--space-2) 0 var(--space-1);
   border-radius: var(--radius-pill);
 }
 
 .map__youtube--icon svg {
   width: 22px;
+}
+
+.map__youtube--icon span {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
 }
 
 /* ── 지도 모서리 — 내 부동산 진입 ── */
