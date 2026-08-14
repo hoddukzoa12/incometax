@@ -6,7 +6,7 @@ import type {
 } from '../../shared/official-price'
 
 const OFFICIAL_PRICE_CACHE_ORIGIN = 'https://official-price-cache.incometax'
-const OFFICIAL_PRICE_CACHE_TTL_SECONDS = 24 * 60 * 60
+const OFFICIAL_PRICE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 const OFFICIAL_PRICE_CACHE_PATHS = {
   history: '/history',
   apartmentOptions: '/apartment-options',
