@@ -5,8 +5,10 @@ import {
   type AddressUnitOptionsRequest,
   type ApartmentOfficialPriceRequest,
   type ApartmentUnitOptionsResult,
+  type DetachedHouseOfficialPriceRequest,
   type OfficialPriceBatchResponse,
   type OfficialPriceLookupResult,
+  type OfficialPriceRequest,
 } from '../../shared/official-price'
 import type {
   AddressTradeTarget,
@@ -116,8 +118,8 @@ export async function fetchAddressTrades(
   return body
 }
 
-export async function fetchAddressOfficialPrice(
-  request: ApartmentOfficialPriceRequest,
+async function fetchOfficialPrice(
+  request: OfficialPriceRequest,
   signal: AbortSignal,
   fetcher: typeof fetch = CLIENT_FETCHER,
 ): Promise<OfficialPriceLookupResult> {
@@ -140,3 +142,17 @@ export async function fetchAddressOfficialPrice(
   }
   return body.results[0]
 }
+
+export const fetchAddressOfficialPrice = (
+  request: ApartmentOfficialPriceRequest,
+  signal: AbortSignal,
+  fetcher: typeof fetch = CLIENT_FETCHER,
+): Promise<OfficialPriceLookupResult> =>
+  fetchOfficialPrice(request, signal, fetcher)
+
+export const fetchDetachedHouseOfficialPrice = (
+  request: DetachedHouseOfficialPriceRequest,
+  signal: AbortSignal,
+  fetcher: typeof fetch = CLIENT_FETCHER,
+): Promise<OfficialPriceLookupResult> =>
+  fetchOfficialPrice(request, signal, fetcher)

@@ -4,12 +4,12 @@ import type {
   AddressComplexSearchResult,
 } from '../../shared/official-price'
 import type { PortfolioItemSeed } from '../../shared/portfolio'
-import { buildPnuFromLot } from '../../shared/pnu'
 import type {
   AddressComplexSelection,
   AddressSearchResult,
 } from '../../shared/search'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
+import { pnuForAddressSearchResult } from '../search/address-result-pnu'
 import { fetchAddressComplexes } from '../sidebar/address-api'
 import { AddressPanel } from './AddressPanel'
 
@@ -22,16 +22,6 @@ type AddressComplexLoadState =
 
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
-
-const structuredPnu = (result: AddressSearchResult): string | null =>
-  result.bCode && result.mainNumber && result.isMountain !== undefined
-    ? buildPnuFromLot({
-        legalDongCode: result.bCode,
-        isMountain: result.isMountain,
-        mainNumber: result.mainNumber,
-        subNumber: result.subNumber ?? '0',
-      })
-    : null
 
 const addressSelection = (
   result: AddressSearchResult,
@@ -66,7 +56,7 @@ export function AddressLookupPanel({
 
   useEffect(() => {
     const controller = new AbortController()
-    const pnu = structuredPnu(result)
+    const pnu = pnuForAddressSearchResult(result)
     fetchAddressComplexes({
       address: result.address,
       ...(pnu ? { pnu } : {}),

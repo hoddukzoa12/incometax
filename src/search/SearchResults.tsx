@@ -128,17 +128,39 @@ export function SearchResults({
           {addressResults.map((option, addressIndex) => {
             const index = complexItems.length + addressIndex
             const detail = addressResultDetail(option.item)
+            const notHousing = option.housingCheckStatus === 'notHousing'
             return (
               <li
                 id={`${listId}-option-${index}`}
                 key={`${option.kind}-${option.item.lat}-${option.item.lng}-${addressIndex}`}
                 role="option"
                 aria-selected={index === activeIndex}
-                className="complex-search__result"
+                aria-disabled={notHousing}
+                className={
+                  `complex-search__result${notHousing
+                    ? ' complex-search__result--not-housing'
+                    : ''}`
+                }
               >
-                <button type="button" onClick={() => onSelect(option)}>
+                <button
+                  type="button"
+                  disabled={notHousing}
+                  title={notHousing ? SEARCH_MESSAGES.notHousing : undefined}
+                  onClick={() => onSelect(option)}
+                >
                   <strong>{addressResultLabel(option.item)}</strong>
                   {detail && <span>{detail}</span>}
+                  {option.housingCheckStatus === 'pending' && (
+                    <small className="complex-search__housing-check">
+                      <span aria-hidden="true">●</span>
+                      {SEARCH_MESSAGES.housingCheckPending}
+                    </small>
+                  )}
+                  {notHousing && (
+                    <small className="complex-search__not-housing">
+                      {SEARCH_MESSAGES.notHousing}
+                    </small>
+                  )}
                 </button>
               </li>
             )

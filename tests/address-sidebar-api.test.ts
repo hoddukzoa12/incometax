@@ -6,6 +6,7 @@ import {
   fetchAddressOfficialPrice,
   fetchAddressTrades,
   fetchAddressUnitOptions,
+  fetchDetachedHouseOfficialPrice,
 } from '../src/sidebar/address-api'
 import { InvalidSidebarApiResponseError } from '../src/sidebar/api'
 
@@ -193,5 +194,42 @@ describe('address sidebar api', () => {
     }, signal(), fetcher as typeof fetch)).rejects.toBeInstanceOf(
       InvalidSidebarApiResponseError,
     )
+  })
+
+  it('accepts a detached-house result from the shared batch route', async () => {
+    const fetcher = jsonFetcher({
+      results: [{
+        key: TEST_PNU,
+        status: 'found',
+        value: {
+          assetKind: 'detachedHouse',
+          pnu: TEST_PNU,
+          detailAddress: TEST_ADDRESS,
+          items: [{
+            baseDate: '2026.1.1',
+            price: 830_000_000,
+            exclusiveArea: null,
+          }],
+        },
+      }],
+    })
+    const request = {
+      assetKind: 'detachedHouse' as const,
+      key: TEST_PNU,
+      address: TEST_ADDRESS,
+      pnu: TEST_PNU,
+    }
+
+    await expect(fetchDetachedHouseOfficialPrice(
+      request,
+      signal(),
+      fetcher as typeof fetch,
+    )).resolves.toMatchObject({
+      status: 'found',
+      value: { assetKind: 'detachedHouse' },
+    })
+    expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body))).toEqual({
+      items: [request],
+    })
   })
 })

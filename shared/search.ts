@@ -10,6 +10,12 @@ export interface AddressSearchResult {
   readonly subNumber?: string
 }
 
+export type HousingCheckStatus =
+  | 'pending'
+  | 'housing'
+  | 'notHousing'
+  | 'error'
+
 export interface AddressComplexSelection {
   readonly origin: 'address'
   readonly complexId: null

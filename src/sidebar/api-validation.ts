@@ -1,3 +1,4 @@
+import { ASSET_KINDS, type AssetKind } from '../../shared/assets'
 import {
   OFFICIAL_PRICE_FAILURE_KINDS,
   type ApartmentUnitOption,
@@ -16,6 +17,7 @@ import {
 const OFFICIAL_PRICE_FAILURE_KIND_SET = new Set<OfficialPriceFailureKind>(
   OFFICIAL_PRICE_FAILURE_KINDS,
 )
+const ASSET_KIND_SET = new Set<AssetKind>(ASSET_KINDS)
 
 const OFFICIAL_PRICE_NO_DATA_REASONS = new Set<OfficialPriceNoDataReason>([
   'addressNotFound',
@@ -107,7 +109,8 @@ export const isOfficialPriceResult = (
       typeof value.failure.retryable === 'boolean'
   }
   if (value.status !== 'found' || !isRecord(value.value)) return false
-  return value.value.assetKind === 'apartment' &&
+  return typeof value.value.assetKind === 'string' &&
+    ASSET_KIND_SET.has(value.value.assetKind as AssetKind) &&
     typeof value.value.pnu === 'string' &&
     typeof value.value.detailAddress === 'string' &&
     Array.isArray(value.value.items) &&

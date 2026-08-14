@@ -1,9 +1,17 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react'
 
 import type { ComplexStagingRecord } from '../../shared/complex'
 import type { AddressSearchResult } from '../../shared/search'
 import { SEARCH_MESSAGES } from '../messages/search'
 import { fetchComplexSearch } from './api'
+import { checkHousingStatus } from './housing-check'
 import { searchKakaoAddresses, searchKakaoPlaces } from './kakao'
 import { SearchResults } from './SearchResults'
 import {
@@ -24,6 +32,49 @@ interface ComplexSearchProps {
 const isAbortError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'AbortError'
 
+type AddressOptionSetter = Dispatch<
+  SetStateAction<readonly AddressSearchOption[]>
+>
+
+const startHousingChecks = (
+  kind: AddressSearchOption['kind'],
+  results: readonly AddressSearchResult[],
+  signal: AbortSignal,
+  isCancelled: () => boolean,
+  setItems: AddressOptionSetter,
+): void => {
+  const pendingItems: readonly AddressSearchOption[] = results.map((item) => ({
+    kind,
+    item,
+    housingCheckStatus: 'pending',
+  }))
+  setItems(pendingItems)
+
+  pendingItems.forEach((option, index) => {
+    void checkHousingStatus(option.item, signal)
+      .then((housingCheckStatus) => {
+        if (isCancelled()) return
+        setItems((current) => {
+          if (current[index]?.item !== option.item) return current
+          return current.map((currentOption, currentIndex) =>
+            currentIndex === index
+              ? { ...currentOption, housingCheckStatus }
+              : currentOption)
+        })
+      })
+      .catch((error: unknown) => {
+        if (isCancelled() || isAbortError(error)) return
+        setItems((current) => current.map((currentOption, currentIndex) =>
+          currentIndex === index
+            ? { ...currentOption, housingCheckStatus: 'error' }
+            : currentOption))
+      })
+  })
+}
+
+const isSelectable = (option: SearchOption): boolean =>
+  option.kind === 'complex' || option.housingCheckStatus !== 'notHousing'
+
 export function ComplexSearch({
   onSelectComplex,
   onSelectAddress,
@@ -34,10 +85,10 @@ export function ComplexSearch({
     readonly ComplexStagingRecord[]
   >([])
   const [addressItems, setAddressItems] = useState<
-    readonly AddressSearchResult[]
+    readonly AddressSearchOption[]
   >([])
   const [placeItems, setPlaceItems] = useState<
-    readonly AddressSearchResult[]
+    readonly AddressSearchOption[]
   >([])
   const [complexStatus, setComplexStatus] = useState<SearchStatus>('idle')
   const [addressStatus, setAddressStatus] = useState<SearchStatus>('idle')
@@ -73,7 +124,13 @@ export function ComplexSearch({
       void searchKakaoAddresses(trimmedQuery)
         .then((results) => {
           if (cancelled) return
-          setAddressItems(results)
+          startHousingChecks(
+            'address',
+            results,
+            controller.signal,
+            () => cancelled,
+            setAddressItems,
+          )
           setAddressStatus('success')
           setActiveIndex(-1)
         })
@@ -87,7 +144,13 @@ export function ComplexSearch({
       void searchKakaoPlaces(trimmedQuery)
         .then((results) => {
           if (cancelled) return
-          setPlaceItems(results)
+          startHousingChecks(
+            'place',
+            results,
+            controller.signal,
+            () => cancelled,
+            setPlaceItems,
+          )
           setPlaceStatus('success')
           setActiveIndex(-1)
         })
@@ -107,8 +170,8 @@ export function ComplexSearch({
   }, [query])
 
   const addressResults: readonly AddressSearchOption[] = [
-    ...addressItems.map((item) => ({ kind: 'address' as const, item })),
-    ...placeItems.map((item) => ({ kind: 'place' as const, item })),
+    ...addressItems,
+    ...placeItems,
   ]
   const options: readonly SearchOption[] = [
     ...complexItems.map((item) => ({ kind: 'complex' as const, item })),
@@ -129,6 +192,7 @@ export function ComplexSearch({
   }
 
   const select = (option: SearchOption) => {
+    if (!isSelectable(option)) return
     const label = option.kind === 'complex'
       ? option.item.name
       : addressResultLabel(option.item)
@@ -146,10 +210,12 @@ export function ComplexSearch({
   const moveSelection = (direction: 1 | -1) => {
     if (!options.length) return
     setActiveIndex((current) => {
-      const next = current + direction
-      if (next < 0) return options.length - 1
-      if (next >= options.length) return 0
-      return next
+      let next = current
+      for (let offset = 0; offset < options.length; offset += 1) {
+        next = (next + direction + options.length) % options.length
+        if (isSelectable(options[next])) return next
+      }
+      return -1
     })
   }
 
