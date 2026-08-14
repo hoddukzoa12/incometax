@@ -6,10 +6,10 @@ import type {
   OfficialPriceResolutionResult,
 } from '../../shared/official-price'
 import type { PortfolioItemSeed } from '../../shared/portfolio'
+import type { AddressComplexSelection } from '../../shared/search'
 import { formatWon } from '../format/won'
 import { PORTFOLIO_MESSAGES } from '../messages/portfolio'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
-import { fetchApartmentUnitOptions } from './api'
 import { formatArea } from './format'
 import {
   officialPriceFailureMessage,
@@ -17,7 +17,14 @@ import {
   unitOptionsFailureMessage,
   unitOptionsNoDataMessage,
 } from './official-price-feedback'
-import { lookupOfficialPriceForComplex } from './official-price-lookup'
+import {
+  fetchUnitOptions,
+  isAddressComplex,
+  lookupUnitOfficialPrice,
+  unitSelectionAddress,
+  unitSelectionIdentity,
+  unitSelectionName,
+} from './unit-selection-source'
 import { UnitSelectionFields } from './UnitSelectionFields'
 import './official-price.css'
 
@@ -41,9 +48,12 @@ export function UnitPicker({
   complex,
   onAddToPortfolio,
 }: {
-  readonly complex: ComplexStagingRecord
+  readonly complex: ComplexStagingRecord | AddressComplexSelection
   readonly onAddToPortfolio: (seed: PortfolioItemSeed) => void
 }) {
+  const identity = unitSelectionIdentity(complex)
+  const complexName = unitSelectionName(complex)
+  const selectedAptCode = isAddressComplex(complex) ? complex.aptCode : null
   const [dongOptions, setDongOptions] = useState<
     RemoteResult<ApartmentUnitOptionsResult>
   >({ status: 'loading' })
@@ -62,13 +72,19 @@ export function UnitPicker({
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchApartmentUnitOptions(complex.complexId, undefined, controller.signal)
-      .then((value) => setDongOptions({ status: 'loaded', value }))
+    fetchUnitOptions(complex, undefined, selectedAptCode, controller.signal)
+      .then((value) => {
+        setDongOptions({ status: 'loaded', value })
+        if (value.status === 'found' && value.value.dongs.length === 1) {
+          setSelectedDong(value.value.dongs[0].name)
+          setRoomOptions({ status: 'loading' })
+        }
+      })
       .catch((error: unknown) => {
         if (!isAbortError(error)) setDongOptions({ status: 'failed' })
-      })
+    })
     return () => controller.abort()
-  }, [complex.complexId])
+  }, [complex, identity, selectedAptCode])
 
   const optionsFailure = dongOptions.status === 'loaded'
     ? unitOptionsFailureMessage(dongOptions.value)
@@ -78,9 +94,10 @@ export function UnitPicker({
   useEffect(() => {
     if (!selectedDong || manualDong) return
     const controller = new AbortController()
-    fetchApartmentUnitOptions(
-      complex.complexId,
+    fetchUnitOptions(
+      complex,
       selectedDong,
+      selectedAptCode,
       controller.signal,
     )
       .then((value) => setRoomOptions({ status: 'loaded', value }))
@@ -88,22 +105,22 @@ export function UnitPicker({
         if (!isAbortError(error)) setRoomOptions({ status: 'failed' })
     })
     return () => controller.abort()
-  }, [complex.complexId, manualDong, selectedDong])
+  }, [complex, identity, manualDong, selectedAptCode, selectedDong])
 
   useEffect(() => {
     if (!priceQuery) return
     const controller = new AbortController()
-    lookupOfficialPriceForComplex(complex.complexId, {
-      key: `${complex.complexId}:${priceQuery.dong}:${priceQuery.room}`,
+    lookupUnitOfficialPrice(complex, {
+      key: `${identity}:${priceQuery.dong}:${priceQuery.room}`,
       dong: priceQuery.dong,
       room: priceQuery.room,
-    }, controller.signal)
+    }, selectedAptCode, controller.signal)
       .then((value) => setPriceResult({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setPriceResult({ status: 'failed' })
-      })
+    })
     return () => controller.abort()
-  }, [complex.complexId, priceQuery])
+  }, [complex, identity, priceQuery, selectedAptCode])
 
   const dongs = dongOptions.status === 'loaded' &&
     dongOptions.value.status === 'found'
@@ -181,6 +198,7 @@ export function UnitPicker({
       <UnitSelectionFields
         dongs={dongs}
         rooms={rooms}
+        hideDongField={dongs.length === 1 && !manualDong}
         selectedDong={selectedDong}
         selectedRoom={selectedRoom}
         dongLoading={dongOptions.status === 'loading'}
@@ -253,10 +271,12 @@ export function UnitPicker({
         type="button"
         onClick={() => onAddToPortfolio({
           assetKind: 'apartment',
-          complexId: complex.complexId,
+          complexId: isAddressComplex(complex) ? null : complex.complexId,
+          pnu: isAddressComplex(complex) ? complex.pnu : null,
+          aptCode: isAddressComplex(complex) ? complex.aptCode : null,
           legalDongCode: complex.legalDongCode,
-          complexName: complex.name,
-          address: complex.roadAddress ?? complex.legalAddress,
+          complexName,
+          address: unitSelectionAddress(complex),
           dong: selectedDong || null,
           ho: selectedRoom || null,
           exclusiveArea: resolvedPrice?.exclusiveArea ?? null,

@@ -48,6 +48,8 @@ const EUNMA_PRIOR_OFFICIAL_PRICES = [
 const seed = (): PortfolioItemSeed => ({
   assetKind: 'apartment',
   complexId: 'eunma-1381',
+  pnu: null,
+  aptCode: null,
   legalDongCode: '1168010600',
   complexName: '은마아파트 1동 101호',
   address: '서울특별시 강남구 대치동 316',

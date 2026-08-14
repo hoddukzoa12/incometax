@@ -6,11 +6,18 @@ import type {
   ApartmentUnitOptionsResult,
   OfficialPriceLookupResult,
 } from '../../shared/official-price'
+import type { AddressComplexSelection } from '../../shared/search'
 import { formatWon } from '../format/won'
 import { SHELL_MESSAGES } from '../messages/shell'
 import { SIDEBAR_MESSAGES } from '../messages/sidebar'
-import { fetchApartmentUnitOptions } from '../sidebar/api'
-import { lookupOfficialPriceForComplex } from '../sidebar/official-price-lookup'
+import {
+  fetchUnitOptions,
+  isAddressComplex,
+  lookupUnitOfficialPrice,
+  unitSelectionAddress,
+  unitSelectionIdentity,
+  unitSelectionName,
+} from '../sidebar/unit-selection-source'
 import { formatArea } from '../format/property'
 
 const CURRENT_PRICE_INDEX = 0
@@ -53,14 +60,18 @@ export function UnitLookup({
   onCancel,
   onConfirm,
 }: {
-  readonly complex: ComplexStagingRecord
+  readonly complex: ComplexStagingRecord | AddressComplexSelection
   readonly mode: 'add' | 'calculate'
   readonly onCancel: () => void
   readonly onConfirm: (seed: PortfolioItemSeed) => void
 }) {
+  const identity = unitSelectionIdentity(complex)
+  const complexName = unitSelectionName(complex)
   const [dong, setDong] = useState<string | null>(null)
   const [ho, setHo] = useState<string | null>(null)
-  const [selectedAptCode, setSelectedAptCode] = useState<string | null>(null)
+  const [selectedAptCode, setSelectedAptCode] = useState<string | null>(
+    isAddressComplex(complex) ? complex.aptCode : null,
+  )
   const [dongState, setDongState] = useState<
     Loadable<ApartmentUnitOptionsResult>
   >({ status: 'loading' })
@@ -73,51 +84,48 @@ export function UnitLookup({
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchApartmentUnitOptions(
-      complex.complexId, undefined, controller.signal,
-      selectedAptCode ?? undefined,
-    )
+    fetchUnitOptions(complex, undefined, selectedAptCode, controller.signal)
       .then((value) => {
         setDongState({ status: 'loaded', value })
         if (value.status === 'found' && value.value.aptCode && !selectedAptCode) {
           setSelectedAptCode(value.value.aptCode)
         }
+        if (value.status === 'found' && value.value.dongs.length === 1) {
+          setDong(value.value.dongs[0].name)
+          setHoState({ status: 'loading' })
+        }
       })
       .catch((error: unknown) => {
         if (!isAbortError(error)) setDongState({ status: 'failed' })
-      })
+    })
     return () => controller.abort()
-  }, [complex.complexId, selectedAptCode])
+  }, [complex, identity, selectedAptCode])
 
   useEffect(() => {
     if (dong === null) return
     const controller = new AbortController()
-    fetchApartmentUnitOptions(
-      complex.complexId, dong, controller.signal,
-      selectedAptCode ?? undefined,
-    )
+    fetchUnitOptions(complex, dong, selectedAptCode, controller.signal)
       .then((value) => setHoState({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setHoState({ status: 'failed' })
-      })
+    })
     return () => controller.abort()
-  }, [complex.complexId, dong, selectedAptCode])
+  }, [complex, identity, dong, selectedAptCode])
 
   useEffect(() => {
     if (dong === null || ho === null) return
     const controller = new AbortController()
-    lookupOfficialPriceForComplex(complex.complexId, {
-      key: `${complex.complexId}:${dong}:${ho}`,
+    lookupUnitOfficialPrice(complex, {
+      key: `${identity}:${dong}:${ho}`,
       dong,
       room: ho,
-      aptCode: selectedAptCode ?? undefined,
-    }, controller.signal)
+    }, selectedAptCode, controller.signal)
       .then((value) => setPriceState({ status: 'loaded', value }))
       .catch((error: unknown) => {
         if (!isAbortError(error)) setPriceState({ status: 'failed' })
-      })
+    })
     return () => controller.abort()
-  }, [complex.complexId, dong, ho, selectedAptCode])
+  }, [complex, identity, dong, ho, selectedAptCode])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -138,6 +146,7 @@ export function UnitLookup({
   }
   const candidates = savedCandidates
   const dongs = optionNames(dongState, 'dongs')
+  const skipDongSelection = dongs.length === 1
   const hos = optionNames(hoState, 'rooms')
   const found = priceState?.status === 'loaded' &&
       priceState.value.status === 'found'
@@ -156,14 +165,14 @@ export function UnitLookup({
     >
       <div className="mbox__card">
         <div className="mbox__head">
-          <p>{complex.name}</p>
+          <p>{complexName}</p>
           <h2>{SHELL_MESSAGES.unitLookupTitle}</h2>
         </div>
 
         <div className="mbox__body">
           {candidates !== null && (
             <div>
-              <h3>같은 주소에 여러 단지가 있어요</h3>
+              <h3>{SIDEBAR_MESSAGES.addressComplexAmbiguousTitle}</h3>
               <div className="chips">
                 {candidates.map((candidate) => (
                   <button
@@ -185,7 +194,7 @@ export function UnitLookup({
             </div>
           )}
 
-          {(candidates === null || selectedAptCode !== null) && (
+          {(candidates === null || selectedAptCode !== null) && !skipDongSelection && (
           <div>
             <h3>{SIDEBAR_MESSAGES.dongLabel}</h3>
             {dongState.status === 'loading' && (
@@ -277,10 +286,12 @@ export function UnitLookup({
               if (!ready || current === null) return
               onConfirm({
                 assetKind: 'apartment',
-                complexId: complex.complexId,
+                complexId: isAddressComplex(complex) ? null : complex.complexId,
+                pnu: isAddressComplex(complex) ? complex.pnu : null,
+                aptCode: isAddressComplex(complex) ? complex.aptCode : null,
                 legalDongCode: complex.legalDongCode,
-                complexName: complex.name,
-                address: complex.roadAddress ?? complex.legalAddress,
+                complexName,
+                address: unitSelectionAddress(complex),
                 dong,
                 ho,
                 exclusiveArea: current.exclusiveArea,

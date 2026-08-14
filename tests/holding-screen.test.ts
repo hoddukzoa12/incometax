@@ -14,6 +14,8 @@ const seed = (
 ): PortfolioItemSeed => ({
   assetKind: 'apartment',
   complexId: 'golden-h11',
+  pnu: null,
+  aptCode: null,
   legalDongCode: '1168010600',
   complexName: 'H11 공동명의 주택',
   address: '서울특별시 강남구 테스트로 11',

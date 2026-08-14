@@ -1,4 +1,5 @@
 import type {
+  AddressComplexSearchResult,
   ApartmentUnitOptionsRequest,
   ApartmentUnitOptionsResult,
   OfficialPriceLookupResult,
@@ -10,7 +11,20 @@ const OFFICIAL_PRICE_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 const OFFICIAL_PRICE_CACHE_PATHS = {
   history: '/history',
   apartmentOptions: '/apartment-options',
+  addressComplexes: '/address-complexes',
 } as const
+
+export interface AddressComplexSearchCache {
+  getAddressComplexes(
+    pnu: string,
+    noticeDate: string,
+  ): Promise<AddressComplexSearchResult | null>
+  putAddressComplexes(
+    pnu: string,
+    noticeDate: string,
+    result: AddressComplexSearchResult,
+  ): Promise<void>
+}
 
 export interface OfficialPriceCache {
   get(
@@ -68,7 +82,21 @@ function apartmentOptionsCacheRequest(
   return new Request(url)
 }
 
+function addressComplexesCacheRequest(
+  pnu: string,
+  noticeDate: string,
+): Request {
+  const url = new URL(
+    OFFICIAL_PRICE_CACHE_PATHS.addressComplexes,
+    OFFICIAL_PRICE_CACHE_ORIGIN,
+  )
+  url.searchParams.set('pnu', pnu)
+  url.searchParams.set('noticeDate', noticeDate)
+  return new Request(url)
+}
+
 export class CloudflareOfficialPriceCache implements
+  AddressComplexSearchCache,
   ApartmentUnitOptionsCache,
   OfficialPriceCache {
   constructor(private readonly cache: Cache) {}
@@ -125,5 +153,36 @@ export class CloudflareOfficialPriceCache implements
       },
     })
     await this.cache.put(apartmentOptionsCacheRequest(request, pnu), response)
+  }
+
+  async getAddressComplexes(
+    pnu: string,
+    noticeDate: string,
+  ): Promise<AddressComplexSearchResult | null> {
+    const response = await this.cache.match(
+      addressComplexesCacheRequest(pnu, noticeDate),
+    )
+    return response
+      ? response.json<AddressComplexSearchResult>()
+      : null
+  }
+
+  async putAddressComplexes(
+    pnu: string,
+    noticeDate: string,
+    result: AddressComplexSearchResult,
+  ): Promise<void> {
+    if (result.status === 'failed') return
+
+    const response = new Response(JSON.stringify(result), {
+      headers: {
+        'cache-control': `public, max-age=${OFFICIAL_PRICE_CACHE_TTL_SECONDS}`,
+        'content-type': 'application/json; charset=UTF-8',
+      },
+    })
+    await this.cache.put(
+      addressComplexesCacheRequest(pnu, noticeDate),
+      response,
+    )
   }
 }

@@ -1,6 +1,15 @@
 export const SIDEBAR_MESSAGES = {
   sidebarLabel: '선택한 단지 정보',
-  apartmentComplexLabel: '아파트 단지',
+  apartmentComplexLabel: '공동주택',
+  addressComplexLoading: '이 주소의 공동주택을 찾고 있어요.',
+  addressComplexNoData:
+    '이 주소에서 공동주택 공시가격을 찾을 수 없습니다.',
+  addressComplexFailed:
+    '공동주택 공시가격을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+  addressComplexChoiceTitle: '공동주택을 선택해 주세요',
+  addressComplexChoiceGuide:
+    '같은 주소에 여러 공동주택이 있어요. 조회할 이름을 골라 주세요.',
+  addressComplexAmbiguousTitle: '같은 주소에 여러 단지가 있어요',
   lotAddressLabel: '지번',
   approvalDateLabel: '사용승인일',
   buildingCountLabel: '동 수',

@@ -168,6 +168,16 @@ export interface RecentTrade {
   readonly floor: number | null
 }
 
+export interface AddressTradeTarget {
+  readonly legalDongCode: string
+  readonly jibunAddress: string
+  readonly complexName: string
+}
+
+export interface AddressTradesResponse {
+  readonly items: readonly RecentTrade[]
+}
+
 export interface ComplexTradesResponse {
   readonly complexId: string
   readonly items: readonly RecentTrade[]

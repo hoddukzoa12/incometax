@@ -35,6 +35,13 @@ export interface ComplexMapProps {
    * 같은 단지를 다시 고를 수 있으므로 seq 로 요청을 구분한다.
    */
   readonly focus: { readonly lat: number; readonly lng: number; readonly seq: number } | null
+  /** 카카오 주소·장소 검색으로 고른 위치. D1 단지 마커와 별도로 표시한다. */
+  readonly addressMarker: {
+    readonly lat: number
+    readonly lng: number
+    readonly title: string
+    readonly seq: number
+  } | null
 }
 
 const displayModeForLevel = (level: number): MapDisplayMode =>
@@ -73,6 +80,7 @@ export default function ComplexMap({
   onAddComplex,
   onRemoveComplex,
   focus,
+  addressMarker,
 }: ComplexMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<kakao.maps.Map | null>(null)
@@ -92,12 +100,25 @@ export default function ComplexMap({
   const [isLoading, setIsLoading] = useState(true)
   const [isTruncated, setIsTruncated] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [mapReady, setMapReady] = useState(false)
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || focus === null) return
+    if (!mapReady || !map || focus === null) return
     panToComplex(map, focus)
-  }, [focus])
+  }, [focus, mapReady])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || addressMarker === null) return
+    const marker = new kakao.maps.Marker({
+      map,
+      position: new kakao.maps.LatLng(addressMarker.lat, addressMarker.lng),
+      title: addressMarker.title,
+      image: createComplexMarkerImage(),
+    })
+    return () => marker.setMap(null)
+  }, [addressMarker, mapReady])
 
   useEffect(() => {
     onComplexSelectRef.current = onComplexSelect
@@ -264,6 +285,7 @@ export default function ComplexMap({
           level: INITIAL_MAP_LEVEL,
         })
         mapRef.current = map
+        setMapReady(true)
         map.addControl(
           new kakao.maps.ZoomControl(),
           kakao.maps.ControlPosition.RIGHT,

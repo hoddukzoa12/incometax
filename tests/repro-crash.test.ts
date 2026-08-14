@@ -7,6 +7,8 @@ const item: StoredPortfolioItem = {
   id: 'test1',
   assetKind: 'apartment',
   complexId: 'A1',
+  pnu: null,
+  aptCode: null,
   legalDongCode: '1168010600',
   complexName: '테스트',
   address: '서울 강남구',

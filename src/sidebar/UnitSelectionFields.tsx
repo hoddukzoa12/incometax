@@ -7,6 +7,7 @@ const optionLabel = (name: string, suffix: string): string =>
 export function UnitSelectionFields({
   dongs,
   rooms,
+  hideDongField = false,
   selectedDong,
   selectedRoom,
   dongLoading,
@@ -25,6 +26,7 @@ export function UnitSelectionFields({
 }: {
   readonly dongs: readonly ApartmentUnitOption[]
   readonly rooms: readonly ApartmentUnitOption[]
+  readonly hideDongField?: boolean
   readonly selectedDong: string
   readonly selectedRoom: string
   readonly dongLoading: boolean
@@ -59,32 +61,34 @@ export function UnitSelectionFields({
 
       {showFields && (
         <div className="unit-picker__fields">
-          <label>
-            <span>
-              {manualDong
-                ? SIDEBAR_MESSAGES.dongInputLabel
-                : SIDEBAR_MESSAGES.dongLabel}
-            </span>
-            {manualDong ? (
-              <input
-                value={selectedDong}
-                placeholder={SIDEBAR_MESSAGES.enterDong}
-                onChange={(event) => onDongChange(event.target.value)}
-              />
-            ) : (
-              <select
-                value={selectedDong}
-                onChange={(event) => onDongChange(event.target.value)}
-              >
-                <option value="">{SIDEBAR_MESSAGES.selectDong}</option>
-                {dongs.map((option) => (
-                  <option key={option.code} value={option.name}>
-                    {optionLabel(option.name, SIDEBAR_MESSAGES.dongSuffix)}
-                  </option>
-                ))}
-              </select>
-            )}
-          </label>
+          {!hideDongField && (
+            <label>
+              <span>
+                {manualDong
+                  ? SIDEBAR_MESSAGES.dongInputLabel
+                  : SIDEBAR_MESSAGES.dongLabel}
+              </span>
+              {manualDong ? (
+                <input
+                  value={selectedDong}
+                  placeholder={SIDEBAR_MESSAGES.enterDong}
+                  onChange={(event) => onDongChange(event.target.value)}
+                />
+              ) : (
+                <select
+                  value={selectedDong}
+                  onChange={(event) => onDongChange(event.target.value)}
+                >
+                  <option value="">{SIDEBAR_MESSAGES.selectDong}</option>
+                  {dongs.map((option) => (
+                    <option key={option.code} value={option.name}>
+                      {optionLabel(option.name, SIDEBAR_MESSAGES.dongSuffix)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </label>
+          )}
 
           <label>
             <span>

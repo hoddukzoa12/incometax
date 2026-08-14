@@ -66,6 +66,8 @@ const loadApartmentContext = async (
       },
     }
   }
+  if (request.aptCode) return { status: 'notFound' }
+
   const resolution = resolveComplex(complexRows, request.complexName)
   if (resolution.status === 'notFound') return resolution
   if (resolution.status === 'ambiguous') {

@@ -118,6 +118,69 @@ declare namespace kakao.maps {
     ): void
     function preventMap(): void
   }
+
+  namespace services {
+    type Status = 'OK' | 'ZERO_RESULT' | 'ERROR'
+
+    const Status: {
+      readonly OK: 'OK'
+      readonly ZERO_RESULT: 'ZERO_RESULT'
+      readonly ERROR: 'ERROR'
+    }
+
+    interface Address {
+      readonly address_name: string
+      readonly b_code: string
+      readonly main_address_no: string
+      readonly mountain_yn: 'Y' | 'N'
+      readonly sub_address_no: string
+    }
+
+    interface RoadAddress {
+      readonly address_name: string
+    }
+
+    interface AddressSearchResult {
+      readonly address: Address | null
+      readonly address_name: string
+      readonly road_address: RoadAddress | null
+      readonly x: string
+      readonly y: string
+    }
+
+    type AddressSearchCallback = (
+      results: readonly AddressSearchResult[],
+      status: Status,
+    ) => void
+
+    class Geocoder {
+      addressSearch(query: string, callback: AddressSearchCallback): void
+    }
+
+    interface PlacesSearchResultItem {
+      readonly address_name: string
+      readonly place_name: string
+      readonly road_address_name: string
+      readonly x: string
+      readonly y: string
+    }
+
+    interface Pagination {
+      readonly current: number
+      readonly last: number
+      readonly totalCount: number
+    }
+
+    type PlacesSearchCallback = (
+      results: readonly PlacesSearchResultItem[],
+      status: Status,
+      pagination: Pagination,
+    ) => void
+
+    class Places {
+      keywordSearch(query: string, callback: PlacesSearchCallback): void
+    }
+  }
 }
 
 interface Window {

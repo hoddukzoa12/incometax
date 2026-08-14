@@ -64,4 +64,30 @@ describe('UnitSelectionFields', () => {
     expect(html).not.toContain('<select')
     expect(html).not.toContain('disabled=""')
   })
+
+  it('skips the dong field when the only dong was selected automatically', () => {
+    const html = renderToStaticMarkup(
+      <UnitSelectionFields
+        dongs={[{ code: '1', name: '동명없음' }]}
+        rooms={[{ code: '101', name: '101호' }]}
+        hideDongField
+        selectedDong="동명없음"
+        selectedRoom=""
+        dongLoading={false}
+        roomLoading={false}
+        dongError={null}
+        roomError={null}
+        dongNoData={null}
+        roomNoData={null}
+        manualDong={false}
+        manualRoom={false}
+        lookupLoading={false}
+        {...callbacks}
+      />,
+    )
+
+    expect(html).not.toContain(SIDEBAR_MESSAGES.dongLabel)
+    expect(html).toContain(SIDEBAR_MESSAGES.roomLabel)
+    expect(html.match(/<select/g)).toHaveLength(1)
+  })
 })

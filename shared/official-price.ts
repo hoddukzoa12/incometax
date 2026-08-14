@@ -18,6 +18,45 @@ export interface DetachedHouseOfficialPriceRequest {
   readonly pnu?: string
 }
 
+export interface AddressComplexSearchRequest {
+  readonly address: string
+  readonly pnu?: string
+}
+
+export interface AddressComplex {
+  readonly code: string
+  readonly name: string
+}
+
+export type AddressComplexSearchResult =
+  | {
+      readonly status: 'found'
+      readonly complexes: readonly AddressComplex[]
+      readonly pnu: string
+    }
+  | { readonly status: 'noData' }
+  | {
+      readonly status: 'failed'
+      readonly failure: {
+        readonly kind: string
+        readonly message: string
+        readonly retryable: boolean
+      }
+    }
+
+export interface AddressUnitOptionsRequest {
+  readonly pnu: string
+  readonly aptCode: string
+  readonly dong?: string
+}
+
+const ADDRESS_APARTMENT_IDENTITY_SEPARATOR = '|'
+
+export const addressApartmentIdentity = (
+  pnu: string,
+  aptCode: string,
+): string => [pnu, aptCode].join(ADDRESS_APARTMENT_IDENTITY_SEPARATOR)
+
 export type OfficialPriceRequest =
   | ApartmentOfficialPriceRequest
   | DetachedHouseOfficialPriceRequest

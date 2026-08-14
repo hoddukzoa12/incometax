@@ -10,6 +10,8 @@ const item = (
   id: 'i1',
   assetKind: 'apartment',
   complexId: 'A13583507',
+  pnu: null,
+  aptCode: null,
   legalDongCode: '1168010600',
   complexName: '은마',
   address: '서울 강남구 삼성로 212',
