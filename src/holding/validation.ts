@@ -21,7 +21,7 @@ const INVALID_OWNERSHIP_PERIOD_MESSAGE =
 const INVALID_OWNER_AGE_MESSAGE =
   'Owner age must be a non-negative integer when provided'
 const INVALID_PRIOR_YEAR_TAX_MESSAGE =
-  'Prior-year tax figures must be non-negative integer won amounts when provided'
+  'Prior-year tax figures must be valid integer won amounts when provided'
 const UNSUPPORTED_ASSET_KIND_MESSAGE = 'Unsupported asset kind for holding tax'
 
 const isSupportedAssetKind = (assetKind: string): boolean =>
@@ -53,7 +53,6 @@ export const assertValidHoldingTaxInput = (
 
   const priorYearNonNegative = [
     input.priorYearTax?.propertyBaseTax,
-    input.priorYearTax?.comprehensiveCalculatedTax,
   ].filter((amount): amount is number => amount !== undefined)
   if (
     priorYearNonNegative.some(
@@ -65,8 +64,9 @@ export const assertValidHoldingTaxInput = (
   ) {
     throw new RangeError(INVALID_PRIOR_YEAR_TAX_MESSAGE)
   }
-  // payableTax 는 2027년 이후 0 하한이 없어 음수가 될 수 있다.
-  const comprehensiveTax = input.priorYearTax?.comprehensiveTax
+  // 2026년에는 하한이 없어 세액공제 후 종부세상당액이 음수일 수 있다.
+  const comprehensiveTax =
+    input.priorYearTax?.comprehensiveTaxAfterCredit
   if (
     comprehensiveTax !== undefined &&
     (!Number.isFinite(comprehensiveTax) ||

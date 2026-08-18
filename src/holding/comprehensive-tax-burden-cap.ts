@@ -17,8 +17,7 @@ const calculateTaxBurdenBase = (
 ): number => propertyBaseTax + comprehensiveTax
 
 const PRIOR_COMPREHENSIVE_TAX_MISSING_INPUT = {
-  calculated: 'priorYearComprehensiveCalculatedTax',
-  final: 'priorYearComprehensiveTax',
+  afterCredit: 'priorYearComprehensiveTaxAfterCredit',
 } as const satisfies Readonly<
   Record<
     ComprehensiveTaxBurdenCapRules['priorComprehensiveTaxKind'],
@@ -42,8 +41,7 @@ const resolvePriorYearTax = (
     } => {
   const propertyBaseTax = priorYearTax?.propertyBaseTax
   const priorComprehensiveTaxes = {
-    calculated: priorYearTax?.comprehensiveCalculatedTax,
-    final: priorYearTax?.comprehensiveTax,
+    afterCredit: priorYearTax?.comprehensiveTaxAfterCredit,
   } as const
   const comprehensiveTax =
     priorComprehensiveTaxes[priorComprehensiveTaxKind]
@@ -75,11 +73,11 @@ const resolvePriorYearTax = (
 
 export const calculateComprehensiveTaxBurdenCap = (
   currentPropertyBaseTax: number,
-  currentComprehensiveCalculatedTax: number,
+  currentComprehensiveTaxAfterCredit: number,
   priorYearTax: PriorYearHoldingTax | undefined,
   rules: ComprehensiveTaxBurdenCapRules,
 ): ComprehensiveTaxBurdenCapResult => {
-  if (currentComprehensiveCalculatedTax <= ZERO_AMOUNT) {
+  if (currentComprehensiveTaxAfterCredit <= ZERO_AMOUNT) {
     return {
       status: 'notApplicable',
       reason: 'noComprehensiveTax',
@@ -106,7 +104,7 @@ export const calculateComprehensiveTaxBurdenCap = (
   )
   const currentYearBase = calculateTaxBurdenBase(
     currentPropertyBaseTax,
-    currentComprehensiveCalculatedTax,
+    currentComprehensiveTaxAfterCredit,
   )
   const maximumTaxBurden = priorYearBase * rules.rate
   const excessAmount = Math.max(

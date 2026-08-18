@@ -12,8 +12,7 @@ const ONE_WON = 1
 const OWNER_BELOW_CREDIT_AGE = 59
 const NON_BINDING_PRIOR_YEAR_TAX = {
   propertyBaseTax: 10_000_000,
-  comprehensiveCalculatedTax: 10_000_000,
-  comprehensiveTax: 10_000_000,
+  comprehensiveTaxAfterCredit: 10_000_000,
 } as const
 
 const createItem = (
@@ -549,7 +548,7 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
         ownerAge: OWNER_BELOW_CREDIT_AGE,
         priorYearTax: {
           propertyBaseTax: 2_610_000,
-          comprehensiveTax: 1_056_000,
+          comprehensiveTaxAfterCredit: 1_056_000,
         },
       },
     )
@@ -580,11 +579,10 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
     expect(result.totalTax).toBe(10_373_400)
   })
 
-  it('keeps the 2026 payable-tax floor but reproduces the v3 negative 2027 tax', () => {
+  it('allows negative payable tax only in 2026 under the v3.5 floor rules', () => {
     const priorYearTax = {
       propertyBaseTax: 0,
-      comprehensiveCalculatedTax: 0,
-      comprehensiveTax: 0,
+      comprehensiveTaxAfterCredit: 0,
     } as const
     const currentLaw = calculate(2026, [createItem()], 1, {
       ownerAge: OWNER_BELOW_CREDIT_AGE,
@@ -596,21 +594,26 @@ describe('calculateHoldingTax credit and burden-cap golden cases', () => {
     })
 
     expect(currentLaw.comprehensiveTax).toMatchObject({
-      payableTax: 0,
-      ruralSpecialTax: 0,
-      totalTax: 0,
+      netTax: 1_939_511,
+      taxBurdenCap: {
+        status: 'computed',
+        excessAmount: 4_909_511,
+      },
+      payableTax: -2_970_000,
+      ruralSpecialTax: -594_000,
     })
+    expect(currentLaw.totalTax).toBe(1_260_000)
     expect(reform.comprehensiveTax).toMatchObject({
       netTax: 1_622_072,
       taxBurdenCap: {
         status: 'computed',
         excessAmount: 4_592_072,
       },
-      payableTax: -2_970_000,
-      ruralSpecialTax: -594_000,
-      totalTax: -3_564_000,
+      payableTax: 0,
+      ruralSpecialTax: 0,
+      totalTax: 0,
     })
-    expect(reform.totalTax).toBe(1_260_000)
+    expect(reform.totalTax).toBe(4_824_000)
   })
 
   it('matches H15 before and after unavoidable-relocation recognition', () => {
@@ -1197,7 +1200,7 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
       rate: 2,
       missingInputs: [
         'priorYearPropertyBaseTax',
-        'priorYearComprehensiveTax',
+        'priorYearComprehensiveTaxAfterCredit',
       ],
       excessAmount: 0,
     })
@@ -1269,7 +1272,7 @@ describe('calculateHoldingTax boundaries, ownership, and validation', () => {
         ownerAge: OWNER_BELOW_CREDIT_AGE,
         priorYearTax: {
           propertyBaseTax: 1.5,
-          comprehensiveCalculatedTax: 0,
+          comprehensiveTaxAfterCredit: 0,
         },
       }),
     ).toThrow(RangeError)

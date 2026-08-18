@@ -326,8 +326,7 @@ describe('holding-tax screen boundary', () => {
 
     expect(current.input.priorYearTax).toEqual({
       propertyBaseTax: 2_444_400,
-      comprehensiveCalculatedTax: 1_018_171,
-      comprehensiveTax: 1_018_171,
+      comprehensiveTaxAfterCredit: 1_018_171,
     })
     expect(current.result.comprehensiveTax.taxBurdenCap).toEqual({
       status: 'computed',
@@ -444,26 +443,26 @@ describe('holding-tax screen boundary', () => {
     }))).toEqual([
       {
         year: 2027,
-        totalTax: 14_015_495,
+        totalTax: 15_071_875,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 5_193_856,
-          maximumTaxBurden: 10_387_712,
+          priorYearBase: 5_634_014,
+          maximumTaxBurden: 11_268_028,
           currentYearBase: 27_535_088,
-          excessAmount: 17_147_376,
+          excessAmount: 16_267_060,
         },
       },
       {
         year: 2028,
-        totalTax: 28_030_991,
+        totalTax: 69_184_693,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 10_387_712,
-          maximumTaxBurden: 20_775_424,
+          priorYearBase: 27_535_088,
+          maximumTaxBurden: 55_070_176,
           currentYearBase: 126_966_912,
-          excessAmount: 106_191_488,
+          excessAmount: 71_896_736,
         },
       },
     ])
@@ -502,7 +501,7 @@ describe('holding-tax screen boundary', () => {
       rate: 1.5,
       missingInputs: [
         'priorYearPropertyBaseTax',
-        'priorYearComprehensiveCalculatedTax',
+        'priorYearComprehensiveTaxAfterCredit',
       ],
       excessAmount: 0,
     })
