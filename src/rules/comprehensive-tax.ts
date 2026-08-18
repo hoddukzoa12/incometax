@@ -253,11 +253,11 @@ export const COMPREHENSIVE_CALCULATED_TAX_MINIMUM_2026 = null
 export const COMPREHENSIVE_CALCULATED_TAX_MINIMUM_FROM_2027 = 0
 
 /**
- * 세액공제·세부담상한 반영 후 종합부동산세 하한 — v3.5 엑셀 행 55.
- * 2026년은 하한이 없고, 2027년 이후에는 0원 하한을 둔다.
+ * 세액공제·세부담상한 반영 후 종합부동산세 하한 — holding-tax-v3-spec.md §3.12.
+ * v3 엑셀은 2026년에만 0원 하한을 두고 2027년 이후에는 하한을 두지 않는다.
  */
-export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_2026 = null
-export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_FROM_2027 = 0
+export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_2026 = 0
+export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_FROM_2027 = null
 
 /**
  * 농어촌특별세율 — tax-rules-spec.md §3.8.

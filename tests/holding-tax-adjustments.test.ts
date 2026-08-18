@@ -14,7 +14,6 @@ const SUPPORTED_TAX_YEARS = [
   2027,
   2028,
   2029,
-  2030,
 ] as const satisfies readonly TaxYear[]
 
 const calculateCredit = (
@@ -70,25 +69,18 @@ describe('yearly holding-tax rules', () => {
   it('applies the v3 calculated-tax floor only from 2027', () => {
     expect(TAX_RULES_BY_YEAR[2026].comprehensiveTax.calculatedTaxMinimum)
       .toBeNull()
-    for (const year of [2027, 2028, 2029, 2030] as const) {
+    for (const year of [2027, 2028] as const) {
       expect(TAX_RULES_BY_YEAR[year].comprehensiveTax.calculatedTaxMinimum)
         .toBe(0)
     }
   })
 
-  it('applies the v3.5 payable-tax floor only from 2027', () => {
+  it('applies the v3 payable-tax floor only through 2026', () => {
     expect(TAX_RULES_BY_YEAR[2026].comprehensiveTax.payableTaxMinimum)
-      .toBeNull()
-    for (const year of [2027, 2028, 2029, 2030] as const) {
+      .toBe(0)
+    for (const year of [2027, 2028] as const) {
       expect(TAX_RULES_BY_YEAR[year].comprehensiveTax.payableTaxMinimum)
-        .toBe(0)
-    }
-  })
-
-  it('uses after-credit prior-year comprehensive tax for every year', () => {
-    for (const year of SUPPORTED_TAX_YEARS) {
-      expect(TAX_RULES_BY_YEAR[year].comprehensiveTax.taxBurdenCap
-        .priorComprehensiveTaxKind).toBe('afterCredit')
+        .toBeNull()
     }
   })
 })
@@ -267,7 +259,8 @@ describe('calculateComprehensiveTaxBurdenCap', () => {
   it('uses 150% for current law and 200% from 2027', () => {
     const priorYearTax = {
       propertyBaseTax: 500_000,
-      comprehensiveTaxAfterCredit: 500_000,
+      comprehensiveCalculatedTax: 500_000,
+      comprehensiveTax: 500_000,
     } as const
 
     const currentResult = calculateComprehensiveTaxBurdenCap(
@@ -310,15 +303,16 @@ describe('calculateComprehensiveTaxBurdenCap', () => {
     expect(result).toEqual({
       status: 'notComputed',
       rate: 2,
-      missingInputs: ['priorYearComprehensiveTaxAfterCredit'],
+      missingInputs: ['priorYearComprehensiveTax'],
       excessAmount: 0,
     })
   })
 
-  it('uses after-credit prior-year comprehensive tax for every year', () => {
+  it('uses final prior-year comprehensive tax from 2027 while preserving the 2026 calculated-tax input', () => {
     const priorYearTax = {
       propertyBaseTax: 500_000,
-      comprehensiveTaxAfterCredit: 300_000,
+      comprehensiveCalculatedTax: 100_000,
+      comprehensiveTax: 500_000,
     } as const
 
     const currentLaw = calculateComprehensiveTaxBurdenCap(
@@ -329,9 +323,9 @@ describe('calculateComprehensiveTaxBurdenCap', () => {
     )
     expect(currentLaw).toMatchObject({
       status: 'computed',
-      priorYearBase: 800_000,
-      maximumTaxBurden: 1_200_000,
-      excessAmount: 400_000,
+      priorYearBase: 600_000,
+      maximumTaxBurden: 900_000,
+      excessAmount: 700_000,
     })
 
     const reform = calculateComprehensiveTaxBurdenCap(
@@ -342,8 +336,8 @@ describe('calculateComprehensiveTaxBurdenCap', () => {
     )
     expect(reform).toMatchObject({
       status: 'computed',
-      priorYearBase: 800_000,
-      maximumTaxBurden: 1_600_000,
+      priorYearBase: 1_000_000,
+      maximumTaxBurden: 2_000_000,
       excessAmount: 0,
     })
   })

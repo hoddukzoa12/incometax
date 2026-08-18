@@ -151,7 +151,6 @@ const createNotTaxableResult = (
     reason: 'noComprehensiveTax',
     amount: ZERO_AMOUNT,
   },
-  taxAfterCredit: ZERO_AMOUNT,
   taxBurdenCap: {
     status: 'notApplicable',
     reason: 'noComprehensiveTax',
@@ -280,23 +279,20 @@ export const calculateComprehensiveTax = (
     (total, propertyTax) => total + propertyTax.baseTax,
     ZERO_AMOUNT,
   )
-  // v3.5 엑셀: 세액공제 후 금액 → 세부담상한 → 종합부동산세.
+  // v3.3 엑셀: B55(세액공제 후) → B56(세부담상한) → B57(종합부동산세).
   // 세부담상한의 당해 기준은 재산세 + 세액공제 후 종부세다.
-  const unroundedTaxAfterCredit = taxCredit.amount === null
+  const afterCredit = taxCredit.amount === null
     ? null
     : unroundedNetTax - taxCredit.amount
-  const taxAfterCredit = unroundedTaxAfterCredit === null
-    ? null
-    : roundTaxAmount(unroundedTaxAfterCredit)
   const taxBurdenCap = calculateComprehensiveTaxBurdenCap(
     propertyBaseTaxTotal,
-    taxAfterCredit ?? netTax,
+    afterCredit !== null ? roundTaxAmount(afterCredit) : netTax,
     priorYearTax,
     rules.comprehensiveTax.taxBurdenCap,
   )
-  const payableTaxBeforeMinimum = unroundedTaxAfterCredit === null
+  const payableTaxBeforeMinimum = afterCredit === null
     ? null
-    : unroundedTaxAfterCredit - taxBurdenCap.excessAmount
+    : afterCredit - taxBurdenCap.excessAmount
   const unroundedPayableTax = payableTaxBeforeMinimum === null
     ? null
     : rules.comprehensiveTax.payableTaxMinimum === null
@@ -341,7 +337,6 @@ export const calculateComprehensiveTax = (
     netTax,
     residenceRecognition,
     taxCredit,
-    taxAfterCredit,
     taxBurdenCap,
     payableTax,
     ruralSpecialTax,

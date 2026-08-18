@@ -194,8 +194,8 @@ const toPriorYearTax = (
       (total, propertyTax) => total + propertyTax.baseTax,
       ZERO_AMOUNT,
     ),
-    comprehensiveTaxAfterCredit:
-      result.comprehensiveTax.taxAfterCredit ?? undefined,
+    comprehensiveCalculatedTax: result.comprehensiveTax.netTax,
+    comprehensiveTax: result.comprehensiveTax.payableTax ?? undefined,
   }
 }
 

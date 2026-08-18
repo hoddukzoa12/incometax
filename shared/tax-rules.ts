@@ -108,7 +108,7 @@ export interface ComprehensiveTaxCreditRules {
 
 export interface ComprehensiveTaxBurdenCapRules {
   readonly rate: number
-  readonly priorComprehensiveTaxKind: 'afterCredit'
+  readonly priorComprehensiveTaxKind: 'calculated' | 'final'
 }
 
 export interface ComprehensiveTaxRules {

@@ -287,7 +287,8 @@ describe('recognition integration and eligibility isolation', () => {
       ownerAge: 0,
       priorYearTax: {
         propertyBaseTax: 10_000_000,
-        comprehensiveTaxAfterCredit: 10_000_000,
+        comprehensiveCalculatedTax: 10_000_000,
+        comprehensiveTax: 10_000_000,
       },
     }
     const withoutRecognition = calculateHoldingTax(common)
@@ -333,7 +334,8 @@ describe('recognition integration and eligibility isolation', () => {
       ownerAge: 62,
       priorYearTax: {
         propertyBaseTax: 10_000_000,
-        comprehensiveTaxAfterCredit: 10_000_000,
+        comprehensiveCalculatedTax: 10_000_000,
+        comprehensiveTax: 10_000_000,
       },
       comprehensiveResidenceRecognition: {
         kind: 'unavoidableRelocation',
