@@ -13,6 +13,7 @@ import type {
   Bracket,
   ComprehensiveBasicDeductionRules,
   HouseholdKind,
+  PropertyTaxCreditNumeratorFairMarketValueRatioBasis,
   TaxRules,
 } from '../../shared/tax-rules'
 import {
@@ -33,10 +34,9 @@ const calculatePropertyTaxSubtotal = (
   propertyTaxFairMarketValueRatio: number,
   rules: TaxRules,
 ): ComprehensivePropertyTaxSubtotalResult => {
-  // 공제할재산세액의 분모(v3.3 엑셀 F15)는 주택소계 시가표준액 × 60%(고정)로
-  // 구한 과세표준에 세율을 적용한 산출세액이다. 개별 물건의 공정비율(43/44/45%)이
-  // 아니라 종부세용 60%를 쓴다 — 종부세 공제할재산세액은 종부세 과세표준에
-  // 대응하는 재산세 상당액이기 때문이다.
+  // v3.5 엑셀 단독보유 N12: 1세대1주택이면 재산세 공정시장가액비율(J12),
+  // 그 외에는 60%를 공제할재산세액 분모에 쓴다. 종부세 대상 1세대1주택은
+  // 공시가격이 6억을 초과하므로 J12가 45%다.
   const officialPriceTotal = propertyTaxes.reduce(
     (total, propertyTax) => total + propertyTax.fullOfficialPrice,
     ZERO_AMOUNT,
@@ -97,22 +97,45 @@ const getFairMarketValueRatio = (
     return rules.fairMarketValueRatios.oneHouse
   }
 
-  const usesElevatedRatio =
-    homeCount >= rules.elevatedHomeCountMinimum || hasAdjustedAreaProperty
-  return usesElevatedRatio
+  return usesElevatedMultiHouseRules(
+    rules,
+    householdKind,
+    homeCount,
+    hasAdjustedAreaProperty,
+  )
     ? rules.fairMarketValueRatios.multiHouse.threeOrMoreOrAdjusted
     : rules.fairMarketValueRatios.multiHouse.standard
 }
 
+/**
+ * 개편안 p62 ❶: 1세대1주택자를 제외한 3주택 이상 또는 조정대상지역 주택 보유자.
+ * 공정시장가액비율과 주택 수별 세율표는 이 분류를 함께 사용한다.
+ */
+const usesElevatedMultiHouseRules = (
+  rules: TaxRules['comprehensiveTax'],
+  householdKind: HouseholdKind,
+  homeCount: number,
+  hasAdjustedAreaProperty: boolean,
+): boolean =>
+  householdKind === 'multiHouse' &&
+  (homeCount >= rules.elevatedHomeCountMinimum || hasAdjustedAreaProperty)
+
 const getBrackets = (
   rules: TaxRules['comprehensiveTax'],
+  householdKind: HouseholdKind,
   homeCount: number,
+  hasAdjustedAreaProperty: boolean,
 ): readonly Bracket[] => {
   if (rules.brackets.kind === 'unified') {
     return rules.brackets.brackets
   }
 
-  return homeCount >= rules.elevatedHomeCountMinimum
+  return usesElevatedMultiHouseRules(
+    rules,
+    householdKind,
+    homeCount,
+    hasAdjustedAreaProperty,
+  )
     ? rules.brackets.threeOrMoreHomes
     : rules.brackets.upToTwoHomes
 }
@@ -151,6 +174,7 @@ const createNotTaxableResult = (
     reason: 'noComprehensiveTax',
     amount: ZERO_AMOUNT,
   },
+  taxAfterCreditBeforeBurdenCap: ZERO_AMOUNT,
   taxBurdenCap: {
     status: 'notApplicable',
     reason: 'noComprehensiveTax',
@@ -215,14 +239,31 @@ export const calculateComprehensiveTax = (
     ownedOfficialPriceTotal,
     residentOwnedOfficialPrice,
   )
+  const hasAdjustedAreaProperty = items.some(
+    ({ areaKind }) => areaKind === 'adjusted',
+  )
   const fairMarketValueRatio = getFairMarketValueRatio(
     rules.comprehensiveTax,
     householdKind,
     homeCount,
-    items.some(({ areaKind }) => areaKind === 'adjusted'),
+    hasAdjustedAreaProperty,
   )
   const propertyTaxFairMarketValueRatio =
-    rules.propertyTax.fairMarketValueRatios.other
+    householdKind === 'oneHouse'
+      ? propertyTaxes[0].fairMarketValueRatio
+      : rules.propertyTax.fairMarketValueRatios.other
+  const propertyTaxCreditNumeratorFairMarketValueRatioByBasis = {
+    propertyTax: propertyTaxFairMarketValueRatio,
+    other: rules.propertyTax.fairMarketValueRatios.other,
+  } as const satisfies Readonly<
+    Record<PropertyTaxCreditNumeratorFairMarketValueRatioBasis, number>
+  >
+  const propertyTaxCreditNumeratorFairMarketValueRatio =
+    propertyTaxCreditNumeratorFairMarketValueRatioByBasis[
+      rules.comprehensiveTax.propertyTaxCreditNumeratorFairMarketValueRatioBasis[
+        householdKind
+      ]
+    ]
   const propertyTaxSubtotal = calculatePropertyTaxSubtotal(
     propertyTaxes,
     propertyTaxFairMarketValueRatio,
@@ -247,14 +288,19 @@ export const calculateComprehensiveTax = (
     ZERO_AMOUNT,
     (ownedOfficialPriceTotal - basicDeduction) * fairMarketValueRatio,
   )
-  const brackets = getBrackets(rules.comprehensiveTax, homeCount)
+  const brackets = getBrackets(
+    rules.comprehensiveTax,
+    householdKind,
+    homeCount,
+    hasAdjustedAreaProperty,
+  )
   const bracket = findApplicableTaxBracket(taxableBase, brackets)
   const baseTax = evaluateBracketTax(taxableBase, brackets)
   const propertyTaxCredit =
     propertyTaxSubtotal.propertyTax *
     (
       taxableBase *
-      propertyTaxFairMarketValueRatio *
+      propertyTaxCreditNumeratorFairMarketValueRatio *
       propertyTaxSubtotal.appliedRate.rate
     ) /
     propertyTaxSubtotal.calculatedTax
@@ -269,6 +315,7 @@ export const calculateComprehensiveTax = (
   const netTax = roundTaxAmount(unroundedNetTax)
   const taxCredit = calculateComprehensiveTaxCredit(
     householdKind,
+    items[0].residency,
     ownerAge,
     items[0],
     residenceRecognition,
@@ -284,9 +331,12 @@ export const calculateComprehensiveTax = (
   const afterCredit = taxCredit.amount === null
     ? null
     : unroundedNetTax - taxCredit.amount
+  const taxAfterCreditBeforeBurdenCap = afterCredit === null
+    ? null
+    : roundTaxAmount(afterCredit)
   const taxBurdenCap = calculateComprehensiveTaxBurdenCap(
     propertyBaseTaxTotal,
-    afterCredit !== null ? roundTaxAmount(afterCredit) : netTax,
+    taxAfterCreditBeforeBurdenCap ?? netTax,
     priorYearTax,
     rules.comprehensiveTax.taxBurdenCap,
   )
@@ -306,11 +356,10 @@ export const calculateComprehensiveTax = (
       ? null
       : roundTaxAmount(unroundedPayableTax)
   const ruralSpecialTax =
-    unroundedPayableTax === null
+    payableTax === null
       ? null
       : roundTaxAmount(
-          unroundedPayableTax *
-            rules.comprehensiveTax.ruralSpecialTaxRate,
+          payableTax * rules.comprehensiveTax.ruralSpecialTaxRate,
         )
   const totalTax =
     payableTax === null || ruralSpecialTax === null
@@ -337,6 +386,7 @@ export const calculateComprehensiveTax = (
     netTax,
     residenceRecognition,
     taxCredit,
+    taxAfterCreditBeforeBurdenCap,
     taxBurdenCap,
     payableTax,
     ruralSpecialTax,

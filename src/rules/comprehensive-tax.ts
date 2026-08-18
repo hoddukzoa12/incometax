@@ -1,6 +1,8 @@
 import type {
   ComprehensiveBasicDeductionRules,
   ComprehensiveFairMarketValueRatioRules,
+  HouseholdKind,
+  PropertyTaxCreditNumeratorFairMarketValueRatioBasis,
 } from '../../shared/tax-rules'
 import { RATE_DENOMINATOR } from './rate'
 
@@ -85,6 +87,36 @@ export const COMPREHENSIVE_FAIR_MARKET_VALUE_RATIOS_FROM_2028 = {
       COMPREHENSIVE_FAIR_MARKET_VALUE_RATIO_ELEVATED_FROM_2028,
   },
 } as const satisfies ComprehensiveFairMarketValueRatioRules
+
+/**
+ * 공제할 재산세액 분자 공정시장가액비율 기준 — v3.5 엑셀 단독보유 B54
+ * (=F16*(B51*F12*F14)/F15). 2026년 1세대1주택은 재산세 공정시장가액비율을
+ * 쓰고, 그 외에는 일반 주택 비율을 쓴다. 세무사 해석 변경(2026-08-18) 반영.
+ */
+export const PROPERTY_TAX_CREDIT_NUMERATOR_FMV_RATIO_BASIS_2026 = {
+  oneHouse: 'propertyTax',
+  multiHouse: 'other',
+} as const satisfies Readonly<
+  Record<
+    HouseholdKind,
+    PropertyTaxCreditNumeratorFairMarketValueRatioBasis
+  >
+>
+
+/**
+ * 공제할 재산세액 분자 공정시장가액비율 기준 — v3.5 엑셀 단독보유 J54
+ * (=$N$16*(J51*0.6*0.4%)/$N$15). 2027년 이후에는 모든 경우 일반 주택
+ * 비율을 쓴다. 세무사 해석 변경(2026-08-18) 반영.
+ */
+export const PROPERTY_TAX_CREDIT_NUMERATOR_FMV_RATIO_BASIS_FROM_2027 = {
+  oneHouse: 'other',
+  multiHouse: 'other',
+} as const satisfies Readonly<
+  Record<
+    HouseholdKind,
+    PropertyTaxCreditNumeratorFairMarketValueRatioBasis
+  >
+>
 
 /** 종부세 현행 2주택 이하 세율표 — tax-rules-spec.md §3.4, 개편안 p63. */
 export const COMPREHENSIVE_TAX_BRACKETS_2026_UP_TO_TWO_HOMES = [
@@ -254,9 +286,9 @@ export const COMPREHENSIVE_CALCULATED_TAX_MINIMUM_FROM_2027 = 0
 
 /**
  * 세액공제·세부담상한 반영 후 종합부동산세 하한 — holding-tax-v3-spec.md §3.12.
- * v3 엑셀은 2026년에만 0원 하한을 두고 2027년 이후에는 하한을 두지 않는다.
+ * v3.5 엑셀은 전 연도에 하한을 두지 않는다(공동보유 행 59 = 행 57 - 행 58).
  */
-export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_2026 = 0
+export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_2026 = null
 export const COMPREHENSIVE_PAYABLE_TAX_MINIMUM_FROM_2027 = null
 
 /**
@@ -275,4 +307,6 @@ export const COMPREHENSIVE_ELEVATED_HOME_COUNT_MINIMUM = 3
 export const COMPREHENSIVE_TAX_COMMON_RULES = {
   elevatedHomeCountMinimum: COMPREHENSIVE_ELEVATED_HOME_COUNT_MINIMUM,
   ruralSpecialTaxRate: COMPREHENSIVE_RURAL_SPECIAL_TAX_RATE,
+  propertyTaxCreditNumeratorFairMarketValueRatioBasis:
+    PROPERTY_TAX_CREDIT_NUMERATOR_FMV_RATIO_BASIS_FROM_2027,
 } as const

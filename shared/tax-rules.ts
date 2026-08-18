@@ -85,6 +85,11 @@ export type ComprehensivePeriodCreditKind =
   | 'maximum'
   | 'residence'
 
+/** 공제할 재산세액 분자에 쓸 재산세 공정시장가액비율의 기준. */
+export type PropertyTaxCreditNumeratorFairMarketValueRatioBasis =
+  | 'propertyTax'
+  | 'other'
+
 export interface ComprehensiveResidenceRecognitionRules {
   readonly minimumContinuousResidenceYears: number
   readonly unavoidableRelocationMaximumYears: number
@@ -95,6 +100,7 @@ export interface ComprehensiveResidenceRecognitionRules {
 }
 
 export interface ComprehensiveTaxCreditRules {
+  readonly requiresResidence: boolean
   readonly ageRates: readonly MinimumRateBand[]
   readonly holdingPeriodRates: readonly MinimumRateBand[]
   readonly residencePeriodRates: readonly MinimumRateBand[]
@@ -108,7 +114,7 @@ export interface ComprehensiveTaxCreditRules {
 
 export interface ComprehensiveTaxBurdenCapRules {
   readonly rate: number
-  readonly priorComprehensiveTaxKind: 'calculated' | 'final'
+  readonly priorComprehensiveTaxKind: 'afterCreditBeforeBurdenCap'
 }
 
 export interface ComprehensiveTaxRules {
@@ -120,6 +126,12 @@ export interface ComprehensiveTaxRules {
   readonly calculatedTaxMinimum: number | null
   readonly payableTaxMinimum: number | null
   readonly ruralSpecialTaxRate: number
+  readonly propertyTaxCreditNumeratorFairMarketValueRatioBasis: Readonly<
+    Record<
+      HouseholdKind,
+      PropertyTaxCreditNumeratorFairMarketValueRatioBasis
+    >
+  >
   readonly taxCredit: ComprehensiveTaxCreditRules
   readonly taxBurdenCap: ComprehensiveTaxBurdenCapRules
 }

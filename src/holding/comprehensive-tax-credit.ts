@@ -11,6 +11,7 @@ import type {
   ComprehensiveTaxCreditRules,
   HouseholdKind,
   MinimumRateBand,
+  Residency,
 } from '../../shared/tax-rules'
 import { roundTaxAmount } from '../rules'
 
@@ -42,6 +43,7 @@ const PERIOD_RATE_BY_KIND = {
 
 export const calculateComprehensiveTaxCredit = (
   householdKind: HouseholdKind,
+  residency: Residency,
   ownerAge: number | undefined,
   period: OwnershipPeriod,
   residenceRecognition: ComprehensiveResidenceRecognitionResult,
@@ -52,6 +54,14 @@ export const calculateComprehensiveTaxCredit = (
     return {
       status: 'notApplicable',
       reason: 'notOneHouse',
+      amount: ZERO_AMOUNT,
+    }
+  }
+
+  if (rules.requiresResidence && residency === 'nonResiding') {
+    return {
+      status: 'notApplicable',
+      reason: 'nonResiding',
       amount: ZERO_AMOUNT,
     }
   }

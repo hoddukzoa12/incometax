@@ -24,10 +24,8 @@ export interface PortfolioItem extends OwnershipPeriod {
 
 export interface PriorYearHoldingTax {
   readonly propertyBaseTax?: number
-  /** 종부세 산출세액(행 44). 2026년 세부담상한 현행 동작에 사용한다. */
-  readonly comprehensiveCalculatedTax?: number
-  /** 세액공제·상한 반영 후 종합부동산세(행 47). 2027년 이후에 사용한다. */
-  readonly comprehensiveTax?: number
+  /** 세액공제 후·세부담상한 반영 전 종부세상당액(v3.5 행 57). */
+  readonly comprehensiveTaxAfterCreditBeforeBurdenCap?: number
 }
 
 export interface HoldingTaxInput {
@@ -90,7 +88,7 @@ export interface ComprehensiveTaxCreditComputedResult {
 
 export interface ComprehensiveTaxCreditNotApplicableResult {
   readonly status: 'notApplicable'
-  readonly reason: 'notOneHouse' | 'noComprehensiveTax'
+  readonly reason: 'notOneHouse' | 'nonResiding' | 'noComprehensiveTax'
   readonly amount: 0
 }
 
@@ -107,8 +105,7 @@ export type ComprehensiveTaxCreditResult =
 
 export type ComprehensiveTaxBurdenCapMissingInput =
   | 'priorYearPropertyBaseTax'
-  | 'priorYearComprehensiveCalculatedTax'
-  | 'priorYearComprehensiveTax'
+  | 'priorYearComprehensiveTaxAfterCreditBeforeBurdenCap'
 
 export interface ComprehensiveTaxBurdenCapComputedResult {
   readonly status: 'computed'
@@ -162,6 +159,8 @@ export interface ComprehensiveTaxResult {
   readonly netTax: number
   readonly residenceRecognition: ComprehensiveResidenceRecognitionResult
   readonly taxCredit: ComprehensiveTaxCreditResult
+  /** 세액공제 후·세부담상한 반영 전 종부세상당액. */
+  readonly taxAfterCreditBeforeBurdenCap: number | null
   readonly taxBurdenCap: ComprehensiveTaxBurdenCapResult
   readonly payableTax: number | null
   readonly ruralSpecialTax: number | null

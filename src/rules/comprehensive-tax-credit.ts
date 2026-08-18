@@ -56,6 +56,8 @@ const COMPREHENSIVE_TAX_RESIDENCE_RECOGNITION_RULES_FROM_2027 = {
 } as const satisfies ComprehensiveResidenceRecognitionRules
 
 export const COMPREHENSIVE_TAX_CREDIT_RULES_2026 = {
+  // 현행 종부세 세액공제 — v3.5 단독보유 시트 2026 열은 거주 여부를 요건으로 두지 않는다.
+  requiresResidence: false,
   ageRates: COMPREHENSIVE_TAX_AGE_CREDIT_RATES,
   holdingPeriodRates: COMPREHENSIVE_TAX_HOLDING_CREDIT_RATES_2026,
   residencePeriodRates: NO_PERIOD_CREDIT_RATES,
@@ -67,9 +69,11 @@ export const COMPREHENSIVE_TAX_CREDIT_RULES_2026 = {
 
 /**
  * 종부세 2027년 세액공제 — tax-rules-spec.md §5.2, 개편안 p64.
- * 보유·거주 공제 중 큰 비율을 적용하고 금액은 800만원으로 제한한다.
+ * 보유·거주 공제 중 큰 비율을 적용하고 금액은 800만원으로 제한한다. v3.5 엑셀
+ * 단독보유 시트 K44가 비거주 1주택에 빈 셀인 것에 따라 거주를 요건으로 한다.
  */
 export const COMPREHENSIVE_TAX_CREDIT_RULES_2027 = {
+  requiresResidence: true,
   ageRates: COMPREHENSIVE_TAX_AGE_CREDIT_RATES,
   holdingPeriodRates: COMPREHENSIVE_TAX_HOLDING_CREDIT_RATES_2027,
   residencePeriodRates: COMPREHENSIVE_TAX_RESIDENCE_CREDIT_RATES_FROM_2027,
@@ -86,6 +90,7 @@ export const COMPREHENSIVE_TAX_CREDIT_RULES_2027 = {
  * 금액 한도 600만원.
  */
 export const COMPREHENSIVE_TAX_CREDIT_RULES_FROM_2028 = {
+  requiresResidence: true,
   ageRates: COMPREHENSIVE_TAX_AGE_CREDIT_RATES,
   holdingPeriodRates: COMPREHENSIVE_TAX_HOLDING_CREDIT_RATES_2027,
   residencePeriodRates: COMPREHENSIVE_TAX_RESIDENCE_CREDIT_RATES_FROM_2027,

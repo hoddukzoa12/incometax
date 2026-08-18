@@ -326,54 +326,53 @@ describe('holding-tax screen boundary', () => {
 
     expect(current.input.priorYearTax).toEqual({
       propertyBaseTax: 2_444_400,
-      comprehensiveCalculatedTax: 1_018_171,
-      comprehensiveTax: 1_018_171,
+      comprehensiveTaxAfterCreditBeforeBurdenCap: 984_960,
     })
     expect(current.result.comprehensiveTax.taxBurdenCap).toEqual({
       status: 'computed',
       rate: 1.5,
-      priorYearBase: 3_462_571,
-      maximumTaxBurden: 5_193_857,
-      currentYearBase: 5_634_014,
-      excessAmount: 440_158,
+      priorYearBase: 3_429_360,
+      maximumTaxBurden: 5_144_040,
+      currentYearBase: 5_595_354,
+      excessAmount: 451_314,
     })
     expect(current.result).toMatchObject({
       propertyTaxTotal: 4_321_382,
       comprehensiveTax: {
-        netTax: 2_988_284,
-        payableTax: 2_548_126,
-        ruralSpecialTax: 509_625,
-        totalTax: 3_057_751,
+        netTax: 2_949_624,
+        payableTax: 2_498_310,
+        ruralSpecialTax: 499_662,
+        totalTax: 2_997_972,
       },
-      totalTax: 7_379_133,
+      totalTax: 7_319_354,
     })
     const beforeBurdenCap = calculateHoldingTax({
       ...current.input,
       priorYearTax: undefined,
     })
-    expect(beforeBurdenCap.totalTax).toBe(7_907_323)
+    expect(beforeBurdenCap.totalTax).toBe(7_860_931)
   })
 
   it.each([
     {
       annualOfficialPriceGrowthRate: 0,
       expected: [
-        { year: 2027, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 8_477_329 },
-        { year: 2028, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 8_477_329 },
+        { year: 2027, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 7_999_398 },
+        { year: 2028, officialPrice: 2_237_000_000, priorOfficialPrice: 2_237_000_000, totalTax: 7_999_398 },
       ],
     },
     {
       annualOfficialPriceGrowthRate: 0.05,
       expected: [
-        { year: 2027, officialPrice: 2_348_850_000, priorOfficialPrice: 2_237_000_000, totalTax: 9_744_242 },
-        { year: 2028, officialPrice: 2_466_292_500, priorOfficialPrice: 2_348_850_000, totalTax: 11_180_648 },
+        { year: 2027, officialPrice: 2_348_850_000, priorOfficialPrice: 2_237_000_000, totalTax: 9_205_852 },
+        { year: 2028, officialPrice: 2_466_292_500, priorOfficialPrice: 2_348_850_000, totalTax: 10_579_224 },
       ],
     },
     {
       annualOfficialPriceGrowthRate: 0.1,
       expected: [
-        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_904_846 },
-        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_901_280 },
+        { year: 2027, officialPrice: 2_460_700_000, priorOfficialPrice: 2_237_000_000, totalTax: 10_334_955 },
+        { year: 2028, officialPrice: 2_706_770_000, priorOfficialPrice: 2_460_700_000, totalTax: 13_206_205 },
       ],
     },
   ])(
@@ -444,26 +443,26 @@ describe('holding-tax screen boundary', () => {
     }))).toEqual([
       {
         year: 2027,
-        totalTax: 14_015_495,
+        totalTax: 14_979_091,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 5_193_856,
-          maximumTaxBurden: 10_387_712,
-          currentYearBase: 27_535_088,
-          excessAmount: 17_147_376,
+          priorYearBase: 5_595_354,
+          maximumTaxBurden: 11_190_708,
+          currentYearBase: 26_833_115,
+          excessAmount: 15_642_407,
         },
       },
       {
         year: 2028,
-        totalTax: 28_030_991,
+        totalTax: 67_499_958,
         taxBurdenCap: {
           status: 'computed',
           rate: 2,
-          priorYearBase: 10_387_712,
-          maximumTaxBurden: 20_775_424,
-          currentYearBase: 126_966_912,
-          excessAmount: 106_191_488,
+          priorYearBase: 26_833_115,
+          maximumTaxBurden: 53_666_230,
+          currentYearBase: 125_230_455,
+          excessAmount: 71_564_225,
         },
       },
     ])
@@ -502,7 +501,7 @@ describe('holding-tax screen boundary', () => {
       rate: 1.5,
       missingInputs: [
         'priorYearPropertyBaseTax',
-        'priorYearComprehensiveCalculatedTax',
+        'priorYearComprehensiveTaxAfterCreditBeforeBurdenCap',
       ],
       excessAmount: 0,
     })

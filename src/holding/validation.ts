@@ -53,7 +53,6 @@ export const assertValidHoldingTaxInput = (
 
   const priorYearNonNegative = [
     input.priorYearTax?.propertyBaseTax,
-    input.priorYearTax?.comprehensiveCalculatedTax,
   ].filter((amount): amount is number => amount !== undefined)
   if (
     priorYearNonNegative.some(
@@ -65,8 +64,9 @@ export const assertValidHoldingTaxInput = (
   ) {
     throw new RangeError(INVALID_PRIOR_YEAR_TAX_MESSAGE)
   }
-  // payableTax 는 2027년 이후 0 하한이 없어 음수가 될 수 있다.
-  const comprehensiveTax = input.priorYearTax?.comprehensiveTax
+  // 세액공제 후·상한 전 세액은 0원 하한이 없어 음수가 될 수 있다.
+  const comprehensiveTax =
+    input.priorYearTax?.comprehensiveTaxAfterCreditBeforeBurdenCap
   if (
     comprehensiveTax !== undefined &&
     (!Number.isFinite(comprehensiveTax) ||

@@ -17,8 +17,8 @@ const calculateTaxBurdenBase = (
 ): number => propertyBaseTax + comprehensiveTax
 
 const PRIOR_COMPREHENSIVE_TAX_MISSING_INPUT = {
-  calculated: 'priorYearComprehensiveCalculatedTax',
-  final: 'priorYearComprehensiveTax',
+  afterCreditBeforeBurdenCap:
+    'priorYearComprehensiveTaxAfterCreditBeforeBurdenCap',
 } as const satisfies Readonly<
   Record<
     ComprehensiveTaxBurdenCapRules['priorComprehensiveTaxKind'],
@@ -42,8 +42,8 @@ const resolvePriorYearTax = (
     } => {
   const propertyBaseTax = priorYearTax?.propertyBaseTax
   const priorComprehensiveTaxes = {
-    calculated: priorYearTax?.comprehensiveCalculatedTax,
-    final: priorYearTax?.comprehensiveTax,
+    afterCreditBeforeBurdenCap:
+      priorYearTax?.comprehensiveTaxAfterCreditBeforeBurdenCap,
   } as const
   const comprehensiveTax =
     priorComprehensiveTaxes[priorComprehensiveTaxKind]
