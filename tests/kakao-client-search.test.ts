@@ -35,9 +35,10 @@ describe('Kakao client search result mapping', () => {
     })
   })
 
-  it('keeps keyword places without filtering their category', () => {
+  it('keeps keyword places in a housing category', () => {
     const result = toPlaceSearchResult({
       address_name: '서울 강남구 역삼동 795-10',
+      category_name: '부동산 > 주거시설 > 빌라,주택',
       place_name: '현대빌라',
       road_address_name: '서울 강남구 테헤란로 123',
       x: '127.035',
@@ -51,6 +52,17 @@ describe('Kakao client search result mapping', () => {
       lat: 37.499,
       lng: 127.035,
     })
+  })
+
+  it('drops keyword places outside housing categories', () => {
+    expect(toPlaceSearchResult({
+      address_name: '서울 강남구 역삼동 795-10',
+      category_name: '음식점 > 카페',
+      place_name: '현대카페',
+      road_address_name: '서울 강남구 테헤란로 123',
+      x: '127.035',
+      y: '37.499',
+    })).toBeNull()
   })
 
   it('drops malformed results instead of exposing invalid coordinates', () => {

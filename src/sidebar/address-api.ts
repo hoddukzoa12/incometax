@@ -5,7 +5,6 @@ import {
   type AddressUnitOptionsRequest,
   type ApartmentOfficialPriceRequest,
   type ApartmentUnitOptionsResult,
-  type DetachedHouseOfficialPriceRequest,
   type OfficialPriceBatchResponse,
   type OfficialPriceLookupResult,
   type OfficialPriceRequest,
@@ -145,13 +144,6 @@ async function fetchOfficialPrice(
 
 export const fetchAddressOfficialPrice = (
   request: ApartmentOfficialPriceRequest,
-  signal: AbortSignal,
-  fetcher: typeof fetch = CLIENT_FETCHER,
-): Promise<OfficialPriceLookupResult> =>
-  fetchOfficialPrice(request, signal, fetcher)
-
-export const fetchDetachedHouseOfficialPrice = (
-  request: DetachedHouseOfficialPriceRequest,
   signal: AbortSignal,
   fetcher: typeof fetch = CLIENT_FETCHER,
 ): Promise<OfficialPriceLookupResult> =>

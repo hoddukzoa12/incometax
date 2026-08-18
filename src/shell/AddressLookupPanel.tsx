@@ -14,6 +14,11 @@ import { fetchAddressComplexes } from '../sidebar/address-api'
 import { AddressPanel } from './AddressPanel'
 
 const LEGAL_DONG_CODE_LENGTH = 10
+const LOT_PREFIX_PATTERN = /^\s*\(\s*\d+(?:-\d+)?\s*\)\s*/
+
+function cleanComplexName(name: string): string {
+  return name.replace(LOT_PREFIX_PATTERN, '').trim() || name
+}
 
 type AddressComplexLoadState =
   | { readonly status: 'loading' }
@@ -33,7 +38,7 @@ const addressSelection = (
   complexId: null,
   pnu: response.pnu,
   aptCode,
-  complexName,
+  complexName: cleanComplexName(complexName),
   legalDongCode: response.pnu.slice(0, LEGAL_DONG_CODE_LENGTH),
   address: result.address,
   ...(result.roadAddress ? { roadAddress: result.roadAddress } : {}),
@@ -149,7 +154,7 @@ export function AddressLookupPanel({
                 type="button"
                 onClick={() => setSelectedAptCode(complex.code)}
               >
-                {complex.name}
+                {cleanComplexName(complex.name)}
               </button>
             ))}
           </div>

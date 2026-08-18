@@ -48,9 +48,18 @@ export const toAddressSearchResult = (
   }
 }
 
+const HOUSING_CATEGORIES = ['아파트', '빌라,주택', '도시형생활주택'] as const
+
+const isHousingCategory = (categoryName: string | undefined): boolean => {
+  if (!categoryName) return false
+  return HOUSING_CATEGORIES.some((cat) => categoryName.includes(cat))
+}
+
 export const toPlaceSearchResult = (
   item: kakao.maps.services.PlacesSearchResultItem,
 ): AddressSearchResult | null => {
+  if (!isHousingCategory(item.category_name)) return null
+
   const position = coordinates(item.x, item.y)
   const address = optionalText(item.address_name)
   if (!position || !address) return null

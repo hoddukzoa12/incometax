@@ -102,23 +102,6 @@
   color: var(--color-warning);
 }
 
-.complex-search__housing-check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.complex-search__result--not-housing button,
-.complex-search__result--not-housing button:disabled {
-  color: var(--color-neutral-400);
-  cursor: not-allowed;
-}
-
-.complex-search__result--not-housing span,
-.complex-search__result--not-housing .complex-search__not-housing {
-  color: var(--color-neutral-400);
-}
-
 .complex-search__section-status {
   margin: 0;
   padding: var(--space-2) var(--space-4);

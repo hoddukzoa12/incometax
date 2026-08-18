@@ -10,6 +10,4 @@ export const SEARCH_MESSAGES = {
   complexFailed: '단지 검색 결과를 불러오지 못했어요.',
   addressFailed: '일부 주소·장소 검색 결과를 불러오지 못했어요.',
   locationUnavailable: '지도 위치 없음 · 세금 조회 가능',
-  housingCheckPending: '주택 여부 확인 중',
-  notHousing: '주택 공시가격이 없는 주소입니다',
 } as const

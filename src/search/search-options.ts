@@ -1,8 +1,5 @@
 import type { ComplexStagingRecord } from '../../shared/complex'
-import type {
-  AddressSearchResult,
-  HousingCheckStatus,
-} from '../../shared/search'
+import type { AddressSearchResult } from '../../shared/search'
 
 export type SearchStatus = 'idle' | 'loading' | 'success' | 'failed'
 
@@ -14,7 +11,6 @@ interface ComplexSearchOption {
 export interface AddressSearchOption {
   readonly kind: 'address' | 'place'
   readonly item: AddressSearchResult
-  readonly housingCheckStatus: HousingCheckStatus
 }
 
 export type SearchOption = ComplexSearchOption | AddressSearchOption

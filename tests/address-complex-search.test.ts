@@ -181,7 +181,7 @@ describe('AddressComplexSearchService', () => {
     expect(cache.putAddressComplexes).toHaveBeenCalledTimes(1)
   })
 
-  it('stores Cache API entries for 24 hours under PNU and notice date', async () => {
+  it('stores Cache API entries for 30 days under PNU and notice date', async () => {
     let storedRequest: Request | undefined
     let storedResponse: Response | undefined
     const cache = new CloudflareOfficialPriceCache({
@@ -201,6 +201,6 @@ describe('AddressComplexSearchService', () => {
     expect(cacheUrl.searchParams.get('pnu')).toBe(TEST_PNU)
     expect(cacheUrl.searchParams.get('noticeDate')).toBe('20260626')
     expect(storedResponse!.headers.get('cache-control'))
-      .toBe('public, max-age=86400')
+      .toBe('public, max-age=2592000')
   })
 })
