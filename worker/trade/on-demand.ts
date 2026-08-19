@@ -7,6 +7,7 @@ import type {
   TradeDataset,
 } from '../../shared/trade'
 import { prepareComplexCandidate, prepareTradeDataset } from './matching'
+import { toRecentTrade } from './recent'
 import { fetchTradeDataset } from './source'
 import { recentDealYearMonths, tradeWindowDates } from './window'
 
@@ -48,16 +49,6 @@ const matchingRate = (matchedCount: number, activeCount: number): string =>
   activeCount === 0
     ? '0.00'
     : ((matchedCount / activeCount) * 100).toFixed(2)
-
-const toRecentTrade = (trade: StagedTrade): RecentTrade => ({
-  tradeId: trade.tradeId,
-  source: trade.source,
-  matchLevel: trade.matchLevel,
-  dealDate: trade.dealDate,
-  dealAmount: trade.dealAmount,
-  exclusiveArea: trade.exclusiveArea,
-  floor: trade.floor,
-})
 
 const loadDatasets = async (
   datasets: readonly TradeDataset[],

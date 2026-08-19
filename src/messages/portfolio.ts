@@ -31,7 +31,7 @@ export const PORTFOLIO_MESSAGES = {
     ho ? `${ho}${SIDEBAR_MESSAGES.roomSuffix}` : null,
   ].filter((value): value is string => value !== null).join(' '),
   assetKind: {
-    apartment: '아파트',
+    apartment: '공동주택',
     detachedHouse: '단독·다가구주택',
   } satisfies Readonly<Record<AssetKind, string>>,
 } as const

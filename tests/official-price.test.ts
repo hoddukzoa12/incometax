@@ -163,6 +163,86 @@ describe('OfficialPriceService', () => {
     expect(unitOptionsCache.putApartmentOptions).toHaveBeenCalledTimes(1)
   })
 
+  it('loads dong options directly from a PNU and apartment code', async () => {
+    const requestedUrls: URL[] = []
+    const responses = [
+      noticeResponse(),
+      model([
+        { code: 1001, notice_date: '20260626', name: '다른 공동주택' },
+        { code: 1381, notice_date: '20260626', name: '은마아파트' },
+      ]),
+      model([{ code: 1, name: '1' }, { code: 2, name: '2' }]),
+    ]
+    const fetcher = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      requestedUrls.push(new URL(String(input)))
+      return responses.shift()!
+    })
+    const { service } = serviceWithFetcher(fetcher as typeof fetch)
+
+    await expect(service.lookupAddressApartmentOptions({
+      pnu: TEST_PNU,
+      aptCode: '1381',
+    })).resolves.toEqual({
+      key: `${TEST_PNU}|1381`,
+      status: 'found',
+      value: {
+        pnu: TEST_PNU,
+        dongs: [{ code: '1', name: '1' }, { code: '2', name: '2' }],
+        rooms: [],
+        aptCode: '1381',
+      },
+    })
+    expect(requestedUrls.at(-1)?.searchParams.get('apt_code')).toBe('1381')
+    expect(requestedUrls.at(-1)?.searchParams.get('gbnApt')).toBe('DONG')
+  })
+
+  it('loads room options after selecting an address-origin dong', async () => {
+    const requestedUrls: URL[] = []
+    const responses = [
+      noticeResponse(),
+      model([{ code: 1381, notice_date: '20260626', name: '은마아파트' }]),
+      model([{ code: 1, name: '1' }]),
+      model([{ code: 10, name: '101' }, { code: 11, name: '102' }]),
+    ]
+    const fetcher = vi.fn(async (input: Parameters<typeof fetch>[0]) => {
+      requestedUrls.push(new URL(String(input)))
+      return responses.shift()!
+    })
+    const { service } = serviceWithFetcher(fetcher as typeof fetch)
+
+    await expect(service.lookupAddressApartmentOptions({
+      pnu: TEST_PNU,
+      aptCode: '1381',
+      dong: '1동',
+    })).resolves.toMatchObject({
+      status: 'found',
+      value: {
+        pnu: TEST_PNU,
+        rooms: [{ code: '10', name: '101' }, { code: '11', name: '102' }],
+        aptCode: '1381',
+      },
+    })
+    expect(requestedUrls.at(-1)?.searchParams.get('apt_code')).toBe('1381')
+    expect(requestedUrls.at(-1)?.searchParams.get('dong_code')).toBe('1')
+    expect(requestedUrls.at(-1)?.searchParams.get('gbnApt')).toBe('HO')
+  })
+
+  it('does not fall back to name matching when an apartment code is absent', async () => {
+    const { service } = serviceWithResponses([
+      noticeResponse(),
+      model([{ code: 9999, notice_date: '20260626', name: '다른 공동주택' }]),
+    ])
+
+    await expect(service.lookupAddressApartmentOptions({
+      pnu: TEST_PNU,
+      aptCode: '1381',
+    })).resolves.toEqual({
+      key: `${TEST_PNU}|1381`,
+      status: 'noData',
+      reason: 'complexNotFound',
+    })
+  })
+
   it('walks the apartment chain and returns every past year from one price call', async () => {
     const { service, fetcher } = serviceWithResponses([
       model([{ code: '20260626', name: '2026년 1월 1일 기준(공시일자 : 2026.04.30)' }]),

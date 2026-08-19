@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
+import type { PortfolioItemSeed } from '../../shared/portfolio'
+import type { AddressSearchResult } from '../../shared/search'
 import {
   HoldingTaxConditionsModal,
   HoldingTaxOverlay,
@@ -10,6 +12,7 @@ import { APP_MESSAGES } from '../messages/app'
 import { SHELL_MESSAGES } from '../messages/shell'
 import { usePortfolio } from '../portfolio'
 import { ComplexSearch } from '../search'
+import { AddressLookupPanel } from './AddressLookupPanel'
 import { ComplexPanel } from './ComplexPanel'
 import { ConsultIntroModal } from './ConsultIntroModal'
 import {
@@ -39,6 +42,10 @@ export default function AppShell() {
     shouldShowConsultIntro,
   )
   const [selectedComplexId, setSelectedComplexId] = useState<string | null>(null)
+  const [selectedAddress, setSelectedAddress] = useState<{
+    readonly result: AddressSearchResult
+    readonly seq: number
+  } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [addRequestSeq, setAddRequestSeq] = useState(0)
   /*
@@ -73,7 +80,7 @@ export default function AppShell() {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
   }, [])
 
-  const panelOpen = selectedComplexId !== null
+  const panelOpen = selectedComplexId !== null || selectedAddress !== null
   const backgroundInert = consultIntroOpen || holdingTaxOverlay.open
 
   const dismissConsultIntro = (dismissToday: boolean) => {
@@ -86,7 +93,17 @@ export default function AppShell() {
    * 단지 정보를 열어 놓고 뒤로가기를 누른 사람이 사이트 밖으로 튕겨 나간다.
    * 나중에 연 것이 먼저 닫힌다 — 동·호 모달은 그것을 띄운 ComplexPanel 이 건다.
    */
-  useLayerHistory('complexPanel', panelOpen, () => setSelectedComplexId(null))
+  const closePanel = () => {
+    setSelectedComplexId(null)
+    setSelectedAddress(null)
+  }
+
+  const selectComplex = (complexId: string) => {
+    setSelectedAddress(null)
+    setSelectedComplexId(complexId)
+  }
+
+  useLayerHistory('complexPanel', panelOpen, closePanel)
   useLayerHistory('conditions', askingConditions, () => setAskingConditions(false))
   useLayerHistory('holdingTax', holdingTaxOverlay.open, holdingTaxOverlay.hide)
 
@@ -102,7 +119,7 @@ export default function AppShell() {
       aria-label={compact
         ? SHELL_MESSAGES.closePanelLabel
         : SHELL_MESSAGES.collapsePanelLabel}
-      onClick={() => setSelectedComplexId(null)}
+      onClick={closePanel}
     >
       {compact ? (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -124,13 +141,21 @@ export default function AppShell() {
     </button>
   )
 
-  const panel = (
+  const addToPortfolio = (seed: PortfolioItemSeed) => {
+    portfolio.add(seed)
+    flash(SHELL_MESSAGES.added(seed.complexName))
+  }
+
+  const panel = selectedAddress !== null ? (
+    <AddressLookupPanel
+      key={selectedAddress.seq}
+      result={selectedAddress.result}
+      onAddToPortfolio={addToPortfolio}
+    />
+  ) : (
     <ComplexPanel
       complexId={selectedComplexId}
-      onAddToPortfolio={(seed) => {
-        portfolio.add(seed)
-        flash(SHELL_MESSAGES.added(seed.complexName))
-      }}
+      onAddToPortfolio={addToPortfolio}
       addRequestSeq={addRequestSeq}
     />
   )
@@ -156,15 +181,23 @@ export default function AppShell() {
       >
         <div className="app-shell__map">
           <ComplexMap
-            onComplexSelect={setSelectedComplexId}
+            onComplexSelect={selectComplex}
             ownedComplexIds={ownedComplexIds}
             selectedComplexId={selectedComplexId}
             onAddComplex={(complexId) => {
-              setSelectedComplexId(complexId)
+              selectComplex(complexId)
               setAddRequestSeq((seq) => seq + 1)
             }}
             onRemoveComplex={removeComplex}
             focus={focus}
+            addressMarker={selectedAddress === null ? null : {
+              lat: selectedAddress.result.lat,
+              lng: selectedAddress.result.lng,
+              title: selectedAddress.result.placeName ??
+                selectedAddress.result.roadAddress ??
+                selectedAddress.result.address,
+              seq: selectedAddress.seq,
+            }}
           />
 
           <div className="app-shell__search">
@@ -178,7 +211,7 @@ export default function AppShell() {
               />
               <ComplexSearch
                 onSelectComplex={(complex) => {
-                  setSelectedComplexId(complex.complexId)
+                  selectComplex(complex.complexId)
                   // 좌표가 없는 단지가 있다. 그때는 사이드바만 열고 지도는 두고 본다.
                   if (complex.lat !== null && complex.lng !== null) {
                     setFocus({
@@ -187,6 +220,16 @@ export default function AppShell() {
                       seq: focusSeq.current += 1,
                     })
                   }
+                }}
+                onSelectAddress={(result) => {
+                  setSelectedComplexId(null)
+                  const seq = focusSeq.current += 1
+                  setSelectedAddress({ result, seq })
+                  setFocus({
+                    lat: result.lat,
+                    lng: result.lng,
+                    seq,
+                  })
                 }}
               />
             </div>

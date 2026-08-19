@@ -1,10 +1,12 @@
 import type {
+  AddressUnitOptionsRequest,
   ApartmentUnitOptionsRequest,
   ApartmentUnitOptionsResult,
   OfficialPriceFailure,
   OfficialPriceLookupResult,
   OfficialPriceRequest,
 } from '../../shared/official-price'
+import { addressApartmentIdentity } from '../../shared/official-price'
 import {
   resolveAddressToPnu,
   type AddressPnuResolution,
@@ -184,31 +186,51 @@ export class OfficialPriceService {
       )
       if (pnuLookup.status === 'failed') return pnuLookup.result
 
-      const cached = await this.unitOptionsCache?.getApartmentOptions(
-        request,
-        pnuLookup.pnu,
-      )
-      if (cached) return cached
-
-      const result = await lookupApartmentUnitOptions(
+      return await this.lookupParsedApartmentOptions(
         request,
         pnuLookup.pnu,
         pnuLookup.parsed,
-        await this.latestNoticeDate(),
-        this.client,
       )
-      await this.unitOptionsCache?.putApartmentOptions(
-        request,
-        pnuLookup.pnu,
-        result,
-      )
-      return result
     } catch (error) {
       return {
         key: request.key,
         status: 'failed',
         failure: sourceFailure(error),
       }
+    }
+  }
+
+  async lookupAddressApartmentOptions(
+    request: AddressUnitOptionsRequest,
+  ): Promise<ApartmentUnitOptionsResult> {
+    const pnu = request.pnu.trim()
+    const aptCode = request.aptCode.trim()
+    const key = addressApartmentIdentity(pnu, aptCode)
+    if (!pnu || !aptCode) {
+      return invalidRequest(key, '동·호 목록 조회에는 PNU와 단지 코드가 필요합니다.')
+    }
+
+    const parsedPnu = parsePnu(pnu)
+    if (!parsedPnu) {
+      return invalidRequest(key, 'PNU 형식이 올바르지 않습니다.')
+    }
+
+    const normalizedRequest: ApartmentUnitOptionsRequest = {
+      key,
+      address: '',
+      complexName: '',
+      pnu,
+      aptCode,
+      dong: request.dong?.trim() || undefined,
+    }
+    try {
+      return await this.lookupParsedApartmentOptions(
+        normalizedRequest,
+        pnu,
+        parsedPnu,
+      )
+    } catch (error) {
+      return { key, status: 'failed', failure: sourceFailure(error) }
     }
   }
 
@@ -267,6 +289,25 @@ export class OfficialPriceService {
       }
     }
     return { status: 'found', pnu: resolvedPnu, parsed }
+  }
+
+  private async lookupParsedApartmentOptions(
+    request: ApartmentUnitOptionsRequest,
+    pnu: string,
+    parsedPnu: ParsedPnu,
+  ): Promise<ApartmentUnitOptionsResult> {
+    const cached = await this.unitOptionsCache?.getApartmentOptions(request, pnu)
+    if (cached) return cached
+
+    const result = await lookupApartmentUnitOptions(
+      request,
+      pnu,
+      parsedPnu,
+      await this.latestNoticeDate(),
+      this.client,
+    )
+    await this.unitOptionsCache?.putApartmentOptions(request, pnu, result)
+    return result
   }
 
   private async latestNoticeDate(): Promise<NoticeDate> {

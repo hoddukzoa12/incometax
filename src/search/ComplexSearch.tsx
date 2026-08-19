@@ -1,75 +1,141 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react'
 
 import type { ComplexStagingRecord } from '../../shared/complex'
+import type { AddressSearchResult } from '../../shared/search'
+import { findMatchingComplex } from './address-d1-match'
 import { SEARCH_MESSAGES } from '../messages/search'
 import { fetchComplexSearch } from './api'
+import { searchKakaoPlaces } from './kakao'
+import { SearchResults } from './SearchResults'
+import {
+  addressResultLabel,
+  type AddressSearchOption,
+  type SearchOption,
+  type SearchStatus,
+} from './search-options'
 import './complex-search.css'
 
 const SEARCH_DEBOUNCE_MS = 250
 
-type SearchStatus = 'idle' | 'loading' | 'success' | 'failed'
+interface ComplexSearchProps {
+  readonly onSelectComplex: (complex: ComplexStagingRecord) => void
+  readonly onSelectAddress: (result: AddressSearchResult) => void
+}
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof DOMException && error.name === 'AbortError'
 
 export function ComplexSearch({
   onSelectComplex,
-}: {
-  readonly onSelectComplex: (complex: ComplexStagingRecord) => void
-}) {
+  onSelectAddress,
+}: ComplexSearchProps) {
   const listId = useId()
   const [query, setQuery] = useState('')
-  const [items, setItems] = useState<readonly ComplexStagingRecord[]>([])
-  const [status, setStatus] = useState<SearchStatus>('idle')
+  const [complexItems, setComplexItems] = useState<
+    readonly ComplexStagingRecord[]
+  >([])
+  const [placeItems, setPlaceItems] = useState<
+    readonly AddressSearchOption[]
+  >([])
+  const [complexStatus, setComplexStatus] = useState<SearchStatus>('idle')
+  const [placeStatus, setPlaceStatus] = useState<SearchStatus>('idle')
   const [activeIndex, setActiveIndex] = useState(-1)
   const selectedQuery = useRef('')
 
   useEffect(() => {
     const trimmedQuery = query.trim()
-    if (!trimmedQuery || trimmedQuery === selectedQuery.current) {
-      setItems([])
-      setStatus('idle')
-      setActiveIndex(-1)
-      return
-    }
+    if (!trimmedQuery || trimmedQuery === selectedQuery.current) return
 
     const controller = new AbortController()
+    let cancelled = false
     const timeout = window.setTimeout(() => {
-      setStatus('loading')
-      fetchComplexSearch(trimmedQuery, controller.signal)
+      setComplexStatus('loading')
+      setPlaceStatus('loading')
+
+      void fetchComplexSearch(trimmedQuery, controller.signal)
         .then((results) => {
-          setItems(results)
-          setStatus('success')
+          if (cancelled) return
+          setComplexItems(results)
+          setComplexStatus('success')
           setActiveIndex(-1)
         })
         .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === 'AbortError') return
-          setItems([])
-          setStatus('failed')
+          if (cancelled || isAbortError(error)) return
+          setComplexItems([])
+          setComplexStatus('failed')
+          setActiveIndex(-1)
+        })
+
+      void searchKakaoPlaces(trimmedQuery)
+        .then((results) => {
+          if (cancelled) return
+          setPlaceItems(results.map((item) => ({
+            kind: 'place',
+            item,
+          })))
+          setPlaceStatus('success')
+          setActiveIndex(-1)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setPlaceItems([])
+          setPlaceStatus('failed')
           setActiveIndex(-1)
         })
     }, SEARCH_DEBOUNCE_MS)
 
     return () => {
+      cancelled = true
       window.clearTimeout(timeout)
       controller.abort()
     }
   }, [query])
 
-  const select = (item: ComplexStagingRecord) => {
-    selectedQuery.current = item.name
-    setQuery(item.name)
-    setItems([])
-    setStatus('idle')
+  const addressResults: readonly AddressSearchOption[] = placeItems
+  const options: readonly SearchOption[] = [
+    ...complexItems.map((item) => ({ kind: 'complex' as const, item })),
+    ...addressResults,
+  ]
+  const dropdownOpen = complexStatus !== 'idle' ||
+    placeStatus !== 'idle'
+
+  const clearResults = () => {
+    setComplexItems([])
+    setPlaceItems([])
+    setComplexStatus('idle')
+    setPlaceStatus('idle')
     setActiveIndex(-1)
-    onSelectComplex(item)
+  }
+
+  const select = (option: SearchOption) => {
+    const label = option.kind === 'complex'
+      ? option.item.name
+      : addressResultLabel(option.item)
+    selectedQuery.current = label
+    setQuery(label)
+    clearResults()
+
+    if (option.kind === 'complex') {
+      onSelectComplex(option.item)
+      return
+    }
+    const matched = findMatchingComplex(option.item, complexItems)
+    if (matched) {
+      onSelectComplex(matched)
+      return
+    }
+    onSelectAddress(option.item)
   }
 
   const moveSelection = (direction: 1 | -1) => {
-    if (!items.length) return
-    setActiveIndex((current) => {
-      const next = current + direction
-      if (next < 0) return items.length - 1
-      if (next >= items.length) return 0
-      return next
-    })
+    if (!options.length) return
+    setActiveIndex((current) =>
+      (current + direction + options.length) % options.length)
   }
 
   const activeOptionId = activeIndex >= 0
@@ -90,10 +156,11 @@ export function ComplexSearch({
         role="combobox"
         aria-autocomplete="list"
         aria-controls={listId}
-        aria-expanded={items.length > 0}
+        aria-expanded={dropdownOpen}
         aria-activedescendant={activeOptionId}
         onChange={(event) => {
           selectedQuery.current = ''
+          clearResults()
           setQuery(event.target.value)
         }}
         onKeyDown={(event) => {
@@ -105,47 +172,23 @@ export function ComplexSearch({
             moveSelection(-1)
           } else if (event.key === 'Enter' && activeIndex >= 0) {
             event.preventDefault()
-            select(items[activeIndex])
+            select(options[activeIndex])
           } else if (event.key === 'Escape') {
-            setItems([])
-            setActiveIndex(-1)
+            clearResults()
           }
         }}
       />
 
-      {status === 'loading' && (
-        <p className="complex-search__status" role="status">
-          {SEARCH_MESSAGES.loading}
-        </p>
-      )}
-      {status === 'failed' && (
-        <p className="complex-search__status complex-search__status--error" role="alert">
-          {SEARCH_MESSAGES.failed}
-        </p>
-      )}
-      {status === 'success' && items.length === 0 && (
-        <p className="complex-search__status">{SEARCH_MESSAGES.noResults}</p>
-      )}
-      {items.length > 0 && (
-        <ul id={listId} className="complex-search__results" role="listbox">
-          {items.map((item, index) => (
-            <li
-              id={`${listId}-option-${index}`}
-              key={item.complexId}
-              role="option"
-              aria-selected={index === activeIndex}
-              className="complex-search__result"
-            >
-              <button type="button" onClick={() => select(item)}>
-                <strong>{item.name}</strong>
-                <span>{item.roadAddress ?? item.legalAddress}</span>
-                {(item.lat === null || item.lng === null) && (
-                  <small>{SEARCH_MESSAGES.locationUnavailable}</small>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {dropdownOpen && (
+        <SearchResults
+          listId={listId}
+          complexItems={complexItems}
+          addressResults={addressResults}
+          complexStatus={complexStatus}
+          placeStatus={placeStatus}
+          activeIndex={activeIndex}
+          onSelect={select}
+        />
       )}
     </section>
   )

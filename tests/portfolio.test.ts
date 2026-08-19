@@ -34,6 +34,8 @@ const seed = (
 ): PortfolioItemSeed => ({
   assetKind: 'apartment',
   complexId: 'A13583507',
+  pnu: null,
+  aptCode: null,
   legalDongCode: '1168010600',
   complexName: '은마아파트',
   address: '서울특별시 강남구 삼성로 212',
@@ -110,6 +112,8 @@ describe('portfolio persistence', () => {
       id: 'legacy-one',
       assetKind: 'apartment',
       complexId: 'A13583507',
+      pnu: null,
+      aptCode: null,
       legalDongCode: null,
       complexName: '은마아파트',
       address: '서울특별시 강남구 삼성로 212',
@@ -138,6 +142,8 @@ describe('portfolio persistence', () => {
       version: 2,
       items: [{
         ...createStoredPortfolioItem(seed(), 'schema-two'),
+        pnu: undefined,
+        aptCode: undefined,
         legalDongCode: undefined,
       }],
     })
@@ -145,6 +151,23 @@ describe('portfolio persistence', () => {
     expect(decodePortfolio(previousVersion)).toEqual([{
       ...createStoredPortfolioItem(seed(), 'schema-two'),
       legalDongCode: null,
+    }])
+  })
+
+  it('upgrades schema 5 records with an unset address identity', () => {
+    const previousVersion = JSON.stringify({
+      version: 5,
+      items: [{
+        ...createStoredPortfolioItem(seed(), 'schema-five'),
+        pnu: undefined,
+        aptCode: undefined,
+      }],
+    })
+
+    expect(decodePortfolio(previousVersion)).toEqual([{
+      ...createStoredPortfolioItem(seed(), 'schema-five'),
+      pnu: null,
+      aptCode: null,
     }])
   })
 

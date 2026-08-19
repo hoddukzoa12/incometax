@@ -1,9 +1,8 @@
-import { isLegalDongCode } from '../../shared/legal-dong.ts'
+import { buildPnuFromLot } from '../../shared/pnu.ts'
 
 const HYPHEN_VARIANTS_PATTERN = /[‐‑‒–—−]/g
 const LOT_TOKEN_PATTERN = /^산$|^산?\d/
 const LOT_NUMBER_PATTERN = /^(산)?\s*(\d+)(?:-(\d+))?/
-const PNU_NUMBER_WIDTH = 4
 
 const PROVINCE_ABBREVIATIONS: Readonly<Record<string, string>> = {
   '서울': '서울특별시',
@@ -64,15 +63,10 @@ export function buildPnu(
   parsed: ParsedLotAddress,
   legalDongCode: string,
 ): string | null {
-  if (!isLegalDongCode(legalDongCode)) return null
-  if (!/^\d{1,4}$/.test(parsed.mainNumber)) return null
-  if (!/^\d{1,4}$/.test(parsed.subNumber)) return null
-
-  const landKind = parsed.isMountain ? '2' : '1'
-  return [
+  return buildPnuFromLot({
     legalDongCode,
-    landKind,
-    parsed.mainNumber.padStart(PNU_NUMBER_WIDTH, '0'),
-    parsed.subNumber.padStart(PNU_NUMBER_WIDTH, '0'),
-  ].join('')
+    isMountain: parsed.isMountain,
+    mainNumber: parsed.mainNumber,
+    subNumber: parsed.subNumber,
+  })
 }

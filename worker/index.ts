@@ -1,8 +1,11 @@
 import type {
+  AddressComplexSearchRequest,
   OfficialPriceBatchRequest,
   OfficialPriceRequest,
 } from '../shared/official-price'
 import type { PnuBatchRequest, PnuBatchResponse } from '../shared/pnu'
+import { handleAddressTrades } from './address/trades'
+import { handleAddressUnitOptions } from './address/unit-options'
 import { handleComplexBbox } from './complex/bbox'
 import {
   handleComplexDetail,
@@ -20,6 +23,7 @@ import {
 } from './ldong/refresh'
 import { CloudflareOfficialPriceCache } from './realty-price/cache'
 import { OfficialPriceService } from './realty-price'
+import { AddressComplexSearchService } from './realty-price/complex-search'
 
 const NO_CONTENT_STATUS = 204
 const BAD_REQUEST_STATUS = 400
@@ -66,6 +70,7 @@ function normalizeOfficialPriceRequest(
     key,
     address,
     pnu,
+    aptCode: optionalString(value.aptCode),
     complexName: optionalString(value.complexName) ?? '',
     dong: optionalString(value.dong) ?? '',
     room: optionalString(value.room) ?? '',
@@ -81,7 +86,20 @@ function normalizeOfficialPriceBatch(
   return { items: items as OfficialPriceRequest[] }
 }
 
+function normalizeAddressComplexSearchRequest(
+  value: unknown,
+): AddressComplexSearchRequest | null {
+  if (!isRecord(value) || typeof value.address !== 'string') return null
+  if (value.pnu !== undefined && typeof value.pnu !== 'string') return null
+
+  const address = value.address.trim()
+  if (!address) return null
+  const pnu = optionalString(value.pnu)
+  return pnu ? { address, pnu } : { address }
+}
+
 let officialPriceService: OfficialPriceService | null = null
+let addressComplexSearchService: AddressComplexSearchService | null = null
 
 function getOfficialPriceService(): OfficialPriceService {
   if (!officialPriceService) {
@@ -93,6 +111,16 @@ function getOfficialPriceService(): OfficialPriceService {
     })
   }
   return officialPriceService
+}
+
+function getAddressComplexSearchService(): AddressComplexSearchService {
+  if (!addressComplexSearchService) {
+    const workerCaches = caches as CacheStorage & { readonly default: Cache }
+    addressComplexSearchService = new AddressComplexSearchService({
+      cache: new CloudflareOfficialPriceCache(workerCaches.default),
+    })
+  }
+  return addressComplexSearchService
 }
 
 async function handlePnuRequest(
@@ -141,6 +169,24 @@ async function handleOfficialPriceRequest(
   return json({ results })
 }
 
+async function handleAddressComplexSearchRequest(
+  request: Request,
+  env: Env,
+  context: ExecutionContext,
+): Promise<Response> {
+  const body = normalizeAddressComplexSearchRequest(
+    await request.json().catch(() => null),
+  )
+  if (!body) {
+    return json(
+      { error: '주소 기반 공동주택 검색 요청 형식이 올바르지 않습니다.' },
+      BAD_REQUEST_STATUS,
+    )
+  }
+
+  return json(await getAddressComplexSearchService().search(body, env, context))
+}
+
 export default {
   async fetch(request, env, context): Promise<Response> {
     const url = new URL(request.url)
@@ -166,6 +212,19 @@ export default {
     }
     if (url.pathname === '/api/realty-prices' && request.method === 'POST') {
       return handleOfficialPriceRequest(request, env, context)
+    }
+    if (url.pathname === '/api/address/complexes' && request.method === 'POST') {
+      return handleAddressComplexSearchRequest(request, env, context)
+    }
+    if (url.pathname === '/api/address/unit-options' && request.method === 'POST') {
+      return handleAddressUnitOptions(request, getOfficialPriceService())
+    }
+    if (url.pathname === '/api/address/trades' && request.method === 'POST') {
+      return handleAddressTrades(
+        request,
+        env.DATA_GO_KR_SERVICE_KEY,
+        context,
+      )
     }
     if (url.pathname === '/api/complexes' && request.method === 'GET') {
       return handleComplexBbox(url, env.COMPLEX_DB)

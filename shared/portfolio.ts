@@ -19,10 +19,13 @@ export interface StoredOfficialPrice {
 
 // Storage permits a zero share and a missing price. The calculation-screen
 // boundary converts eligible records to shared/holding-tax PortfolioItem.
+// Address-origin portfolio items use `pnu|aptCode` as their composite identity.
 export interface StoredPortfolioItem {
   readonly id: string
   readonly assetKind: AssetKind
   readonly complexId: string | null
+  readonly pnu: string | null
+  readonly aptCode: string | null
   // null is reserved for records migrated from schemas that predate P4-4.
   readonly legalDongCode: string | null
   readonly complexName: string
@@ -44,6 +47,8 @@ export interface StoredPortfolioItem {
 export interface PortfolioItemSeed {
   readonly assetKind: AssetKind
   readonly complexId: string | null
+  readonly pnu: string | null
+  readonly aptCode: string | null
   readonly legalDongCode: string
   readonly complexName: string
   readonly address: string

@@ -14,8 +14,9 @@ import { isLegalDongCode } from '../../shared/legal-dong'
 import { ownershipShareFromFraction } from './ownership-share'
 
 export const PORTFOLIO_STORAGE_KEY = 'incometax.portfolio'
-export const PORTFOLIO_SCHEMA_VERSION = 5
+export const PORTFOLIO_SCHEMA_VERSION = 6
 
+const IDENTITY_PORTFOLIO_SCHEMA_VERSION = 5
 const PERIOD_PORTFOLIO_SCHEMA_VERSION = 4
 const PRICE_HISTORY_PORTFOLIO_SCHEMA_VERSION = 3
 const LEGAL_DONG_PORTFOLIO_SCHEMA_VERSION = 2
@@ -105,6 +106,8 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
     !isNonEmptyString(value.id) ||
     !isOneOf(value.assetKind, ASSET_KINDS) ||
     !isNullableString(value.complexId) ||
+    !isNullableString(value.pnu) ||
+    !isNullableString(value.aptCode) ||
     !isNullableLegalDongCode(value.legalDongCode) ||
     !isNonEmptyString(value.complexName) ||
     !isNonEmptyString(value.address) ||
@@ -126,6 +129,8 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
     id: value.id,
     assetKind: value.assetKind,
     complexId: value.complexId,
+    pnu: value.pnu,
+    aptCode: value.aptCode,
     legalDongCode: value.legalDongCode,
     complexName: value.complexName,
     address: value.address,
@@ -144,9 +149,18 @@ const readCurrentItem = (value: unknown): StoredPortfolioItem | null => {
   }
 }
 
-const migratePeriodItem = (value: unknown): StoredPortfolioItem | null => {
+const migrateIdentityItem = (value: unknown): StoredPortfolioItem | null => {
   if (!isRecord(value)) return null
   return readCurrentItem({
+    ...value,
+    pnu: null,
+    aptCode: null,
+  })
+}
+
+const migratePeriodItem = (value: unknown): StoredPortfolioItem | null => {
+  if (!isRecord(value)) return null
+  return migrateIdentityItem({
     ...value,
     acquisitionDate: null,
     residenceYears: null,
@@ -202,6 +216,9 @@ export const decodePortfolio = (
 
   if (parsed.version === PORTFOLIO_SCHEMA_VERSION) {
     return readItems(parsed.items, readCurrentItem) ?? []
+  }
+  if (parsed.version === IDENTITY_PORTFOLIO_SCHEMA_VERSION) {
+    return readItems(parsed.items, migrateIdentityItem) ?? []
   }
   if (parsed.version === PERIOD_PORTFOLIO_SCHEMA_VERSION) {
     return readItems(parsed.items, migratePeriodItem) ?? []
