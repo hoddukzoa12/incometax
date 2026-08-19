@@ -30,7 +30,10 @@ const request = (body: unknown): Request => new Request(
 
 describe('address trade HTTP API', () => {
   it('passes the normalized address target to the address trade lookup', async () => {
-    const lookup = vi.fn(async () => [rowhouseTrade])
+    const lookup = vi.fn(async () => ({
+      trades: [rowhouseTrade],
+      partial: false,
+    }))
 
     const response = await handleAddressTrades(
       request({
@@ -55,7 +58,10 @@ describe('address trade HTTP API', () => {
     { ...target, jibunAddress: ' ' },
     { ...target, complexName: 123 },
   ])('rejects an invalid request body', async (body) => {
-    const lookup = vi.fn(async () => [] as readonly RecentTrade[])
+    const lookup = vi.fn(async () => ({
+      trades: [] as readonly RecentTrade[],
+      partial: false,
+    }))
 
     const response = await handleAddressTrades(
       request(body),
@@ -73,7 +79,7 @@ describe('address trade HTTP API', () => {
       request(target),
       'service-key',
       context,
-      vi.fn(async () => []),
+      vi.fn(async () => ({ trades: [], partial: false })),
     )
     expect(empty.status).toBe(200)
     await expect(empty.json()).resolves.toEqual({ items: [] })
@@ -90,5 +96,20 @@ describe('address trade HTTP API', () => {
     consoleError.mockRestore()
     expect(failed.status).toBe(502)
     await expect(failed.json()).resolves.toMatchObject({ retryable: true })
+  })
+
+  it('marks an address trade response as partial when a dataset failed', async () => {
+    const response = await handleAddressTrades(
+      request(target),
+      'service-key',
+      context,
+      vi.fn(async () => ({ trades: [rowhouseTrade], partial: true })),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      items: [rowhouseTrade],
+      partial: true,
+    })
   })
 })

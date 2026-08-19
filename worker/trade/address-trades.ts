@@ -1,7 +1,7 @@
 import type {
+  AddressTradeLookupResult,
   AddressTradeTarget,
   RawTrade,
-  RecentTrade,
   TradeDataset,
   TradeSource,
 } from '../../shared/trade.ts'
@@ -108,7 +108,7 @@ export async function lookupAddressTrades(
   serviceKey: string,
   context?: ExecutionContext,
   dependencies: AddressTradeLookupDependencies = {},
-): Promise<readonly RecentTrade[]> {
+): Promise<AddressTradeLookupResult> {
   if (!LEGAL_DONG_CODE_PATTERN.test(target.legalDongCode)) {
     throw new TypeError('legalDongCode must be a 10-digit code')
   }
@@ -127,16 +127,28 @@ export async function lookupAddressTrades(
       dataset.dealYearMonth,
     ))
   const rawTrades: RawTrade[] = []
+  const failedDatasets: TradeDataset[] = []
+  let successfulDatasetCount = 0
+  let firstFailure: unknown
   for (const dataset of datasets) {
-    rawTrades.push(
-      ...await readCachedDataset(
-        dataset,
-        serviceKey,
-        cache,
-        context,
-        readDataset,
-      ),
-    )
+    try {
+      rawTrades.push(
+        ...await readCachedDataset(
+          dataset,
+          serviceKey,
+          cache,
+          context,
+          readDataset,
+        ),
+      )
+      successfulDatasetCount += 1
+    } catch (error) {
+      failedDatasets.push(dataset)
+      firstFailure ??= error
+    }
+  }
+  if (successfulDatasetCount === 0 && failedDatasets.length > 0) {
+    throw firstFailure
   }
 
   const candidate = prepareComplexCandidate({
@@ -153,5 +165,8 @@ export async function lookupAddressTrades(
     window.cutoffDate,
     window.windowEndDate,
   )
-  return result.trades.map(toRecentTrade)
+  return {
+    trades: result.trades.map(toRecentTrade),
+    partial: failedDatasets.length > 0,
+  }
 }

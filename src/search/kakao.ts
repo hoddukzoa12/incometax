@@ -1,7 +1,6 @@
 import type { AddressSearchResult } from '../../shared/search'
 import { loadKakaoMapsSdk } from '../map/loadKakaoMapsSdk'
 
-const KAKAO_ADDRESS_SEARCH_ERROR = 'Kakao address search failed'
 const KAKAO_KEYWORD_SEARCH_ERROR = 'Kakao keyword search failed'
 const KAKAO_SERVICES_UNAVAILABLE_ERROR = 'Kakao Maps services are unavailable'
 const KAKAO_SEARCH_TIMEOUT_MS = 5_000
@@ -134,19 +133,6 @@ const runKakaoSearch = async <T>(
     }
   }
   throw lastError
-}
-
-export async function searchKakaoAddresses(
-  query: string,
-): Promise<readonly AddressSearchResult[]> {
-  const services = await getKakaoServices()
-  const geocoder = new services.Geocoder()
-  return runKakaoSearch(
-    services,
-    (callback) => geocoder.addressSearch(query, callback),
-    toAddressSearchResult,
-    KAKAO_ADDRESS_SEARCH_ERROR,
-  )
 }
 
 export async function searchKakaoPlaces(

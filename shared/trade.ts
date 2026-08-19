@@ -174,8 +174,14 @@ export interface AddressTradeTarget {
   readonly complexName: string
 }
 
+export interface AddressTradeLookupResult {
+  readonly trades: readonly RecentTrade[]
+  readonly partial: boolean
+}
+
 export interface AddressTradesResponse {
   readonly items: readonly RecentTrade[]
+  readonly partial?: boolean
 }
 
 export interface ComplexTradesResponse {

@@ -71,7 +71,11 @@ describe('address trade lookup', () => {
     expect(readDataset.mock.calls.map(([dataset]) => dataset.source)).toEqual(
       Array.from({ length: 13 }, () => ['apt', 'rowhouse']).flat(),
     )
-    expect(result.map((trade) => trade.source)).toEqual(['apt', 'rowhouse'])
+    expect(result.trades.map((trade) => trade.source)).toEqual([
+      'apt',
+      'rowhouse',
+    ])
+    expect(result.partial).toBe(false)
     expect(memory.put).toHaveBeenCalledTimes(26)
     const [firstRequest, firstResponse] = memory.put.mock.calls[0]
     expect(new URL(firstRequest.url).searchParams.get('key'))
@@ -118,6 +122,52 @@ describe('address trade lookup', () => {
       lookupAddressTrades(TARGET, 'service-key', undefined, dependencies),
     ])
 
+    expect(readDataset).toHaveBeenCalledTimes(26)
+  })
+
+  it('returns trades from successful datasets when one dataset fails', async () => {
+    const memory = memoryCache()
+    const failedDataset: TradeDataset = {
+      source: 'apt',
+      legalDistrictCode: '11680',
+      dealYearMonth: '202608',
+    }
+    const failure = new Error('one dataset failed')
+    const readDataset = vi.fn(async (dataset: TradeDataset) => {
+      if (
+        dataset.source === failedDataset.source &&
+        dataset.dealYearMonth === failedDataset.dealYearMonth
+      ) throw failure
+      return [rawTrade({
+        source: dataset.source,
+        dealAmount: Number(dataset.dealYearMonth) * 1_000 +
+          (dataset.source === 'apt' ? 1 : 2),
+      })]
+    })
+
+    const result = await lookupAddressTrades(TARGET, 'service-key', undefined, {
+      now: () => NOW,
+      cache: memory.cache,
+      readDataset,
+    })
+
+    expect(readDataset).toHaveBeenCalledTimes(26)
+    expect(result.trades).toHaveLength(25)
+    expect(result.partial).toBe(true)
+  })
+
+  it('throws when every dataset fails', async () => {
+    const memory = memoryCache()
+    const failure = new Error('all datasets failed')
+    const readDataset = vi.fn(async () => {
+      throw failure
+    })
+
+    await expect(lookupAddressTrades(TARGET, 'service-key', undefined, {
+      now: () => NOW,
+      cache: memory.cache,
+      readDataset,
+    })).rejects.toThrow(failure)
     expect(readDataset).toHaveBeenCalledTimes(26)
   })
 

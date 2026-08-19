@@ -54,8 +54,10 @@ export async function handleAddressTrades(
   }
 
   try {
+    const result = await lookup(target, serviceKey, context)
     const response: AddressTradesResponse = {
-      items: await lookup(target, serviceKey, context),
+      items: result.trades,
+      ...(result.partial ? { partial: true } : {}),
     }
     return Response.json(response, {
       headers: { 'cache-control': 'no-store' },

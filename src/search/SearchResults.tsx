@@ -13,7 +13,6 @@ interface SearchResultsProps {
   readonly complexItems: readonly ComplexStagingRecord[]
   readonly addressResults: readonly AddressSearchOption[]
   readonly complexStatus: SearchStatus
-  readonly addressStatus: SearchStatus
   readonly placeStatus: SearchStatus
   readonly activeIndex: number
   readonly onSelect: (option: SearchOption) => void
@@ -34,17 +33,15 @@ export function SearchResults({
   complexItems,
   addressResults,
   complexStatus,
-  addressStatus,
   placeStatus,
   activeIndex,
   onSelect,
 }: SearchResultsProps) {
   const complexSectionId = `${listId}-complex-section`
   const addressSectionId = `${listId}-address-section`
-  const addressLoading = addressStatus === 'loading' || placeStatus === 'loading'
-  const addressFailed = addressStatus === 'failed' || placeStatus === 'failed'
-  const addressSearchComplete = addressStatus === 'success' &&
-    placeStatus === 'success'
+  const addressLoading = placeStatus === 'loading'
+  const addressFailed = placeStatus === 'failed'
+  const addressSearchComplete = placeStatus === 'success'
 
   return (
     <div id={listId} className="complex-search__results" role="listbox">

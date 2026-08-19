@@ -7,9 +7,10 @@ import {
 
 import type { ComplexStagingRecord } from '../../shared/complex'
 import type { AddressSearchResult } from '../../shared/search'
+import { findMatchingComplex } from './address-d1-match'
 import { SEARCH_MESSAGES } from '../messages/search'
 import { fetchComplexSearch } from './api'
-import { searchKakaoAddresses, searchKakaoPlaces } from './kakao'
+import { searchKakaoPlaces } from './kakao'
 import { SearchResults } from './SearchResults'
 import {
   addressResultLabel,
@@ -38,14 +39,10 @@ export function ComplexSearch({
   const [complexItems, setComplexItems] = useState<
     readonly ComplexStagingRecord[]
   >([])
-  const [addressItems, setAddressItems] = useState<
-    readonly AddressSearchOption[]
-  >([])
   const [placeItems, setPlaceItems] = useState<
     readonly AddressSearchOption[]
   >([])
   const [complexStatus, setComplexStatus] = useState<SearchStatus>('idle')
-  const [addressStatus, setAddressStatus] = useState<SearchStatus>('idle')
   const [placeStatus, setPlaceStatus] = useState<SearchStatus>('idle')
   const [activeIndex, setActiveIndex] = useState(-1)
   const selectedQuery = useRef('')
@@ -58,7 +55,6 @@ export function ComplexSearch({
     let cancelled = false
     const timeout = window.setTimeout(() => {
       setComplexStatus('loading')
-      setAddressStatus('loading')
       setPlaceStatus('loading')
 
       void fetchComplexSearch(trimmedQuery, controller.signal)
@@ -72,23 +68,6 @@ export function ComplexSearch({
           if (cancelled || isAbortError(error)) return
           setComplexItems([])
           setComplexStatus('failed')
-          setActiveIndex(-1)
-        })
-
-      void searchKakaoAddresses(trimmedQuery)
-        .then((results) => {
-          if (cancelled) return
-          setAddressItems(results.map((item) => ({
-            kind: 'address',
-            item,
-          })))
-          setAddressStatus('success')
-          setActiveIndex(-1)
-        })
-        .catch(() => {
-          if (cancelled) return
-          setAddressItems([])
-          setAddressStatus('failed')
           setActiveIndex(-1)
         })
 
@@ -117,24 +96,18 @@ export function ComplexSearch({
     }
   }, [query])
 
-  const addressResults: readonly AddressSearchOption[] = [
-    ...addressItems,
-    ...placeItems,
-  ]
+  const addressResults: readonly AddressSearchOption[] = placeItems
   const options: readonly SearchOption[] = [
     ...complexItems.map((item) => ({ kind: 'complex' as const, item })),
     ...addressResults,
   ]
   const dropdownOpen = complexStatus !== 'idle' ||
-    addressStatus !== 'idle' ||
     placeStatus !== 'idle'
 
   const clearResults = () => {
     setComplexItems([])
-    setAddressItems([])
     setPlaceItems([])
     setComplexStatus('idle')
-    setAddressStatus('idle')
     setPlaceStatus('idle')
     setActiveIndex(-1)
   }
@@ -149,6 +122,11 @@ export function ComplexSearch({
 
     if (option.kind === 'complex') {
       onSelectComplex(option.item)
+      return
+    }
+    const matched = findMatchingComplex(option.item, complexItems)
+    if (matched) {
+      onSelectComplex(matched)
       return
     }
     onSelectAddress(option.item)
@@ -207,7 +185,6 @@ export function ComplexSearch({
           complexItems={complexItems}
           addressResults={addressResults}
           complexStatus={complexStatus}
-          addressStatus={addressStatus}
           placeStatus={placeStatus}
           activeIndex={activeIndex}
           onSelect={select}

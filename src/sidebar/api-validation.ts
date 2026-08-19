@@ -54,7 +54,8 @@ export const isAddressTradesResponse = (
 ): value is AddressTradesResponse =>
   isRecord(value) &&
   Array.isArray(value.items) &&
-  value.items.every(isRecentTrade)
+  value.items.every(isRecentTrade) &&
+  (value.partial === undefined || typeof value.partial === 'boolean')
 
 export const isUnitOption = (value: unknown): value is ApartmentUnitOption =>
   isRecord(value) && typeof value.code === 'string' && typeof value.name === 'string'
